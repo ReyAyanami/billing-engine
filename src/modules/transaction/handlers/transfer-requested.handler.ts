@@ -4,6 +4,7 @@ import { TransferRequestedEvent } from '../events/transfer-requested.event';
 import { UpdateBalanceCommand } from '../../account/commands/update-balance.command';
 import { CompleteTransferCommand } from '../commands/complete-transfer.command';
 import { FailTransactionCommand } from '../commands/fail-transaction.command';
+import { CompensateTransactionCommand } from '../commands/compensate-transaction.command';
 
 /**
  * Event handler for TransferRequestedEvent (Saga Coordinator).
@@ -88,37 +89,83 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
 
       this.logger.log(`✅ SAGA: Transfer completed successfully!`);
     } catch (error) {
-      // Step 4 (on failure): Fail the transaction
+      // Step 4 (on failure): Compensate and fail the transaction
       this.logger.error(`   ❌ SAGA: Transfer failed: ${error.message}`);
-      this.logger.log(`   ⚙️  Step 4: Marking transaction as failed...`);
-
-      // TODO: In production, implement compensation here
-      // If source was debited but destination credit failed, we should:
-      // 1. Credit back the source account (compensating transaction)
-      // 2. Then fail the transaction
-      // For now, we just fail the transaction
       
+      // Check if we need compensation (source was debited)
       if (sourceNewBalance) {
-        this.logger.warn(
-          `   ⚠️  WARNING: Source account was debited but transfer failed. ` +
-          `Manual compensation may be needed or implement automatic compensation.`
-        );
-      }
+        this.logger.log(`   ⚙️  Step 4a: Compensating - crediting source account back...`);
+        
+        try {
+          // COMPENSATION: Credit back the source account
+          const compensateUpdateCommand = new UpdateBalanceCommand(
+            event.sourceAccountId,
+            event.amount,
+            'CREDIT', // Reverse the DEBIT
+            `Compensation for failed transfer ${event.aggregateId}`,
+            event.aggregateId,
+            event.correlationId,
+            event.metadata?.actorId,
+          );
 
-      try {
-        const failCommand = new FailTransactionCommand(
-          event.aggregateId,
-          error.message,
-          error.code || 'TRANSFER_FAILED',
-          event.correlationId,
-          event.metadata?.actorId,
-        );
+          await this.commandBus.execute(compensateUpdateCommand);
+          this.logger.log(`   ✅ Source account compensated (credited back)`);
 
-        await this.commandBus.execute(failCommand);
-        this.logger.log(`   ✅ Transaction marked as failed`);
-      } catch (failError) {
-        this.logger.error(`   ❌ SAGA: Failed to mark transaction as failed`, failError);
-        // This is critical - we should alert/retry
+          // Mark transaction as compensated
+          const compensateCommand = new CompensateTransactionCommand(
+            event.aggregateId,
+            `Transfer failed after source debit: ${error.message}`,
+            [
+              {
+                accountId: event.sourceAccountId,
+                action: 'CREDIT',
+                amount: event.amount,
+                reason: 'Rollback of source debit due to destination credit failure',
+              },
+            ],
+            event.correlationId,
+            event.metadata?.actorId,
+          );
+
+          await this.commandBus.execute(compensateCommand);
+          this.logger.log(`   ✅ Transaction marked as COMPENSATED`);
+          this.logger.log(`✅ SAGA: Transfer compensated successfully (rolled back)`);
+        } catch (compensationError) {
+          this.logger.error(
+            `   ❌ SAGA: CRITICAL - Compensation failed! Manual intervention needed.`,
+            compensationError,
+          );
+          // Still try to mark as failed
+          try {
+            const failCommand = new FailTransactionCommand(
+              event.aggregateId,
+              `Transfer failed and compensation also failed: ${error.message}`,
+              'COMPENSATION_FAILED',
+              event.correlationId,
+              event.metadata?.actorId,
+            );
+            await this.commandBus.execute(failCommand);
+          } catch (failError) {
+            this.logger.error(`   ❌ SAGA: Failed to mark as failed`, failError);
+          }
+        }
+      } else {
+        // No compensation needed, just fail
+        this.logger.log(`   ⚙️  Step 4b: No compensation needed (source not yet debited)`);
+        try {
+          const failCommand = new FailTransactionCommand(
+            event.aggregateId,
+            error.message,
+            error.code || 'TRANSFER_FAILED',
+            event.correlationId,
+            event.metadata?.actorId,
+          );
+
+          await this.commandBus.execute(failCommand);
+          this.logger.log(`   ✅ Transaction marked as failed`);
+        } catch (failError) {
+          this.logger.error(`   ❌ SAGA: Failed to mark transaction as failed`, failError);
+        }
       }
     }
   }

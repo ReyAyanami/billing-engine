@@ -68,6 +68,20 @@ export class TransactionProjection {
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt?: Date;
 
+  @Column({ name: 'compensated_at', type: 'timestamp', nullable: true })
+  compensatedAt?: Date;
+
+  @Column({ name: 'compensation_reason', type: 'text', nullable: true })
+  compensationReason?: string;
+
+  @Column({ name: 'compensation_actions', type: 'jsonb', nullable: true })
+  compensationActions?: Array<{
+    accountId: string;
+    action: 'CREDIT' | 'DEBIT';
+    amount: string;
+    reason: string;
+  }>;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 

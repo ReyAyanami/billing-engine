@@ -6,14 +6,16 @@ import { WithdrawalCompletedEvent } from '../events/withdrawal-completed.event';
 import { TransferRequestedEvent } from '../events/transfer-requested.event';
 import { TransferCompletedEvent } from '../events/transfer-completed.event';
 import { TransactionFailedEvent } from '../events/transaction-failed.event';
+import { TransactionCompensatedEvent } from '../events/transaction-compensated.event';
 
 /**
  * Transaction status enum
  */
 export enum TransactionStatus {
-  PENDING = 'PENDING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
+  PENDING = 'pending',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  COMPENSATED = 'compensated', // Transaction was rolled back
 }
 
 /**
@@ -51,6 +53,16 @@ export class TransactionAggregate extends AggregateRoot {
   private newBalance?: string;
   private sourceNewBalance?: string;
   private destinationNewBalance?: string;
+
+  // Compensation tracking
+  private compensationReason?: string;
+  private compensatedAt?: Date;
+  private compensationActions?: Array<{
+    accountId: string;
+    action: 'CREDIT' | 'DEBIT';
+    amount: string;
+    reason: string;
+  }>;
 
   protected getAggregateType(): string {
     return 'Transaction';
@@ -387,6 +399,62 @@ export class TransactionAggregate extends AggregateRoot {
     this.failureReason = event.reason;
     this.failureCode = event.errorCode;
     this.failedAt = event.failedAt;
+  }
+
+  /**
+   * Compensates (rolls back) a transaction
+   * Used when a saga fails partway through and needs to undo changes
+   */
+  compensate(params: {
+    reason: string;
+    compensationActions: Array<{
+      accountId: string;
+      action: 'CREDIT' | 'DEBIT';
+      amount: string;
+      reason: string;
+    }>;
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, any>;
+  }): void {
+    // Validate: Transaction must exist
+    if (!this.aggregateId) {
+      throw new Error('Transaction does not exist');
+    }
+
+    // Validate: Transaction must be PENDING or FAILED (not COMPLETED or already COMPENSATED)
+    if (this.status === TransactionStatus.COMPLETED) {
+      throw new Error('Cannot compensate a completed transaction');
+    }
+
+    if (this.status === TransactionStatus.COMPENSATED) {
+      throw new Error('Transaction is already compensated');
+    }
+
+    const event = new TransactionCompensatedEvent(
+      this.aggregateId,
+      params.reason,
+      params.compensationActions,
+      {
+        aggregateId: this.aggregateId,
+        aggregateVersion: this.version + 1,
+        correlationId: params.correlationId,
+        causationId: params.causationId,
+        metadata: params.metadata,
+      },
+    );
+
+    this.apply(event);
+  }
+
+  /**
+   * Event handler for TransactionCompensatedEvent
+   */
+  onTransactionCompensated(event: TransactionCompensatedEvent): void {
+    this.status = TransactionStatus.COMPENSATED;
+    this.compensationReason = event.reason;
+    this.compensationActions = event.compensationActions;
+    this.compensatedAt = event.compensatedAt;
   }
 
   /**

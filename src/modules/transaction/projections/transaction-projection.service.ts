@@ -103,6 +103,43 @@ export class TransactionProjectionService {
   }
 
   /**
+   * Update transaction projection when it is compensated (rolled back)
+   */
+  async updateTransactionCompensated(
+    id: string,
+    reason: string,
+    compensationActions: Array<{
+      accountId: string;
+      action: 'CREDIT' | 'DEBIT';
+      amount: string;
+      reason: string;
+    }>,
+    compensatedAt: Date,
+    expectedVersion: number,
+    lastEventId: string,
+    lastEventTimestamp: Date,
+  ): Promise<void> {
+    await this.projectionRepository
+      .createQueryBuilder()
+      .update(TransactionProjection)
+      .set({
+        status: TransactionStatus.COMPENSATED,
+        compensationReason: reason,
+        compensationActions,
+        compensatedAt,
+        updatedAt: lastEventTimestamp,
+        aggregateVersion: expectedVersion,
+        lastEventId,
+        lastEventTimestamp,
+      })
+      .where('id = :id AND aggregateVersion < :expectedVersion', {
+        id,
+        expectedVersion,
+      })
+      .execute();
+  }
+
+  /**
    * Find transaction by ID
    */
   async findById(id: string): Promise<TransactionProjection | null> {

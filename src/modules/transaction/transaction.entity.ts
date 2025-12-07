@@ -25,6 +25,7 @@ export enum TransactionStatus {
   FAILED = 'failed',
   CANCELLED = 'cancelled',
   REFUNDED = 'refunded',
+  COMPENSATED = 'compensated', // Transaction was rolled back
 }
 
 @Entity('transactions')

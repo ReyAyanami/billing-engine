@@ -17,6 +17,7 @@ import { CompleteTopupHandler } from './handlers/complete-topup.handler';
 import { CompleteWithdrawalHandler } from './handlers/complete-withdrawal.handler';
 import { CompleteTransferHandler } from './handlers/complete-transfer.handler';
 import { FailTransactionHandler } from './handlers/fail-transaction.handler';
+import { CompensateTransactionHandler } from './handlers/compensate-transaction.handler';
 
 // CQRS Components - Events (Saga)
 import { TopupRequestedHandler } from './handlers/topup-requested.handler';
@@ -31,6 +32,7 @@ import { WithdrawalCompletedProjectionHandler } from './handlers/projection/with
 import { TransferRequestedProjectionHandler } from './handlers/projection/transfer-requested-projection.handler';
 import { TransferCompletedProjectionHandler } from './handlers/projection/transfer-completed-projection.handler';
 import { TransactionFailedProjectionHandler } from './handlers/projection/transaction-failed-projection.handler';
+import { TransactionCompensatedProjectionHandler } from './handlers/projection/transaction-compensated-projection.handler';
 
 // CQRS Components - Queries
 import { GetTransactionHandler } from './queries/handlers/get-transaction.handler';
@@ -48,6 +50,7 @@ const CommandHandlers = [
   CompleteWithdrawalHandler,
   CompleteTransferHandler,
   FailTransactionHandler,
+  CompensateTransactionHandler,
 ];
 
 const EventHandlers = [
@@ -63,6 +66,7 @@ const EventHandlers = [
   TransferRequestedProjectionHandler,
   TransferCompletedProjectionHandler,
   TransactionFailedProjectionHandler,
+  TransactionCompensatedProjectionHandler,
 ];
 
 const QueryHandlers = [
