@@ -4,15 +4,47 @@
 
 The billing engine has comprehensive test coverage across both unit tests and E2E tests. All tests follow best practices and verify production-ready functionality.
 
+### Test Organization Philosophy
+
+Tests are organized by **type** and **domain** rather than chronologically:
+- ✅ **Type-based**: Unit tests, E2E tests, and helpers are clearly separated
+- ✅ **Domain-based**: E2E tests are organized by domain (account vs transaction)
+- ✅ **Descriptive names**: Test files describe what they test, not when they were created
+- ✅ **Scalable structure**: Easy to add new tests without restructuring
+
+This structure follows industry best practices and makes it intuitive to find and maintain tests.
+
 ---
 
 ## 🧪 Test Structure
 
+The test suite is organized into three main categories:
+
+```
+test/
+├── unit/                           # Unit tests
+│   ├── account.service.spec.ts
+│   └── transaction.service.spec.ts
+├── e2e/                            # E2E tests
+│   ├── account/                    # Account domain tests
+│   │   ├── account-creation.e2e-spec.ts
+│   │   └── account-projections.e2e-spec.ts
+│   └── transaction/                # Transaction domain tests
+│       ├── topup.e2e-spec.ts
+│       ├── withdrawal-transfer.e2e-spec.ts
+│       ├── payment.e2e-spec.ts
+│       └── refund.e2e-spec.ts
+└── helpers/                        # Test utilities
+    └── event-polling.helper.ts
+```
+
+---
+
 ### Unit Tests (2 files, 13 tests)
 
-Located in `src/modules/*/` alongside source files.
+Located in `test/unit/` directory.
 
-#### 1. `src/modules/account/account.service.spec.ts`
+#### 1. `test/unit/account.service.spec.ts`
 Tests the core account service functionality:
 - Account creation
 - Account retrieval
@@ -20,7 +52,7 @@ Tests the core account service functionality:
 - Balance operations
 - Error handling
 
-#### 2. `src/modules/transaction/transaction.service.spec.ts`
+#### 2. `test/unit/transaction.service.spec.ts`
 Tests the core transaction service functionality:
 - Transaction creation
 - Transaction state management
@@ -33,9 +65,11 @@ Tests the core transaction service functionality:
 
 ### E2E Tests (6 files)
 
-Located in `test/` directory. These tests verify complete saga flows with Kafka integration.
+Located in `test/e2e/` directory, organized by domain. These tests verify complete saga flows with Kafka integration.
 
-#### 1. `test/week1-poc.e2e-spec.ts` - Account Creation & Event Sourcing
+#### Account Domain Tests
+
+##### 1. `test/e2e/account/account-creation.e2e-spec.ts` - Account Creation & Event Sourcing
 **Purpose:** Verify account aggregate with event sourcing  
 **Coverage:**
 - Account creation via CQRS command
@@ -50,7 +84,7 @@ Located in `test/` directory. These tests verify complete saga flows with Kafka 
 
 ---
 
-#### 2. `test/week2-projections.e2e-spec.ts` - Account Projections & Queries
+##### 2. `test/e2e/account/account-projections.e2e-spec.ts` - Account Projections & Queries
 **Purpose:** Verify CQRS read model (projections)  
 **Coverage:**
 - Account projection creation
@@ -67,7 +101,9 @@ Located in `test/` directory. These tests verify complete saga flows with Kafka 
 
 ---
 
-#### 3. `test/week3-complete-saga.e2e-spec.ts` - Topup Saga
+#### Transaction Domain Tests
+
+##### 3. `test/e2e/transaction/topup.e2e-spec.ts` - Topup Saga
 **Purpose:** Verify topup transaction saga orchestration  
 **Coverage:**
 - Topup command dispatch
@@ -87,7 +123,7 @@ Located in `test/` directory. These tests verify complete saga flows with Kafka 
 
 ---
 
-#### 4. `test/week4-withdrawal-transfer-sagas.e2e-spec.ts` - Withdrawal & Transfer Sagas
+##### 4. `test/e2e/transaction/withdrawal-transfer.e2e-spec.ts` - Withdrawal & Transfer Sagas
 **Purpose:** Verify withdrawal and transfer saga orchestration  
 **Coverage:**
 - Withdrawal saga (User → External)
@@ -109,7 +145,7 @@ Located in `test/` directory. These tests verify complete saga flows with Kafka 
 
 ---
 
-#### 5. `test/payment-saga.e2e-spec.ts` - Payment Saga
+##### 5. `test/e2e/transaction/payment.e2e-spec.ts` - Payment Saga
 **Purpose:** Verify payment transaction saga (C2B)  
 **Coverage:**
 - Payment command dispatch
@@ -131,7 +167,7 @@ Located in `test/` directory. These tests verify complete saga flows with Kafka 
 
 ---
 
-#### 6. `test/refund-saga.e2e-spec.ts` - Refund Saga
+##### 6. `test/e2e/transaction/refund.e2e-spec.ts` - Refund Saga
 **Purpose:** Verify refund transaction saga (B2C)  
 **Coverage:**
 - Refund command dispatch
@@ -202,12 +238,15 @@ npm run test:e2e
 
 ### Run Specific E2E Test
 ```bash
-npm run test:e2e -- week1-poc.e2e-spec.ts
-npm run test:e2e -- week2-projections.e2e-spec.ts
-npm run test:e2e -- week3-complete-saga.e2e-spec.ts
-npm run test:e2e -- week4-withdrawal-transfer-sagas.e2e-spec.ts
-npm run test:e2e -- payment-saga.e2e-spec.ts
-npm run test:e2e -- refund-saga.e2e-spec.ts
+# Account domain tests
+npm run test:e2e -- account-creation.e2e-spec.ts
+npm run test:e2e -- account-projections.e2e-spec.ts
+
+# Transaction domain tests
+npm run test:e2e -- topup.e2e-spec.ts
+npm run test:e2e -- withdrawal-transfer.e2e-spec.ts
+npm run test:e2e -- payment.e2e-spec.ts
+npm run test:e2e -- refund.e2e-spec.ts
 ```
 
 ### Run Tests in Watch Mode
@@ -225,7 +264,7 @@ npm test -- --coverage
 ## 🧩 Test Infrastructure
 
 ### EventPollingHelper
-Located in: `test/week2-projections.e2e-spec.ts` (and used in other tests)
+Located in: `test/helpers/event-polling.helper.ts`
 
 **Purpose:** Handle Kafka timing issues in tests by polling for events and projections.
 
