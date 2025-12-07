@@ -1,3 +1,9 @@
+# ADR-0006: Double-Entry Refactoring Plan
+
+**Status**: Completed
+**Date**: 2025-12-07
+**Tags**: #planning #refactoring #implementation
+
 # Major Refactoring: True Double-Entry Bookkeeping
 
 ## Overview

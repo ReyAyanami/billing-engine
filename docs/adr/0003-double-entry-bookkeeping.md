@@ -1,3 +1,9 @@
+# ADR-0003: Double-Entry Bookkeeping System
+
+**Status**: Accepted
+**Date**: 2025-12-07
+**Tags**: #double-entry #refactoring #accounting
+
 # Double-Entry Bookkeeping Refactoring Summary
 
 ## Status: Core Refactoring Complete ✅

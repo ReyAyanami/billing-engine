@@ -1,3 +1,9 @@
+# ADR-0004: Double-Entry System Design
+
+**Status**: Accepted
+**Date**: 2025-12-07
+**Tags**: #design #double-entry #architecture
+
 # Double-Entry Bookkeeping Design
 
 ## Overview

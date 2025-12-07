@@ -4,7 +4,7 @@ A production-grade billing system demonstrating best practices in financial tran
 
 > **🎯 Version 2.0 - Double-Entry Bookkeeping System**  
 > This engine implements true double-entry bookkeeping where every transaction has both a source and destination account, ensuring complete auditability and compliance with accounting standards.  
-> 📖 [Learn about the double-entry design](./docs/DOUBLE_ENTRY_DESIGN.md) | ⚠️ [Breaking changes from v1](./docs/BREAKING_CHANGES_V2.md)
+> 📖 [Learn about the double-entry design](./docs/adr/0004-double-entry-design.md) | ⚠️ [Breaking changes from v1](./docs/BREAKING_CHANGES_V2.md)
 
 ## 📋 Overview
 
@@ -70,18 +70,28 @@ All financial operations follow double-entry accounting principles:
 
 ## 📚 Documentation
 
-For detailed documentation, see:
-- **Core Documentation:**
-  - [REQUIREMENTS.md](./REQUIREMENTS.md) - Complete requirements specification
-  - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture and design
-  - [DATA_MODEL.md](./DATA_MODEL.md) - Database schema and data structures
-- **Design Documentation:**
-  - [DOUBLE_ENTRY_DESIGN.md](./docs/DOUBLE_ENTRY_DESIGN.md) - Double-entry bookkeeping implementation
-  - [FOREIGN_KEYS.md](./docs/FOREIGN_KEYS.md) - Foreign key design decisions
-  - [BREAKING_CHANGES_V2.md](./docs/BREAKING_CHANGES_V2.md) - Migration guide from v1 to v2
-- **Development:**
-  - [QUICK_START.md](./QUICK_START.md) - Quick start guide
-  - [src/migrations/README.md](./src/migrations/README.md) - Database migrations guide
+### Core Documentation
+- 📖 [Requirements](./REQUIREMENTS.md) - Complete requirements specification
+- 🏗️ [Architecture](./ARCHITECTURE.md) - System architecture and design patterns
+- 💾 [Data Model](./DATA_MODEL.md) - Database schema and entities
+- 🚀 [Quick Start](./QUICK_START.md) - Get up and running in 5 minutes
+
+### Technical Documentation
+- 📁 [Documentation Index](./docs/README.md) - Complete documentation directory
+- 🔄 [Pipeline Architecture](./docs/PIPELINE_ARCHITECTURE.md) - Transaction pipeline pattern
+- ⚠️ [Breaking Changes V2](./docs/BREAKING_CHANGES_V2.md) - Migration guide from v1 to v2
+- 🔧 [Pipeline Migration Examples](./docs/PIPELINE_MIGRATION_EXAMPLE.md) - Code examples
+- 🗄️ [Database Migrations](./src/migrations/README.md) - Migration management
+
+### Architecture Decision Records (ADRs)
+All significant architectural decisions are documented as ADRs:
+- 📋 [ADR Index](./docs/adr/README.md) - Complete list of decisions
+- 🐛 [UUID Validation Debugging](./docs/adr/0001-uuid-validation-debugging.md)
+- 🔄 [Pipeline Pattern Adoption](./docs/adr/0002-pipeline-pattern-adoption.md)
+- 📊 [Double-Entry Bookkeeping](./docs/adr/0003-double-entry-bookkeeping.md)
+- 🏗️ [Double-Entry Design](./docs/adr/0004-double-entry-design.md)
+- 🔗 [Foreign Key Strategy](./docs/adr/0005-foreign-key-strategy.md)
+- 📝 [Refactoring Plan](./docs/adr/0006-double-entry-refactoring-plan.md)
 
 ## 🚀 Getting Started
 

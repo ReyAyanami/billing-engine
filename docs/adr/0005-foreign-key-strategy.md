@@ -1,3 +1,9 @@
+# ADR-0005: Foreign Key Constraint Strategy
+
+**Status**: Accepted
+**Date**: 2025-12-07
+**Tags**: #database #foreign-keys #integrity
+
 # Foreign Key Design Decisions
 
 ## Overview
