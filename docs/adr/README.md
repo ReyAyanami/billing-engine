@@ -18,6 +18,7 @@ An ADR is a document that captures an important architectural decision made alon
 | [0004](./0004-double-entry-design.md) | Double-Entry System Design | Accepted | 2025-12-07 | design, architecture |
 | [0005](./0005-foreign-key-strategy.md) | Foreign Key Constraint Strategy | Accepted | 2025-12-07 | database, integrity |
 | [0006](./0006-double-entry-refactoring-plan.md) | Double-Entry Refactoring Plan | Completed | 2025-12-07 | planning, implementation |
+| [0007](./0007-async-event-sourcing-kafka.md) | **Async Processing & Event Sourcing with Kafka** | **Accepted** | **2025-12-07** | **async, event-sourcing, kafka, cqrs, major-change** |
 
 ## ADR Status
 
