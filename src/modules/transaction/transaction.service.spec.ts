@@ -6,7 +6,7 @@ import { Transaction, TransactionType, TransactionStatus } from './transaction.e
 import { AccountService } from '../account/account.service';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
-import { Account, AccountStatus } from '../account/account.entity';
+import { Account, AccountStatus, AccountType } from '../account/account.entity';
 import { TopupDto } from './dto/topup.dto';
 import { WithdrawalDto } from './dto/withdrawal.dto';
 import { InsufficientBalanceException, CurrencyMismatchException } from '../../common/exceptions/billing.exception';
@@ -26,12 +26,23 @@ describe('TransactionService', () => {
     timestamp: new Date(),
   };
 
-  const mockAccount: Partial<Account> = {
-    id: 'account-123',
+  const mockUserAccount: Partial<Account> = {
+    id: 'user-account-123',
     ownerId: 'user-123',
     ownerType: 'user',
+    accountType: AccountType.USER,
     currency: 'USD',
     balance: '100.00',
+    status: AccountStatus.ACTIVE,
+  };
+
+  const mockExternalAccount: Partial<Account> = {
+    id: 'external-account-123',
+    ownerId: 'bank',
+    ownerType: 'bank',
+    accountType: AccountType.EXTERNAL,
+    currency: 'USD',
+    balance: '0.00',
     status: AccountStatus.ACTIVE,
   };
 
@@ -50,6 +61,7 @@ describe('TransactionService', () => {
           useValue: {
             findOne: jest.fn(),
             find: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
         {
@@ -97,7 +109,8 @@ describe('TransactionService', () => {
     it('should successfully top up an account', async () => {
       const topupDto: TopupDto = {
         idempotencyKey: 'idempotency-123',
-        accountId: 'account-123',
+        sourceAccountId: 'external-account-123',
+        destinationAccountId: 'user-account-123',
         amount: '50.00',
         currency: 'USD',
         reference: 'Test topup',
@@ -107,16 +120,21 @@ describe('TransactionService', () => {
         id: 'transaction-123',
         idempotencyKey: topupDto.idempotencyKey,
         type: TransactionType.TOPUP,
-        accountId: topupDto.accountId,
+        sourceAccountId: topupDto.sourceAccountId,
+        destinationAccountId: topupDto.destinationAccountId,
         amount: topupDto.amount,
         currency: topupDto.currency,
-        balanceBefore: '100.00',
-        balanceAfter: '150.00',
+        sourceBalanceBefore: '0.00',
+        sourceBalanceAfter: '-50.00',
+        destinationBalanceBefore: '100.00',
+        destinationBalanceAfter: '150.00',
         status: TransactionStatus.COMPLETED,
         createdAt: new Date(),
       };
 
-      jest.spyOn(accountService, 'findAndLock').mockResolvedValue(mockAccount as Account);
+      jest.spyOn(accountService, 'findAndLock')
+        .mockResolvedValueOnce(mockExternalAccount as Account)
+        .mockResolvedValueOnce(mockUserAccount as Account);
       jest.spyOn(accountService, 'validateAccountActive').mockImplementation(() => {});
       jest.spyOn(currencyService, 'validateCurrency').mockResolvedValue({
         code: 'USD',
@@ -126,10 +144,7 @@ describe('TransactionService', () => {
         isActive: true,
         metadata: null,
       });
-      jest.spyOn(accountService, 'updateBalance').mockResolvedValue({
-        ...mockAccount,
-        balance: '150.00',
-      } as Account);
+      jest.spyOn(accountService, 'updateBalance').mockResolvedValue(mockUserAccount as Account);
       jest.spyOn(auditService, 'log').mockResolvedValue(null);
 
       const mockEntityManager = {
@@ -146,12 +161,13 @@ describe('TransactionService', () => {
 
       expect(result).toMatchObject({
         transactionId: mockTransaction.id,
-        accountId: mockTransaction.accountId,
+        sourceAccountId: mockTransaction.sourceAccountId,
+        destinationAccountId: mockTransaction.destinationAccountId,
         amount: mockTransaction.amount,
         currency: mockTransaction.currency,
         status: mockTransaction.status,
       });
-      expect(accountService.findAndLock).toHaveBeenCalled();
+      expect(accountService.findAndLock).toHaveBeenCalledTimes(2);
       expect(currencyService.validateCurrency).toHaveBeenCalledWith('USD');
     });
   });
@@ -160,7 +176,8 @@ describe('TransactionService', () => {
     it('should successfully withdraw from an account', async () => {
       const withdrawalDto: WithdrawalDto = {
         idempotencyKey: 'idempotency-456',
-        accountId: 'account-123',
+        sourceAccountId: 'user-account-123',
+        destinationAccountId: 'external-account-123',
         amount: '30.00',
         currency: 'USD',
         reference: 'Test withdrawal',
@@ -170,16 +187,21 @@ describe('TransactionService', () => {
         id: 'transaction-456',
         idempotencyKey: withdrawalDto.idempotencyKey,
         type: TransactionType.WITHDRAWAL,
-        accountId: withdrawalDto.accountId,
+        sourceAccountId: withdrawalDto.sourceAccountId,
+        destinationAccountId: withdrawalDto.destinationAccountId,
         amount: withdrawalDto.amount,
         currency: withdrawalDto.currency,
-        balanceBefore: '100.00',
-        balanceAfter: '70.00',
+        sourceBalanceBefore: '100.00',
+        sourceBalanceAfter: '70.00',
+        destinationBalanceBefore: '0.00',
+        destinationBalanceAfter: '30.00',
         status: TransactionStatus.COMPLETED,
         createdAt: new Date(),
       };
 
-      jest.spyOn(accountService, 'findAndLock').mockResolvedValue(mockAccount as Account);
+      jest.spyOn(accountService, 'findAndLock')
+        .mockResolvedValueOnce(mockUserAccount as Account)
+        .mockResolvedValueOnce(mockExternalAccount as Account);
       jest.spyOn(accountService, 'validateAccountActive').mockImplementation(() => {});
       jest.spyOn(currencyService, 'validateCurrency').mockResolvedValue({
         code: 'USD',
@@ -189,10 +211,7 @@ describe('TransactionService', () => {
         isActive: true,
         metadata: null,
       });
-      jest.spyOn(accountService, 'updateBalance').mockResolvedValue({
-        ...mockAccount,
-        balance: '70.00',
-      } as Account);
+      jest.spyOn(accountService, 'updateBalance').mockResolvedValue(mockUserAccount as Account);
       jest.spyOn(auditService, 'log').mockResolvedValue(null);
 
       const mockEntityManager = {
@@ -209,22 +228,27 @@ describe('TransactionService', () => {
 
       expect(result).toMatchObject({
         transactionId: mockTransaction.id,
-        accountId: mockTransaction.accountId,
+        sourceAccountId: mockTransaction.sourceAccountId,
+        destinationAccountId: mockTransaction.destinationAccountId,
         amount: mockTransaction.amount,
-        balanceAfter: '70.00',
+        sourceBalanceAfter: '70.00',
+        destinationBalanceAfter: '30.00',
       });
     });
 
     it('should throw InsufficientBalanceException when balance is too low', async () => {
       const withdrawalDto: WithdrawalDto = {
         idempotencyKey: 'idempotency-789',
-        accountId: 'account-123',
+        sourceAccountId: 'user-account-123',
+        destinationAccountId: 'external-account-123',
         amount: '200.00',
         currency: 'USD',
         reference: 'Test withdrawal',
       };
 
-      jest.spyOn(accountService, 'findAndLock').mockResolvedValue(mockAccount as Account);
+      jest.spyOn(accountService, 'findAndLock')
+        .mockResolvedValueOnce(mockUserAccount as Account)
+        .mockResolvedValueOnce(mockExternalAccount as Account);
       jest.spyOn(accountService, 'validateAccountActive').mockImplementation(() => {});
       jest.spyOn(currencyService, 'validateCurrency').mockResolvedValue({
         code: 'USD',
@@ -267,35 +291,50 @@ describe('TransactionService', () => {
       expect(result).toEqual(mockTransaction);
       expect(transactionRepository.findOne).toHaveBeenCalledWith({
         where: { id: 'transaction-123' },
-        relations: ['account', 'counterpartyAccount', 'parentTransaction'],
+        relations: ['sourceAccount', 'destinationAccount', 'parentTransaction'],
       });
     });
   });
 
-  describe('findByAccount', () => {
+  describe('findAll', () => {
     it('should return transactions for an account', async () => {
       const mockTransactions: Partial<Transaction>[] = [
         {
           id: 'transaction-1',
-          accountId: 'account-123',
+          sourceAccountId: 'user-account-123',
+          destinationAccountId: 'external-account-123',
           type: TransactionType.TOPUP,
           amount: '50.00',
         },
         {
           id: 'transaction-2',
-          accountId: 'account-123',
+          sourceAccountId: 'user-account-123',
+          destinationAccountId: 'external-account-123',
           type: TransactionType.WITHDRAWAL,
           amount: '30.00',
         },
       ];
 
-      jest.spyOn(transactionRepository, 'find').mockResolvedValue(mockTransactions as Transaction[]);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        offset: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(mockTransactions),
+      };
 
-      const result = await service.findByAccount('account-123', 50, 0);
+      jest.spyOn(transactionRepository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as any);
+
+      const result = await service.findAll({
+        accountId: 'user-account-123',
+        limit: 50,
+        offset: 0,
+      });
 
       expect(result).toEqual(mockTransactions);
       expect(result.length).toBe(2);
+      expect(mockQueryBuilder.where).toHaveBeenCalled();
     });
   });
 });
-

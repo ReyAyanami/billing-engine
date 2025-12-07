@@ -14,7 +14,7 @@ export class RefundDto {
     example: '880e8400-e29b-41d4-a716-446655440004',
     format: 'uuid'
   })
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   idempotencyKey: string;
 
@@ -23,7 +23,7 @@ export class RefundDto {
     example: '123e4567-e89b-12d3-a456-426614174000',
     format: 'uuid'
   })
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   originalTransactionId: string;
 

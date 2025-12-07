@@ -180,17 +180,27 @@ describe('Billing Engine E2E Tests', () => {
     });
 
     it('/api/v1/transactions/topup (POST) - should topup account from external source', async () => {
+      const payload = {
+        idempotencyKey: uuidv4(),
+        sourceAccountId: externalBankUSD,
+        destinationAccountId: account1Id,
+        amount: '1000.00',
+        currency: 'USD',
+        reference: 'Initial deposit',
+      };
+      
       const res = await request(app.getHttpServer())
         .post('/api/v1/transactions/topup')
-        .send({
-          idempotencyKey: uuidv4(),
-          sourceAccountId: externalBankUSD,        // External account
-          destinationAccountId: account1Id,         // User account
-          amount: '1000.00',
-          currency: 'USD',
-          reference: 'Initial deposit',
-        })
-        .expect(201);
+        .send(payload);
+      
+      if (res.status !== 201) {
+        console.error('❌ Topup failed');
+        console.error('Payload:', JSON.stringify(payload, null, 2));
+        console.error('Response status:', res.status);
+        console.error('Response body:', JSON.stringify(res.body, null, 2));
+      }
+      
+      expect(res.status).toBe(201);
       
       expect(res.body).toHaveProperty('transactionId');
       expect(res.body.sourceAccountId).toBe(externalBankUSD);
