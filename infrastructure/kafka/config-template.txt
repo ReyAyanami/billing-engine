@@ -1,0 +1,7 @@
+# Add these to your .env file for Kafka configuration
+
+KAFKA_BROKERS=localhost:9092,localhost:9093,localhost:9094
+KAFKA_CLIENT_ID=billing-engine
+KAFKA_GROUP_ID=billing-api-consumers
+KAFKA_SCHEMA_REGISTRY_URL=http://localhost:8081
+
