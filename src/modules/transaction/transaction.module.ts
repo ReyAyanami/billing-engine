@@ -26,6 +26,10 @@ import { TransferRequestedHandler } from './handlers/transfer-requested.handler'
 // CQRS Components - Events (Projections)
 import { TopupRequestedProjectionHandler } from './handlers/projection/topup-requested-projection.handler';
 import { TopupCompletedProjectionHandler } from './handlers/projection/topup-completed-projection.handler';
+import { WithdrawalRequestedProjectionHandler } from './handlers/projection/withdrawal-requested-projection.handler';
+import { WithdrawalCompletedProjectionHandler } from './handlers/projection/withdrawal-completed-projection.handler';
+import { TransferRequestedProjectionHandler } from './handlers/projection/transfer-requested-projection.handler';
+import { TransferCompletedProjectionHandler } from './handlers/projection/transfer-completed-projection.handler';
 import { TransactionFailedProjectionHandler } from './handlers/projection/transaction-failed-projection.handler';
 
 // CQRS Components - Queries
@@ -54,6 +58,10 @@ const EventHandlers = [
   // Projection updaters
   TopupRequestedProjectionHandler,
   TopupCompletedProjectionHandler,
+  WithdrawalRequestedProjectionHandler,
+  WithdrawalCompletedProjectionHandler,
+  TransferRequestedProjectionHandler,
+  TransferCompletedProjectionHandler,
   TransactionFailedProjectionHandler,
 ];
 
