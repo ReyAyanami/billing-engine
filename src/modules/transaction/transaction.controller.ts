@@ -59,8 +59,8 @@ export class TransactionController {
       timestamp: new Date(),
     };
 
-    // Using pipeline-based implementation (V2)
-    return await this.transactionService.withdrawV2(withdrawalDto, context);
+    // Using pipeline-based implementation
+    return await this.transactionService.withdraw(withdrawalDto, context);
   }
 
   @Post('transfer')
@@ -77,8 +77,8 @@ export class TransactionController {
       timestamp: new Date(),
     };
 
-    // Using pipeline-based implementation (V2)
-    return await this.transactionService.transferV2(transferDto, context);
+    // Using pipeline-based implementation
+    return await this.transactionService.transfer(transferDto, context);
   }
 
   @Post('refund')
@@ -95,8 +95,8 @@ export class TransactionController {
       timestamp: new Date(),
     };
 
-    // Using pipeline-based implementation (V2)
-    return await this.transactionService.refundV2(refundDto, context);
+    // Using pipeline-based implementation
+    return await this.transactionService.refund(refundDto, context);
   }
 
   @Get(':id')

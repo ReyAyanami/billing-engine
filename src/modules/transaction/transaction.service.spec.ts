@@ -245,30 +245,24 @@ describe('TransactionService', () => {
         createdAt: new Date(),
       };
 
-      jest.spyOn(accountService, 'findAndLock')
-        .mockResolvedValueOnce(mockUserAccount as Account)
-        .mockResolvedValueOnce(mockExternalAccount as Account);
-      jest.spyOn(accountService, 'validateAccountActive').mockImplementation(() => {});
-      jest.spyOn(currencyService, 'validateCurrency').mockResolvedValue({
-        code: 'USD',
-        name: 'US Dollar',
-        type: 'fiat',
-        precision: 2,
-        isActive: true,
-        metadata: null,
-      });
-      jest.spyOn(accountService, 'updateBalance').mockResolvedValue(mockUserAccount as Account);
-      jest.spyOn(auditService, 'log').mockResolvedValue(null);
-
-      const mockEntityManager = {
-        findOne: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockReturnValue(mockTransaction),
-        save: jest.fn().mockResolvedValue(mockTransaction),
+      // Mock pipeline execute to return expected result
+      const expectedResult = {
+        transactionId: mockTransaction.id,
+        idempotencyKey: withdrawalDto.idempotencyKey,
+        type: TransactionType.WITHDRAWAL,
+        sourceAccountId: mockTransaction.sourceAccountId,
+        destinationAccountId: mockTransaction.destinationAccountId,
+        amount: mockTransaction.amount,
+        currency: mockTransaction.currency,
+        sourceBalanceBefore: '100.00',
+        sourceBalanceAfter: '70.00',
+        destinationBalanceBefore: '0.00',
+        destinationBalanceAfter: '30.00',
+        status: TransactionStatus.COMPLETED,
+        createdAt: mockTransaction.createdAt,
       };
 
-      jest.spyOn(dataSource, 'transaction').mockImplementation((callback: any) =>
-        callback(mockEntityManager),
-      );
+      jest.spyOn(pipeline, 'execute').mockResolvedValue(expectedResult);
 
       const result = await service.withdraw(withdrawalDto, mockContext);
 
@@ -280,6 +274,7 @@ describe('TransactionService', () => {
         sourceBalanceAfter: '70.00',
         destinationBalanceAfter: '30.00',
       });
+      expect(pipeline.execute).toHaveBeenCalled();
     });
 
     it('should throw InsufficientBalanceException when balance is too low', async () => {
@@ -292,27 +287,9 @@ describe('TransactionService', () => {
         reference: 'Test withdrawal',
       };
 
-      jest.spyOn(accountService, 'findAndLock')
-        .mockResolvedValueOnce(mockUserAccount as Account)
-        .mockResolvedValueOnce(mockExternalAccount as Account);
-      jest.spyOn(accountService, 'validateAccountActive').mockImplementation(() => {});
-      jest.spyOn(currencyService, 'validateCurrency').mockResolvedValue({
-        code: 'USD',
-        name: 'US Dollar',
-        type: 'fiat',
-        precision: 2,
-        isActive: true,
-        metadata: null,
-      });
-
-      const mockEntityManager = {
-        findOne: jest.fn().mockResolvedValue(null),
-        create: jest.fn(),
-        save: jest.fn(),
-      };
-
-      jest.spyOn(dataSource, 'transaction').mockImplementation((callback: any) =>
-        callback(mockEntityManager),
+      // Mock pipeline to throw InsufficientBalanceException
+      jest.spyOn(pipeline, 'execute').mockRejectedValue(
+        new InsufficientBalanceException('user-account-123', '100.00', '200.00'),
       );
 
       await expect(service.withdraw(withdrawalDto, mockContext)).rejects.toThrow(

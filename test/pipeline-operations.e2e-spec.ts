@@ -12,9 +12,9 @@ import { TransactionService } from '../src/modules/transaction/transaction.servi
  * 
  * Verifies that pipeline-based implementations work correctly:
  * - topupV2
- * - withdrawV2
- * - transferV2
- * - refundV2
+ * - withdraw
+ * - transfer
+ * - refund
  */
 describe('Pipeline Operations E2E', () => {
   let app: INestApplication;
@@ -103,7 +103,7 @@ describe('Pipeline Operations E2E', () => {
     });
   });
 
-  describe('withdrawV2 (Pipeline)', () => {
+  describe('withdraw (Pipeline)', () => {
     it('should withdraw from account using pipeline', async () => {
       const operationContext = {
         correlationId: uuidv4(),
@@ -112,7 +112,7 @@ describe('Pipeline Operations E2E', () => {
         timestamp: new Date(),
       };
 
-      const result = await transactionService.withdrawV2(
+      const result = await transactionService.withdraw(
         {
           idempotencyKey: uuidv4(),
           sourceAccountId: userAccount1Id,
@@ -143,7 +143,7 @@ describe('Pipeline Operations E2E', () => {
       };
 
       await expect(
-        transactionService.withdrawV2(
+        transactionService.withdraw(
           {
             idempotencyKey: uuidv4(),
             sourceAccountId: userAccount1Id,
@@ -157,7 +157,7 @@ describe('Pipeline Operations E2E', () => {
     });
   });
 
-  describe('transferV2 (Pipeline)', () => {
+  describe('transfer (Pipeline)', () => {
     it('should transfer between accounts using pipeline', async () => {
       const operationContext = {
         correlationId: uuidv4(),
@@ -166,7 +166,7 @@ describe('Pipeline Operations E2E', () => {
         timestamp: new Date(),
       };
 
-      const result = await transactionService.transferV2(
+      const result = await transactionService.transfer(
         {
           idempotencyKey: uuidv4(),
           sourceAccountId: userAccount1Id,
@@ -195,7 +195,7 @@ describe('Pipeline Operations E2E', () => {
       };
 
       await expect(
-        transactionService.transferV2(
+        transactionService.transfer(
           {
             idempotencyKey: uuidv4(),
             sourceAccountId: userAccount1Id,
@@ -209,7 +209,7 @@ describe('Pipeline Operations E2E', () => {
     });
   });
 
-  describe('refundV2 (Pipeline)', () => {
+  describe('refund (Pipeline)', () => {
     it('should refund a transaction using pipeline', async () => {
       const operationContext = {
         correlationId: uuidv4(),
@@ -219,7 +219,7 @@ describe('Pipeline Operations E2E', () => {
       };
 
       // First, create a withdrawal to refund
-      const withdrawalResult = await transactionService.withdrawV2(
+      const withdrawalResult = await transactionService.withdraw(
         {
           idempotencyKey: uuidv4(),
           sourceAccountId: userAccount1Id,
@@ -232,7 +232,7 @@ describe('Pipeline Operations E2E', () => {
       );
 
       // Now refund it
-      const refundResult = await transactionService.refundV2(
+      const refundResult = await transactionService.refund(
         {
           idempotencyKey: uuidv4(),
           originalTransactionId: withdrawalResult.transactionId,
@@ -260,7 +260,7 @@ describe('Pipeline Operations E2E', () => {
       };
 
       // Create a withdrawal
-      const withdrawalResult = await transactionService.withdrawV2(
+      const withdrawalResult = await transactionService.withdraw(
         {
           idempotencyKey: uuidv4(),
           sourceAccountId: userAccount1Id,
@@ -272,7 +272,7 @@ describe('Pipeline Operations E2E', () => {
       );
 
       // Partial refund (50%)
-      const refundResult = await transactionService.refundV2(
+      const refundResult = await transactionService.refund(
         {
           idempotencyKey: uuidv4(),
           originalTransactionId: withdrawalResult.transactionId,
@@ -295,7 +295,7 @@ describe('Pipeline Operations E2E', () => {
       };
 
       // Create and refund a transaction
-      const withdrawalResult = await transactionService.withdrawV2(
+      const withdrawalResult = await transactionService.withdraw(
         {
           idempotencyKey: uuidv4(),
           sourceAccountId: userAccount1Id,
@@ -306,7 +306,7 @@ describe('Pipeline Operations E2E', () => {
         operationContext,
       );
 
-      await transactionService.refundV2(
+      await transactionService.refund(
         {
           idempotencyKey: uuidv4(),
           originalTransactionId: withdrawalResult.transactionId,
@@ -317,7 +317,7 @@ describe('Pipeline Operations E2E', () => {
 
       // Try to refund again
       await expect(
-        transactionService.refundV2(
+        transactionService.refund(
           {
             idempotencyKey: uuidv4(),
             originalTransactionId: withdrawalResult.transactionId,
