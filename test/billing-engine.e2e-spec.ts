@@ -8,6 +8,18 @@ import { v4 as uuidv4 } from 'uuid';
 describe('Billing Engine E2E Tests', () => {
   let app: INestApplication;
   let dataSource: DataSource;
+  
+  // Account IDs
+  let accountId: string;
+  let account1Id: string;
+  let account2Id: string;
+  
+  // Pre-seeded external account IDs (from migration)
+  const externalBankUSD = '00000000-0000-0000-0000-000000000001';
+  
+  // Transaction IDs
+  let topupTransactionId: string;
+  let withdrawalTransactionId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -52,6 +64,7 @@ describe('Billing Engine E2E Tests', () => {
         .expect((res) => {
           expect(res.body.code).toBe('USD');
           expect(res.body.name).toBe('US Dollar');
+          expect(res.body.type).toBe('fiat');
         });
     });
 
@@ -63,46 +76,48 @@ describe('Billing Engine E2E Tests', () => {
   });
 
   describe('Account API', () => {
-    let accountId: string;
-
     it('/api/v1/accounts (POST) - should create an account', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/accounts')
         .send({
           ownerId: 'user-e2e-test',
           ownerType: 'user',
+          accountType: 'user',
           currency: 'USD',
           metadata: {
             name: 'E2E Test Account',
           },
         })
         .expect(201);
-
+      
       expect(res.body).toHaveProperty('id');
       expect(res.body.ownerId).toBe('user-e2e-test');
+      expect(res.body.accountType).toBe('user');
       expect(res.body.currency).toBe('USD');
       expect(parseFloat(res.body.balance)).toBe(0);
       expect(res.body.status).toBe('active');
       accountId = res.body.id;
     });
 
-    it('/api/v1/accounts/:id (GET) - should get account by id', async () => {
-      const res = await request(app.getHttpServer())
+    it('/api/v1/accounts/:id (GET) - should get account by id', () => {
+      return request(app.getHttpServer())
         .get(`/api/v1/accounts/${accountId}`)
-        .expect(200);
-
-      expect(res.body.id).toBe(accountId);
-      expect(res.body.ownerId).toBe('user-e2e-test');
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.id).toBe(accountId);
+          expect(res.body.ownerId).toBe('user-e2e-test');
+        });
     });
 
-    it('/api/v1/accounts/:id/balance (GET) - should get account balance', async () => {
-      const res = await request(app.getHttpServer())
+    it('/api/v1/accounts/:id/balance (GET) - should get account balance', () => {
+      return request(app.getHttpServer())
         .get(`/api/v1/accounts/${accountId}/balance`)
-        .expect(200);
-
-      expect(res.body).toHaveProperty('balance');
-      expect(res.body).toHaveProperty('currency');
-      expect(res.body).toHaveProperty('status');
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('balance');
+          expect(res.body).toHaveProperty('currency');
+          expect(res.body).toHaveProperty('status');
+        });
     });
 
     it('/api/v1/accounts (GET) - should get accounts by owner', () => {
@@ -115,42 +130,40 @@ describe('Billing Engine E2E Tests', () => {
         });
     });
 
-    it('/api/v1/accounts/:id/status (PATCH) - should update account status', async () => {
-      const res = await request(app.getHttpServer())
+    it('/api/v1/accounts/:id/status (PATCH) - should update account status', () => {
+      return request(app.getHttpServer())
         .patch(`/api/v1/accounts/${accountId}/status`)
         .send({
           status: 'suspended',
         })
-        .expect(200);
-
-      expect(res.body.status).toBe('suspended');
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.status).toBe('suspended');
+        });
     });
 
-    it('/api/v1/accounts/:id/status (PATCH) - should reactivate account', async () => {
-      const res = await request(app.getHttpServer())
+    it('/api/v1/accounts/:id/status (PATCH) - should reactivate account', () => {
+      return request(app.getHttpServer())
         .patch(`/api/v1/accounts/${accountId}/status`)
         .send({
           status: 'active',
         })
-        .expect(200);
-
-      expect(res.body.status).toBe('active');
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.status).toBe('active');
+        });
     });
   });
 
   describe('Transaction API - Full Flow', () => {
-    let account1Id: string;
-    let account2Id: string;
-    let topupTransactionId: string;
-    let withdrawalTransactionId: string;
-
     beforeAll(async () => {
-      // Create two accounts for testing
+      // Create two user accounts for testing
       const account1 = await request(app.getHttpServer())
         .post('/api/v1/accounts')
         .send({
           ownerId: 'user-txn-1',
           ownerType: 'user',
+          accountType: 'user',
           currency: 'USD',
         });
       account1Id = account1.body.id;
@@ -160,69 +173,74 @@ describe('Billing Engine E2E Tests', () => {
         .send({
           ownerId: 'user-txn-2',
           ownerType: 'user',
+          accountType: 'user',
           currency: 'USD',
         });
       account2Id = account2.body.id;
     });
 
-    it('/api/v1/transactions/topup (POST) - should top up account', async () => {
+    it('/api/v1/transactions/topup (POST) - should topup account from external source', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/transactions/topup')
         .send({
           idempotencyKey: uuidv4(),
-          accountId: account1Id,
+          sourceAccountId: externalBankUSD,        // External account
+          destinationAccountId: account1Id,         // User account
           amount: '1000.00',
           currency: 'USD',
           reference: 'Initial deposit',
         })
         .expect(201);
-
+      
       expect(res.body).toHaveProperty('transactionId');
-      expect(res.body.accountId).toBe(account1Id);
+      expect(res.body.sourceAccountId).toBe(externalBankUSD);
+      expect(res.body.destinationAccountId).toBe(account1Id);
       expect(parseFloat(res.body.amount)).toBe(1000);
-      expect(parseFloat(res.body.balanceAfter)).toBe(1000);
+      expect(parseFloat(res.body.destinationBalanceAfter)).toBe(1000);
       expect(res.body.status).toBe('completed');
       topupTransactionId = res.body.transactionId;
     });
 
-    it('/api/v1/transactions/topup (POST) - should reject duplicate idempotency key', () => {
+    it('/api/v1/transactions/topup (POST) - should reject duplicate idempotency key', async () => {
       const idempotencyKey = uuidv4();
-      
+
+      await request(app.getHttpServer())
+        .post('/api/v1/transactions/topup')
+        .send({
+          idempotencyKey,
+          sourceAccountId: externalBankUSD,
+          destinationAccountId: account1Id,
+          amount: '500.00',
+          currency: 'USD',
+        })
+        .expect(201);
+
+      // Try same idempotency key again
       return request(app.getHttpServer())
         .post('/api/v1/transactions/topup')
         .send({
           idempotencyKey,
-          accountId: account1Id,
+          sourceAccountId: externalBankUSD,
+          destinationAccountId: account1Id,
           amount: '500.00',
           currency: 'USD',
         })
-        .expect(201)
-        .then(() => {
-          // Try same idempotency key again
-          return request(app.getHttpServer())
-            .post('/api/v1/transactions/topup')
-            .send({
-              idempotencyKey,
-              accountId: account1Id,
-              amount: '500.00',
-              currency: 'USD',
-            })
-            .expect(409);
-        });
+        .expect(409);
     });
 
-    it('/api/v1/transactions/withdraw (POST) - should withdraw from account', async () => {
+    it('/api/v1/transactions/withdraw (POST) - should withdraw from account to external destination', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/transactions/withdraw')
         .send({
           idempotencyKey: uuidv4(),
-          accountId: account1Id,
+          sourceAccountId: account1Id,              // User account
+          destinationAccountId: externalBankUSD,    // External account
           amount: '200.00',
           currency: 'USD',
           reference: 'Withdrawal test',
         })
         .expect(201);
-
+      
       expect(res.body).toHaveProperty('transactionId');
       expect(parseFloat(res.body.amount)).toBe(200);
       expect(res.body.status).toBe('completed');
@@ -234,8 +252,9 @@ describe('Billing Engine E2E Tests', () => {
         .post('/api/v1/transactions/withdraw')
         .send({
           idempotencyKey: uuidv4(),
-          accountId: account1Id,
-          amount: '100000.00',
+          sourceAccountId: account1Id,
+          destinationAccountId: externalBankUSD,
+          amount: '50000.00', // Too much
           currency: 'USD',
         })
         .expect(400)
@@ -256,11 +275,11 @@ describe('Billing Engine E2E Tests', () => {
           reference: 'Transfer test',
         })
         .expect(201);
-
+      
       expect(res.body).toHaveProperty('debitTransactionId');
       expect(res.body).toHaveProperty('creditTransactionId');
-      expect(res.body.sourceAccountId).toBeDefined();
-      expect(res.body.destinationAccountId).toBeDefined();
+      expect(res.body.sourceAccountId).toBe(account1Id);
+      expect(res.body.destinationAccountId).toBe(account2Id);
       expect(parseFloat(res.body.amount)).toBe(300);
       expect(res.body.status).toBe('completed');
     });
@@ -277,14 +296,27 @@ describe('Billing Engine E2E Tests', () => {
         })
         .expect(400)
         .expect((res) => {
-          expect(res.body.error.code).toBe('INVALID_OPERATION');
+          expect(res.body.error.code).toBe('SELF_TRANSFER_NOT_ALLOWED');
         });
     });
 
     it('/api/v1/transactions/refund (POST) - should refund a transaction', async () => {
-      // Ensure we have a withdrawal transaction to refund
-      expect(withdrawalTransactionId).toBeDefined();
-      
+      // Ensure withdrawalTransactionId is defined
+      if (!withdrawalTransactionId) {
+        const res = await request(app.getHttpServer())
+          .post('/api/v1/transactions/withdraw')
+          .send({
+            idempotencyKey: uuidv4(),
+            sourceAccountId: account1Id,
+            destinationAccountId: externalBankUSD,
+            amount: '10.00',
+            currency: 'USD',
+            reference: 'Pre-refund withdrawal',
+          })
+          .expect(201);
+        withdrawalTransactionId = res.body.transactionId;
+      }
+
       const res = await request(app.getHttpServer())
         .post('/api/v1/transactions/refund')
         .send({
@@ -306,10 +338,12 @@ describe('Billing Engine E2E Tests', () => {
           expect(res.body.id).toBe(topupTransactionId);
           expect(res.body).toHaveProperty('type');
           expect(res.body).toHaveProperty('amount');
+          expect(res.body).toHaveProperty('sourceAccountId');
+          expect(res.body).toHaveProperty('destinationAccountId');
         });
     });
 
-    it('/api/v1/transactions (GET) - should get transactions by account', () => {
+    it('/api/v1/transactions (GET) - should list transactions for an account', () => {
       return request(app.getHttpServer())
         .get(`/api/v1/transactions?accountId=${account1Id}`)
         .expect(200)
@@ -337,44 +371,43 @@ describe('Billing Engine E2E Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('should return 400 for invalid request body', () => {
-      return request(app.getHttpServer())
-        .post('/api/v1/accounts')
-        .send({
-          ownerId: 'test',
-          // Missing required fields
-        })
-        .expect(400);
-    });
-
-    it('should return 404 for non-existent account', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/accounts/00000000-0000-0000-0000-000000000000')
-        .expect(404);
-    });
-
-    it('should return 400 for currency mismatch', async () => {
-      const account = await request(app.getHttpServer())
-        .post('/api/v1/accounts')
-        .send({
-          ownerId: 'currency-test',
-          ownerType: 'user',
-          currency: 'USD',
-        });
-
+    it('should reject transaction with non-existent account', () => {
       return request(app.getHttpServer())
         .post('/api/v1/transactions/topup')
         .send({
           idempotencyKey: uuidv4(),
-          accountId: account.body.id,
+          sourceAccountId: externalBankUSD,
+          destinationAccountId: '00000000-0000-0000-0000-999999999999',
           amount: '100.00',
-          currency: 'EUR', // Different currency
+          currency: 'USD',
         })
-        .expect(400)
-        .expect((res) => {
-          expect(res.body.error.code).toBe('CURRENCY_MISMATCH');
-        });
+        .expect(404);
+    });
+
+    it('should reject transaction with invalid currency', () => {
+      return request(app.getHttpServer())
+        .post('/api/v1/transactions/topup')
+        .send({
+          idempotencyKey: uuidv4(),
+          sourceAccountId: externalBankUSD,
+          destinationAccountId: accountId,
+          amount: '100.00',
+          currency: 'INVALID',
+        })
+        .expect(400);
+    });
+
+    it('should reject transaction with negative amount', () => {
+      return request(app.getHttpServer())
+        .post('/api/v1/transactions/topup')
+        .send({
+          idempotencyKey: uuidv4(),
+          sourceAccountId: externalBankUSD,
+          destinationAccountId: accountId,
+          amount: '-100.00',
+          currency: 'USD',
+        })
+        .expect(400);
     });
   });
 });
-

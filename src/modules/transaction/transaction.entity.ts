@@ -28,7 +28,8 @@ export enum TransactionStatus {
 }
 
 @Entity('transactions')
-@Index(['accountId', 'createdAt'])
+@Index(['sourceAccountId', 'createdAt'])
+@Index(['destinationAccountId', 'createdAt'])
 @Index(['idempotencyKey'], { unique: true })
 @Index(['status'])
 @Index(['createdAt'])
@@ -46,26 +47,25 @@ export class Transaction {
   })
   type: TransactionType;
 
-  @Column({ name: 'account_id', type: 'uuid' })
-  accountId: string;
-
-  @ManyToOne(() => Account, (account) => account.transactions, { 
-    onDelete: 'RESTRICT', 
-    onUpdate: 'CASCADE' 
-  })
-  @JoinColumn({ name: 'account_id' })
-  account: Account;
-
-  @Column({ name: 'counterparty_account_id', type: 'uuid', nullable: true })
-  counterpartyAccountId: string | null;
+  @Column({ name: 'source_account_id', type: 'uuid' })
+  sourceAccountId: string;
 
   @ManyToOne(() => Account, { 
-    nullable: true, 
     onDelete: 'RESTRICT', 
     onUpdate: 'CASCADE' 
   })
-  @JoinColumn({ name: 'counterparty_account_id' })
-  counterpartyAccount: Account | null;
+  @JoinColumn({ name: 'source_account_id' })
+  sourceAccount: Account;
+
+  @Column({ name: 'destination_account_id', type: 'uuid' })
+  destinationAccountId: string;
+
+  @ManyToOne(() => Account, { 
+    onDelete: 'RESTRICT', 
+    onUpdate: 'CASCADE' 
+  })
+  @JoinColumn({ name: 'destination_account_id' })
+  destinationAccount: Account;
 
   @Column({ type: 'decimal', precision: 20, scale: 8 })
   amount: string;
@@ -73,11 +73,17 @@ export class Transaction {
   @Column({ length: 10 })
   currency: string;
 
-  @Column({ name: 'balance_before', type: 'decimal', precision: 20, scale: 8 })
-  balanceBefore: string;
+  @Column({ name: 'source_balance_before', type: 'decimal', precision: 20, scale: 8 })
+  sourceBalanceBefore: string;
 
-  @Column({ name: 'balance_after', type: 'decimal', precision: 20, scale: 8 })
-  balanceAfter: string;
+  @Column({ name: 'source_balance_after', type: 'decimal', precision: 20, scale: 8 })
+  sourceBalanceAfter: string;
+
+  @Column({ name: 'destination_balance_before', type: 'decimal', precision: 20, scale: 8 })
+  destinationBalanceBefore: string;
+
+  @Column({ name: 'destination_balance_after', type: 'decimal', precision: 20, scale: 8 })
+  destinationBalanceAfter: string;
 
   @Column({
     type: 'enum',

@@ -7,12 +7,21 @@ export interface OperationContext {
 
 export interface TransactionResult {
   transactionId: string;
-  accountId: string;
+  idempotencyKey: string;
+  type: string;
+  sourceAccountId: string;
+  destinationAccountId: string;
   amount: string;
   currency: string;
-  balanceAfter: string;
+  sourceBalanceBefore: string;
+  sourceBalanceAfter: string;
+  destinationBalanceBefore: string;
+  destinationBalanceAfter: string;
   status: string;
+  reference?: string;
+  metadata?: Record<string, any>;
   createdAt: Date;
+  completedAt?: Date | null;
 }
 
 export interface TransferResult {
@@ -22,9 +31,9 @@ export interface TransferResult {
   destinationAccountId: string;
   amount: string;
   currency: string;
-  sourceBalanceAfter: string;
-  destinationBalanceAfter: string;
   status: string;
+  reference?: string;
   createdAt: Date;
+  completedAt?: Date | null;
 }
 

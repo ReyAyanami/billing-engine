@@ -2,20 +2,34 @@
 
 A production-grade billing system demonstrating best practices in financial transaction management. Built with NestJS, TypeORM, and PostgreSQL.
 
+> **🎯 Version 2.0 - Double-Entry Bookkeeping System**  
+> This engine implements true double-entry bookkeeping where every transaction has both a source and destination account, ensuring complete auditability and compliance with accounting standards.  
+> 📖 [Learn about the double-entry design](./docs/DOUBLE_ENTRY_DESIGN.md) | ⚠️ [Breaking changes from v1](./docs/BREAKING_CHANGES_V2.md)
+
 ## 📋 Overview
 
 This billing engine provides both HTTP REST APIs and programmatic interfaces for managing financial transactions. It's designed to be embedded in larger systems that require billing capabilities.
 
+All financial operations follow double-entry accounting principles:
+- **Top-ups**: External Account → User Account  
+- **Withdrawals**: User Account → External Account  
+- **Transfers**: User Account A → User Account B  
+- **Refunds**: Destination Account → Source Account (reversal)
+
 ## ✨ Features
 
 ### Core Functionality
-- ✅ **Account Management**: Create and manage accounts linked to any entity (users, organizations, etc.)
-- ✅ **Top-up**: Add funds to accounts
-- ✅ **Withdrawal**: Remove funds from accounts with balance validation
+- ✅ **Account Management**: Create and manage accounts with three types:
+  - **USER**: End-user accounts with balance limits
+  - **EXTERNAL**: External services (banks, payment gateways)
+  - **SYSTEM**: Internal accounts (fees, reserves)
+- ✅ **Top-up**: Add funds from external sources to user accounts
+- ✅ **Withdrawal**: Send funds from user accounts to external destinations
 - ✅ **Transfers**: Move funds between accounts atomically
 - ✅ **Payments**: Process payments with metadata support
-- ✅ **Refunds**: Full or partial refunds of transactions
+- ✅ **Refunds**: Full or partial refunds of transactions (automatic reversal)
 - ✅ **Multi-Currency**: Support for fiat (USD, EUR, GBP) and non-fiat currencies (BTC, ETH, Points)
+- ✅ **Balance Limits**: Optional min/max balance enforcement on user accounts
 
 ### Non-Functional Features
 - 🔒 **ACID Compliance**: All transactions use database transactions with pessimistic locking
@@ -47,17 +61,27 @@ This billing engine provides both HTTP REST APIs and programmatic interfaces for
 ```
 
 ### Key Design Principles
-- **Double-Entry Bookkeeping**: Transfers create both debit and credit transactions
+- **True Double-Entry Bookkeeping**: Every transaction records both source and destination, with complete balance tracking on both sides
+- **Three Account Types**: User, External, and System accounts for proper financial modeling
 - **Pessimistic Locking**: Prevents race conditions in concurrent transactions
-- **Consistent Ordering**: Accounts locked in sorted order to prevent deadlocks
+- **Deterministic Lock Ordering**: Accounts locked in sorted order to prevent deadlocks
+- **Complete Auditability**: Full balance history for every account in every transaction
 - **Immutable Audit Log**: Append-only audit trail for compliance
 
 ## 📚 Documentation
 
 For detailed documentation, see:
-- [REQUIREMENTS.md](./REQUIREMENTS.md) - Complete requirements specification
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture and design
-- [DATA_MODEL.md](./DATA_MODEL.md) - Database schema and data structures
+- **Core Documentation:**
+  - [REQUIREMENTS.md](./REQUIREMENTS.md) - Complete requirements specification
+  - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture and design
+  - [DATA_MODEL.md](./DATA_MODEL.md) - Database schema and data structures
+- **Design Documentation:**
+  - [DOUBLE_ENTRY_DESIGN.md](./docs/DOUBLE_ENTRY_DESIGN.md) - Double-entry bookkeeping implementation
+  - [FOREIGN_KEYS.md](./docs/FOREIGN_KEYS.md) - Foreign key design decisions
+  - [BREAKING_CHANGES_V2.md](./docs/BREAKING_CHANGES_V2.md) - Migration guide from v1 to v2
+- **Development:**
+  - [QUICK_START.md](./QUICK_START.md) - Quick start guide
+  - [src/migrations/README.md](./src/migrations/README.md) - Database migrations guide
 
 ## 🚀 Getting Started
 

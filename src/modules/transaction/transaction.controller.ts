@@ -115,11 +115,11 @@ export class TransactionController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
   ): Promise<Transaction[]> {
-    return await this.transactionService.findByAccount(
+    return await this.transactionService.findAll({
       accountId,
-      limit || 50,
-      offset || 0,
-    );
+      limit: limit || 50,
+      offset: offset || 0,
+    });
   }
 }
 

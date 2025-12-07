@@ -20,13 +20,22 @@ export class TopupDto {
   idempotencyKey: string;
 
   @ApiProperty({
-    description: 'Account ID to top-up',
+    description: 'Source account ID (external account where funds come from, e.g., bank, payment gateway)',
     example: '123e4567-e89b-12d3-a456-426614174000',
     format: 'uuid'
   })
   @IsUUID()
   @IsNotEmpty()
-  accountId: string;
+  sourceAccountId: string;
+
+  @ApiProperty({
+    description: 'Destination account ID (user account to top-up)',
+    example: '223e4567-e89b-12d3-a456-426614174000',
+    format: 'uuid'
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  destinationAccountId: string;
 
   @ApiProperty({
     description: 'Amount to add (positive decimal number as string)',

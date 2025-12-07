@@ -32,8 +32,12 @@ export class AccountService {
     const account = this.accountRepository.create({
       ownerId: createAccountDto.ownerId,
       ownerType: createAccountDto.ownerType,
+      accountType: createAccountDto.accountType,
+      accountSubtype: createAccountDto.accountSubtype,
       currency: createAccountDto.currency,
       balance: '0',
+      maxBalance: createAccountDto.maxBalance,
+      minBalance: createAccountDto.minBalance,
       status: AccountStatus.ACTIVE,
       metadata: createAccountDto.metadata || {},
     });
@@ -48,6 +52,7 @@ export class AccountService {
       {
         ownerId: savedAccount.ownerId,
         ownerType: savedAccount.ownerType,
+        accountType: savedAccount.accountType,
         currency: savedAccount.currency,
       },
       context,

@@ -8,10 +8,8 @@ import {
   JoinColumn,
   Index,
   VersionColumn,
-  OneToMany,
 } from 'typeorm';
 import { Currency } from '../currency/currency.entity';
-import { Transaction } from '../transaction/transaction.entity';
 
 export enum AccountStatus {
   ACTIVE = 'active',
@@ -19,9 +17,16 @@ export enum AccountStatus {
   CLOSED = 'closed',
 }
 
+export enum AccountType {
+  USER = 'user',           // End-user account
+  SYSTEM = 'system',       // Internal system account
+  EXTERNAL = 'external',   // External financial service
+}
+
 @Entity('accounts')
 @Index(['ownerId', 'ownerType'])
 @Index(['status'])
+@Index(['accountType'])
 @Index(['createdAt'])
 export class Account {
   @PrimaryGeneratedColumn('uuid')
@@ -33,6 +38,17 @@ export class Account {
   @Column({ name: 'owner_type', length: 50 })
   ownerType: string;
 
+  @Column({
+    name: 'account_type',
+    type: 'enum',
+    enum: AccountType,
+    default: AccountType.USER,
+  })
+  accountType: AccountType;
+
+  @Column({ name: 'account_subtype', type: 'varchar', length: 50, nullable: true, default: null })
+  accountSubtype?: string;
+
   @Column({ length: 10 })
   currency: string;
 
@@ -42,6 +58,26 @@ export class Account {
 
   @Column({ type: 'decimal', precision: 20, scale: 8, default: 0 })
   balance: string;
+
+  @Column({
+    name: 'max_balance',
+    type: 'decimal',
+    precision: 20,
+    scale: 8,
+    nullable: true,
+    default: null,
+  })
+  maxBalance?: string;
+
+  @Column({
+    name: 'min_balance',
+    type: 'decimal',
+    precision: 20,
+    scale: 8,
+    nullable: true,
+    default: null,
+  })
+  minBalance?: string;
 
   @Column({
     type: 'enum',
@@ -61,8 +97,5 @@ export class Account {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-
-  @OneToMany(() => Transaction, (transaction) => transaction.account)
-  transactions: Transaction[];
 }
 

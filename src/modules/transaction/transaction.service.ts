@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import {
   Transaction,
   TransactionType,
   TransactionStatus,
 } from './transaction.entity';
+import { Account } from '../account/account.entity';
 import { AccountService } from '../account/account.service';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
@@ -40,7 +42,8 @@ export class TransactionService {
   ) {}
 
   /**
-   * Top-up (credit) an account
+   * Top-up: External Account (source) → User Account (destination)
+   * Money flows FROM external source TO user account
    */
   async topup(
     dto: TopupDto,
@@ -50,40 +53,57 @@ export class TransactionService {
       // Check for duplicate transaction
       await this.checkIdempotency(dto.idempotencyKey, manager);
 
-      // Find and lock account
-      const account = await this.accountService.findAndLock(
-        dto.accountId,
+      // Find and lock both accounts
+      const sourceAccount = await this.accountService.findAndLock(
+        dto.sourceAccountId,
+        manager,
+      );
+      const destAccount = await this.accountService.findAndLock(
+        dto.destinationAccountId,
         manager,
       );
 
-      // Validate account is active
-      this.accountService.validateAccountActive(account);
+      // Validate accounts are active
+      this.accountService.validateAccountActive(sourceAccount);
+      this.accountService.validateAccountActive(destAccount);
 
       // Validate currency
       await this.currencyService.validateCurrency(dto.currency);
 
       // Validate currency match
-      if (account.currency !== dto.currency) {
-        throw new CurrencyMismatchException(account.currency, dto.currency);
+      if (sourceAccount.currency !== dto.currency || destAccount.currency !== dto.currency) {
+        throw new CurrencyMismatchException(destAccount.currency, dto.currency);
       }
 
       // Validate amount
       this.validateAmount(dto.amount);
-
-      // Calculate new balance
-      const balanceBefore = new Decimal(account.balance);
       const amount = new Decimal(dto.amount);
-      const balanceAfter = balanceBefore.plus(amount);
+
+      // Check max balance limit on destination (if set)
+      if (destAccount.maxBalance) {
+        this.checkMaxBalance(destAccount, amount);
+      }
+
+      // Calculate balances
+      const sourceBalanceBefore = new Decimal(sourceAccount.balance);
+      const sourceBalanceAfter = sourceBalanceBefore.minus(amount);
+      const destBalanceBefore = new Decimal(destAccount.balance);
+      const destBalanceAfter = destBalanceBefore.plus(amount);
+
+      // Note: External accounts can go negative (they represent external systems)
 
       // Create transaction
       const transaction = manager.create(Transaction, {
         idempotencyKey: dto.idempotencyKey,
         type: TransactionType.TOPUP,
-        accountId: account.id,
+        sourceAccountId: sourceAccount.id,
+        destinationAccountId: destAccount.id,
         amount: amount.toString(),
         currency: dto.currency,
-        balanceBefore: balanceBefore.toString(),
-        balanceAfter: balanceAfter.toString(),
+        sourceBalanceBefore: sourceBalanceBefore.toString(),
+        sourceBalanceAfter: sourceBalanceAfter.toString(),
+        destinationBalanceBefore: destBalanceBefore.toString(),
+        destinationBalanceAfter: destBalanceAfter.toString(),
         status: TransactionStatus.PENDING,
         reference: dto.reference,
         metadata: dto.metadata,
@@ -91,10 +111,15 @@ export class TransactionService {
 
       const savedTransaction = await manager.save(Transaction, transaction);
 
-      // Update account balance
+      // Update both account balances
       await this.accountService.updateBalance(
-        account,
-        balanceAfter.toString(),
+        sourceAccount,
+        sourceBalanceAfter.toString(),
+        manager,
+      );
+      await this.accountService.updateBalance(
+        destAccount,
+        destBalanceAfter.toString(),
         manager,
       );
 
@@ -109,10 +134,9 @@ export class TransactionService {
         savedTransaction.id,
         'TOPUP',
         {
-          accountId: account.id,
+          sourceAccountId: sourceAccount.id,
+          destinationAccountId: destAccount.id,
           amount: amount.toString(),
-          balanceBefore: balanceBefore.toString(),
-          balanceAfter: balanceAfter.toString(),
         },
         context,
       );
@@ -122,7 +146,8 @@ export class TransactionService {
   }
 
   /**
-   * Withdraw (debit) from an account
+   * Withdrawal: User Account (source) → External Account (destination)
+   * Money flows FROM user account TO external destination
    */
   async withdraw(
     dto: WithdrawalDto,
@@ -132,49 +157,58 @@ export class TransactionService {
       // Check for duplicate transaction
       await this.checkIdempotency(dto.idempotencyKey, manager);
 
-      // Find and lock account
-      const account = await this.accountService.findAndLock(
-        dto.accountId,
+      // Find and lock both accounts
+      const sourceAccount = await this.accountService.findAndLock(
+        dto.sourceAccountId,
+        manager,
+      );
+      const destAccount = await this.accountService.findAndLock(
+        dto.destinationAccountId,
         manager,
       );
 
-      // Validate account is active
-      this.accountService.validateAccountActive(account);
+      // Validate accounts are active
+      this.accountService.validateAccountActive(sourceAccount);
+      this.accountService.validateAccountActive(destAccount);
 
       // Validate currency
       await this.currencyService.validateCurrency(dto.currency);
 
       // Validate currency match
-      if (account.currency !== dto.currency) {
-        throw new CurrencyMismatchException(account.currency, dto.currency);
+      if (sourceAccount.currency !== dto.currency || destAccount.currency !== dto.currency) {
+        throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
       }
 
       // Validate amount
       this.validateAmount(dto.amount);
-
-      // Calculate new balance and check sufficiency
-      const balanceBefore = new Decimal(account.balance);
       const amount = new Decimal(dto.amount);
 
-      if (balanceBefore.lessThan(amount)) {
-        throw new InsufficientBalanceException(
-          account.id,
-          amount.toString(),
-          balanceBefore.toString(),
-        );
+      // Calculate balances
+      const sourceBalanceBefore = new Decimal(sourceAccount.balance);
+      const sourceBalanceAfter = sourceBalanceBefore.minus(amount);
+      const destBalanceBefore = new Decimal(destAccount.balance);
+      const destBalanceAfter = destBalanceBefore.plus(amount);
+
+      // Check sufficient balance in source account
+      if (sourceBalanceAfter.lessThan(0)) {
+        throw new InsufficientBalanceException(sourceAccount.id, sourceBalanceBefore.toString(), amount.toString());
       }
 
-      const balanceAfter = balanceBefore.minus(amount);
+      // Check min balance requirement (if set)
+      this.checkMinBalance(sourceAccount, sourceBalanceAfter);
 
       // Create transaction
       const transaction = manager.create(Transaction, {
         idempotencyKey: dto.idempotencyKey,
         type: TransactionType.WITHDRAWAL,
-        accountId: account.id,
+        sourceAccountId: sourceAccount.id,
+        destinationAccountId: destAccount.id,
         amount: amount.toString(),
         currency: dto.currency,
-        balanceBefore: balanceBefore.toString(),
-        balanceAfter: balanceAfter.toString(),
+        sourceBalanceBefore: sourceBalanceBefore.toString(),
+        sourceBalanceAfter: sourceBalanceAfter.toString(),
+        destinationBalanceBefore: destBalanceBefore.toString(),
+        destinationBalanceAfter: destBalanceAfter.toString(),
         status: TransactionStatus.PENDING,
         reference: dto.reference,
         metadata: dto.metadata,
@@ -182,10 +216,15 @@ export class TransactionService {
 
       const savedTransaction = await manager.save(Transaction, transaction);
 
-      // Update account balance
+      // Update both account balances
       await this.accountService.updateBalance(
-        account,
-        balanceAfter.toString(),
+        sourceAccount,
+        sourceBalanceAfter.toString(),
+        manager,
+      );
+      await this.accountService.updateBalance(
+        destAccount,
+        destBalanceAfter.toString(),
         manager,
       );
 
@@ -200,10 +239,9 @@ export class TransactionService {
         savedTransaction.id,
         'WITHDRAWAL',
         {
-          accountId: account.id,
+          sourceAccountId: sourceAccount.id,
+          destinationAccountId: destAccount.id,
           amount: amount.toString(),
-          balanceBefore: balanceBefore.toString(),
-          balanceAfter: balanceAfter.toString(),
         },
         context,
       );
@@ -213,7 +251,8 @@ export class TransactionService {
   }
 
   /**
-   * Transfer between two accounts
+   * Transfer: Account A (source) → Account B (destination)
+   * Money flows between two accounts
    */
   async transfer(
     dto: TransferDto,
@@ -225,90 +264,65 @@ export class TransactionService {
 
       // Validate not transferring to self
       if (dto.sourceAccountId === dto.destinationAccountId) {
-        throw new InvalidOperationException('Cannot transfer to the same account');
+        throw new InvalidOperationException('SELF_TRANSFER_NOT_ALLOWED');
       }
 
-      // Find and lock both accounts (in consistent order to prevent deadlocks)
-      const [sourceId, destId] = [dto.sourceAccountId, dto.destinationAccountId].sort();
-      const account1 = await this.accountService.findAndLock(sourceId, manager);
-      const account2 = await this.accountService.findAndLock(destId, manager);
+      // Find and lock both accounts (order by ID to prevent deadlocks)
+      const [sourceAccount, destAccount] = await this.lockAccountsInOrder(
+        dto.sourceAccountId,
+        dto.destinationAccountId,
+        manager,
+      );
 
-      const sourceAccount = sourceId === dto.sourceAccountId ? account1 : account2;
-      const destAccount = destId === dto.destinationAccountId ? account1 : account2;
-
-      // Validate both accounts are active
+      // Validate accounts are active
       this.accountService.validateAccountActive(sourceAccount);
       this.accountService.validateAccountActive(destAccount);
 
       // Validate currency
       await this.currencyService.validateCurrency(dto.currency);
 
-      // Validate currency match for both accounts
-      if (sourceAccount.currency !== dto.currency) {
+      // Validate currency match
+      if (sourceAccount.currency !== dto.currency || destAccount.currency !== dto.currency) {
         throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
-      }
-      if (destAccount.currency !== dto.currency) {
-        throw new CurrencyMismatchException(destAccount.currency, dto.currency);
       }
 
       // Validate amount
       this.validateAmount(dto.amount);
-
-      // Calculate new balances
-      const sourceBalanceBefore = new Decimal(sourceAccount.balance);
-      const destBalanceBefore = new Decimal(destAccount.balance);
       const amount = new Decimal(dto.amount);
 
-      if (sourceBalanceBefore.lessThan(amount)) {
-        throw new InsufficientBalanceException(
-          sourceAccount.id,
-          amount.toString(),
-          sourceBalanceBefore.toString(),
-        );
-      }
-
+      // Calculate balances
+      const sourceBalanceBefore = new Decimal(sourceAccount.balance);
       const sourceBalanceAfter = sourceBalanceBefore.minus(amount);
+      const destBalanceBefore = new Decimal(destAccount.balance);
       const destBalanceAfter = destBalanceBefore.plus(amount);
 
-      // Create debit transaction
-      const debitTransaction = manager.create(Transaction, {
+      // Check sufficient balance
+      if (sourceBalanceAfter.lessThan(0)) {
+        throw new InsufficientBalanceException(sourceAccount.id, sourceBalanceBefore.toString(), amount.toString());
+      }
+
+      // Check min/max balance limits
+      this.checkMinBalance(sourceAccount, sourceBalanceAfter);
+      this.checkMaxBalance(destAccount, amount);
+
+      // Create transaction
+      const transaction = manager.create(Transaction, {
         idempotencyKey: dto.idempotencyKey,
         type: TransactionType.TRANSFER_DEBIT,
-        accountId: sourceAccount.id,
-        counterpartyAccountId: destAccount.id,
+        sourceAccountId: sourceAccount.id,
+        destinationAccountId: destAccount.id,
         amount: amount.toString(),
         currency: dto.currency,
-        balanceBefore: sourceBalanceBefore.toString(),
-        balanceAfter: sourceBalanceAfter.toString(),
+        sourceBalanceBefore: sourceBalanceBefore.toString(),
+        sourceBalanceAfter: sourceBalanceAfter.toString(),
+        destinationBalanceBefore: destBalanceBefore.toString(),
+        destinationBalanceAfter: destBalanceAfter.toString(),
         status: TransactionStatus.PENDING,
         reference: dto.reference,
-        metadata: { ...dto.metadata, transfer_type: 'debit' },
+        metadata: dto.metadata,
       });
 
-      const savedDebitTransaction = await manager.save(Transaction, debitTransaction);
-
-      // Create credit transaction (generate new UUID for idempotency)
-      const { v4: uuidv4 } = require('uuid');
-      const creditIdempotencyKey = uuidv4();
-      const creditTransaction = manager.create(Transaction, {
-        idempotencyKey: creditIdempotencyKey,
-        type: TransactionType.TRANSFER_CREDIT,
-        accountId: destAccount.id,
-        counterpartyAccountId: sourceAccount.id,
-        amount: amount.toString(),
-        currency: dto.currency,
-        balanceBefore: destBalanceBefore.toString(),
-        balanceAfter: destBalanceAfter.toString(),
-        status: TransactionStatus.PENDING,
-        reference: dto.reference,
-        metadata: {
-          ...dto.metadata,
-          transfer_type: 'credit',
-          related_transaction_id: savedDebitTransaction.id,
-        },
-      });
-
-      const savedCreditTransaction = await manager.save(Transaction, creditTransaction);
+      const savedTransaction = await manager.save(Transaction, transaction);
 
       // Update both account balances
       await this.accountService.updateBalance(
@@ -322,46 +336,30 @@ export class TransactionService {
         manager,
       );
 
-      // Mark both transactions as completed
-      savedDebitTransaction.status = TransactionStatus.COMPLETED;
-      savedDebitTransaction.completedAt = new Date();
-      savedCreditTransaction.status = TransactionStatus.COMPLETED;
-      savedCreditTransaction.completedAt = new Date();
-
-      await manager.save(Transaction, [savedDebitTransaction, savedCreditTransaction]);
+      // Mark transaction as completed
+      savedTransaction.status = TransactionStatus.COMPLETED;
+      savedTransaction.completedAt = new Date();
+      await manager.save(Transaction, savedTransaction);
 
       // Audit log
       await this.auditService.log(
         'Transaction',
-        savedDebitTransaction.id,
+        savedTransaction.id,
         'TRANSFER',
         {
           sourceAccountId: sourceAccount.id,
           destinationAccountId: destAccount.id,
           amount: amount.toString(),
-          debitTransactionId: savedDebitTransaction.id,
-          creditTransactionId: savedCreditTransaction.id,
         },
         context,
       );
 
-      return {
-        debitTransactionId: savedDebitTransaction.id,
-        creditTransactionId: savedCreditTransaction.id,
-        sourceAccountId: sourceAccount.id,
-        destinationAccountId: destAccount.id,
-        amount: amount.toString(),
-        currency: dto.currency,
-        sourceBalanceAfter: sourceBalanceAfter.toString(),
-        destinationBalanceAfter: destBalanceAfter.toString(),
-        status: TransactionStatus.COMPLETED,
-        createdAt: savedDebitTransaction.createdAt,
-      };
+      return this.mapToTransferResult(savedTransaction);
     });
   }
 
   /**
-   * Refund a transaction
+   * Refund a transaction (reverses the original transaction)
    */
   async refund(
     dto: RefundDto,
@@ -380,93 +378,87 @@ export class TransactionService {
         throw new TransactionNotFoundException(dto.originalTransactionId);
       }
 
-      // Validate transaction has required fields
-      if (!originalTransaction.amount) {
-        throw new RefundException(
-          'Original transaction has invalid data',
-          { transactionId: dto.originalTransactionId },
-        );
+      // Validate that transaction can be refunded
+      if (originalTransaction.status === TransactionStatus.REFUNDED) {
+        throw new RefundException('Transaction already refunded');
       }
 
-      // Validate transaction can be refunded
-      this.validateRefundable(originalTransaction);
+      if (originalTransaction.status !== TransactionStatus.COMPLETED) {
+        throw new RefundException('Can only refund completed transactions');
+      }
 
       // Determine refund amount
-      const refundAmount = dto.amount && dto.amount.trim() !== ''
+      const refundAmount = dto.amount
         ? new Decimal(dto.amount)
         : new Decimal(originalTransaction.amount);
 
       // Validate refund amount
-      if (refundAmount.greaterThan(new Decimal(originalTransaction.amount))) {
-        throw new RefundException(
-          'Refund amount cannot exceed original transaction amount',
-          {
-            originalAmount: originalTransaction.amount,
-            refundAmount: refundAmount.toString(),
-          },
-        );
+      if (refundAmount.greaterThan(originalTransaction.amount)) {
+        throw new RefundException('Refund amount cannot exceed original amount');
       }
 
-      // Find and lock account
-      const account = await this.accountService.findAndLock(
-        originalTransaction.accountId,
+      // For refund, we reverse: original destination → original source
+      const sourceAccountId = originalTransaction.destinationAccountId;
+      const destAccountId = originalTransaction.sourceAccountId;
+
+      // Find and lock both accounts
+      const sourceAccount = await this.accountService.findAndLock(
+        sourceAccountId,
+        manager,
+      );
+      const destAccount = await this.accountService.findAndLock(
+        destAccountId,
         manager,
       );
 
-      // Validate account is active
-      this.accountService.validateAccountActive(account);
+      // Validate accounts are active
+      this.accountService.validateAccountActive(sourceAccount);
+      this.accountService.validateAccountActive(destAccount);
 
-      // Calculate new balance (reverse the original transaction)
-      const balanceBefore = new Decimal(account.balance);
-      let balanceAfter: Decimal;
+      // Calculate balances
+      const sourceBalanceBefore = new Decimal(sourceAccount.balance);
+      const sourceBalanceAfter = sourceBalanceBefore.minus(refundAmount);
+      const destBalanceBefore = new Decimal(destAccount.balance);
+      const destBalanceAfter = destBalanceBefore.plus(refundAmount);
 
-      // Determine if this is a credit or debit refund
-      const isDebitRefund = [
-        TransactionType.WITHDRAWAL,
-        TransactionType.TRANSFER_DEBIT,
-        TransactionType.PAYMENT,
-      ].includes(originalTransaction.type);
-
-      if (isDebitRefund) {
-        // Refund a debit = credit the account
-        balanceAfter = balanceBefore.plus(refundAmount);
-      } else {
-        // Refund a credit = debit the account
-        if (balanceBefore.lessThan(refundAmount)) {
-          throw new InsufficientBalanceException(
-            account.id,
-            refundAmount.toString(),
-            balanceBefore.toString(),
-          );
-        }
-        balanceAfter = balanceBefore.minus(refundAmount);
+      // Check sufficient balance for refund
+      if (sourceBalanceAfter.lessThan(0)) {
+        throw new InsufficientBalanceException(sourceAccount.id, sourceBalanceBefore.toString(), refundAmount.toString());
       }
 
       // Create refund transaction
       const refundTransaction = manager.create(Transaction, {
         idempotencyKey: dto.idempotencyKey,
         type: TransactionType.REFUND,
-        accountId: account.id,
+        sourceAccountId: sourceAccount.id,
+        destinationAccountId: destAccount.id,
         amount: refundAmount.toString(),
         currency: originalTransaction.currency,
-        balanceBefore: balanceBefore.toString(),
-        balanceAfter: balanceAfter.toString(),
+        sourceBalanceBefore: sourceBalanceBefore.toString(),
+        sourceBalanceAfter: sourceBalanceAfter.toString(),
+        destinationBalanceBefore: destBalanceBefore.toString(),
+        destinationBalanceAfter: destBalanceAfter.toString(),
         status: TransactionStatus.PENDING,
-        reference: dto.reason || `Refund for transaction ${originalTransaction.id}`,
+        reference: dto.reason || `Refund for ${originalTransaction.id}`,
+        parentTransactionId: originalTransaction.id,
         metadata: {
           ...dto.metadata,
-          original_transaction_id: originalTransaction.id,
-          original_transaction_type: originalTransaction.type,
+          originalTransactionId: originalTransaction.id,
+          refundReason: dto.reason,
         },
-        parentTransactionId: originalTransaction.id,
       });
 
       const savedRefundTransaction = await manager.save(Transaction, refundTransaction);
 
-      // Update account balance
+      // Update both account balances
       await this.accountService.updateBalance(
-        account,
-        balanceAfter.toString(),
+        sourceAccount,
+        sourceBalanceAfter.toString(),
+        manager,
+      );
+      await this.accountService.updateBalance(
+        destAccount,
+        destBalanceAfter.toString(),
         manager,
       );
 
@@ -485,11 +477,8 @@ export class TransactionService {
         savedRefundTransaction.id,
         'REFUND',
         {
-          accountId: account.id,
           originalTransactionId: originalTransaction.id,
-          refundAmount: refundAmount.toString(),
-          balanceBefore: balanceBefore.toString(),
-          balanceAfter: balanceAfter.toString(),
+          amount: refundAmount.toString(),
         },
         context,
       );
@@ -504,7 +493,7 @@ export class TransactionService {
   async findById(id: string): Promise<Transaction> {
     const transaction = await this.transactionRepository.findOne({
       where: { id },
-      relations: ['account', 'counterpartyAccount', 'parentTransaction'],
+      relations: ['sourceAccount', 'destinationAccount', 'parentTransaction'],
     });
 
     if (!transaction) {
@@ -515,34 +504,60 @@ export class TransactionService {
   }
 
   /**
-   * Get transactions for an account
+   * List transactions with optional filters
    */
-  async findByAccount(
-    accountId: string,
-    limit = 50,
-    offset = 0,
-  ): Promise<Transaction[]> {
-    return await this.transactionRepository.find({
-      where: { accountId },
-      order: { createdAt: 'DESC' },
-      take: limit,
-      skip: offset,
-    });
+  async findAll(filters: {
+    accountId?: string;
+    type?: TransactionType;
+    status?: TransactionStatus;
+    limit?: number;
+    offset?: number;
+  }): Promise<Transaction[]> {
+    const query = this.transactionRepository.createQueryBuilder('transaction');
+
+    if (filters.accountId) {
+      query.where(
+        '(transaction.source_account_id = :accountId OR transaction.destination_account_id = :accountId)',
+        { accountId: filters.accountId },
+      );
+    }
+
+    if (filters.type) {
+      query.andWhere('transaction.type = :type', { type: filters.type });
+    }
+
+    if (filters.status) {
+      query.andWhere('transaction.status = :status', { status: filters.status });
+    }
+
+    query.orderBy('transaction.created_at', 'DESC');
+
+    if (filters.limit) {
+      query.limit(filters.limit);
+    }
+
+    if (filters.offset) {
+      query.offset(filters.offset);
+    }
+
+    return await query.getMany();
   }
 
+  // ==================== Helper Methods ====================
+
   /**
-   * Check for duplicate transaction (idempotency)
+   * Check idempotency to prevent duplicate transactions
    */
   private async checkIdempotency(
     idempotencyKey: string,
-    manager: any,
+    manager: EntityManager,
   ): Promise<void> {
-    const existing = await manager.findOne(Transaction, {
+    const existingTransaction = await manager.findOne(Transaction, {
       where: { idempotencyKey },
     });
 
-    if (existing) {
-      throw new DuplicateTransactionException(idempotencyKey, existing.id);
+    if (existingTransaction) {
+      throw new DuplicateTransactionException(idempotencyKey, existingTransaction.id);
     }
   }
 
@@ -550,48 +565,102 @@ export class TransactionService {
    * Validate amount is positive
    */
   private validateAmount(amount: string): void {
-    const decimal = new Decimal(amount);
-    if (decimal.lessThanOrEqualTo(0)) {
-      throw new InvalidOperationException('Amount must be positive', { amount });
+    const decimalAmount = new Decimal(amount);
+    if (decimalAmount.lessThanOrEqualTo(0)) {
+      throw new InvalidOperationException('INVALID_AMOUNT');
     }
   }
 
   /**
-   * Validate transaction can be refunded
+   * Check maximum balance limit
    */
-  private validateRefundable(transaction: Transaction): void {
-    if (transaction.status !== TransactionStatus.COMPLETED) {
-      throw new RefundException(
-        'Only completed transactions can be refunded',
-        { transactionId: transaction.id, status: transaction.status },
-      );
-    }
+  private checkMaxBalance(account: Account, additionalAmount: Decimal): void {
+    if (account.maxBalance) {
+      const currentBalance = new Decimal(account.balance);
+      const newBalance = currentBalance.plus(additionalAmount);
+      const maxBalance = new Decimal(account.maxBalance);
 
-    if (transaction.type === TransactionType.REFUND) {
-      throw new RefundException('Cannot refund a refund transaction', {
-        transactionId: transaction.id,
-      });
-    }
-
-    if (transaction.type === TransactionType.CANCELLATION) {
-      throw new RefundException('Cannot refund a cancellation transaction', {
-        transactionId: transaction.id,
-      });
+      if (newBalance.greaterThan(maxBalance)) {
+        throw new InvalidOperationException(
+          `MAX_BALANCE_EXCEEDED: Account ${account.id} would exceed maximum balance of ${maxBalance}`,
+        );
+      }
     }
   }
 
   /**
-   * Map transaction entity to result DTO
+   * Check minimum balance requirement
+   */
+  private checkMinBalance(account: Account, newBalance: Decimal): void {
+    if (account.minBalance) {
+      const minBalance = new Decimal(account.minBalance);
+
+      if (newBalance.lessThan(minBalance)) {
+        throw new InvalidOperationException(
+          `MIN_BALANCE_REQUIRED: Account ${account.id} requires minimum balance of ${minBalance}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Lock accounts in deterministic order to prevent deadlocks
+   */
+  private async lockAccountsInOrder(
+    accountId1: string,
+    accountId2: string,
+    manager: EntityManager,
+  ): Promise<[Account, Account]> {
+    const [firstId, secondId] = [accountId1, accountId2].sort();
+    
+    const firstAccount = await this.accountService.findAndLock(firstId, manager);
+    const secondAccount = await this.accountService.findAndLock(secondId, manager);
+
+    // Return in original order
+    return accountId1 === firstId
+      ? [firstAccount, secondAccount]
+      : [secondAccount, firstAccount];
+  }
+
+  /**
+   * Map Transaction entity to TransactionResult
    */
   private mapToTransactionResult(transaction: Transaction): TransactionResult {
     return {
       transactionId: transaction.id,
-      accountId: transaction.accountId,
+      idempotencyKey: transaction.idempotencyKey,
+      type: transaction.type,
+      sourceAccountId: transaction.sourceAccountId,
+      destinationAccountId: transaction.destinationAccountId,
       amount: transaction.amount,
       currency: transaction.currency,
-      balanceAfter: transaction.balanceAfter,
+      sourceBalanceBefore: transaction.sourceBalanceBefore,
+      sourceBalanceAfter: transaction.sourceBalanceAfter,
+      destinationBalanceBefore: transaction.destinationBalanceBefore,
+      destinationBalanceAfter: transaction.destinationBalanceAfter,
       status: transaction.status,
+      reference: transaction.reference,
+      metadata: transaction.metadata,
       createdAt: transaction.createdAt,
+      completedAt: transaction.completedAt,
+    };
+  }
+
+  /**
+   * Map Transaction entity to TransferResult
+   */
+  private mapToTransferResult(transaction: Transaction): TransferResult {
+    return {
+      debitTransactionId: transaction.id,
+      creditTransactionId: transaction.id, // In new model, it's a single transaction
+      sourceAccountId: transaction.sourceAccountId,
+      destinationAccountId: transaction.destinationAccountId,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      status: transaction.status,
+      reference: transaction.reference,
+      createdAt: transaction.createdAt,
+      completedAt: transaction.completedAt,
     };
   }
 }
