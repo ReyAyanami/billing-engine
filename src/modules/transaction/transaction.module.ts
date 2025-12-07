@@ -14,10 +14,12 @@ import { TopupHandler } from './handlers/topup.handler';
 import { WithdrawalHandler } from './handlers/withdrawal.handler';
 import { TransferHandler } from './handlers/transfer.handler';
 import { PaymentHandler } from './handlers/payment.handler';
+import { RefundHandler } from './handlers/refund.handler';
 import { CompleteTopupHandler } from './handlers/complete-topup.handler';
 import { CompleteWithdrawalHandler } from './handlers/complete-withdrawal.handler';
 import { CompleteTransferHandler } from './handlers/complete-transfer.handler';
 import { CompletePaymentHandler } from './handlers/complete-payment.handler';
+import { CompleteRefundHandler } from './handlers/complete-refund.handler';
 import { FailTransactionHandler } from './handlers/fail-transaction.handler';
 import { CompensateTransactionHandler } from './handlers/compensate-transaction.handler';
 
@@ -26,6 +28,7 @@ import { TopupRequestedHandler } from './handlers/topup-requested.handler';
 import { WithdrawalRequestedHandler } from './handlers/withdrawal-requested.handler';
 import { TransferRequestedHandler } from './handlers/transfer-requested.handler';
 import { PaymentRequestedHandler } from './handlers/payment-requested.handler';
+import { RefundRequestedHandler } from './handlers/refund-requested.handler';
 
 // CQRS Components - Events (Projections)
 import { TopupRequestedProjectionHandler } from './handlers/projection/topup-requested-projection.handler';
@@ -36,6 +39,8 @@ import { TransferRequestedProjectionHandler } from './handlers/projection/transf
 import { TransferCompletedProjectionHandler } from './handlers/projection/transfer-completed-projection.handler';
 import { PaymentRequestedProjectionHandler } from './handlers/projection/payment-requested-projection.handler';
 import { PaymentCompletedProjectionHandler } from './handlers/projection/payment-completed-projection.handler';
+import { RefundRequestedProjectionHandler } from './handlers/projection/refund-requested-projection.handler';
+import { RefundCompletedProjectionHandler } from './handlers/projection/refund-completed-projection.handler';
 import { TransactionFailedProjectionHandler } from './handlers/projection/transaction-failed-projection.handler';
 import { TransactionCompensatedProjectionHandler } from './handlers/projection/transaction-compensated-projection.handler';
 
@@ -52,10 +57,12 @@ const CommandHandlers = [
   WithdrawalHandler,
   TransferHandler,
   PaymentHandler,
+  RefundHandler,
   CompleteTopupHandler,
   CompleteWithdrawalHandler,
   CompleteTransferHandler,
   CompletePaymentHandler,
+  CompleteRefundHandler,
   FailTransactionHandler,
   CompensateTransactionHandler,
 ];
@@ -66,6 +73,7 @@ const EventHandlers = [
   WithdrawalRequestedHandler,
   TransferRequestedHandler,
   PaymentRequestedHandler,
+  RefundRequestedHandler,
   // Projection updaters
   TopupRequestedProjectionHandler,
   TopupCompletedProjectionHandler,
@@ -75,6 +83,8 @@ const EventHandlers = [
   TransferCompletedProjectionHandler,
   PaymentRequestedProjectionHandler,
   PaymentCompletedProjectionHandler,
+  RefundRequestedProjectionHandler,
+  RefundCompletedProjectionHandler,
   TransactionFailedProjectionHandler,
   TransactionCompensatedProjectionHandler,
 ];

@@ -467,6 +467,115 @@ export class TransactionAggregate extends AggregateRoot {
   }
 
   /**
+   * Requests a refund transaction
+   */
+  requestRefund(params: {
+    refundId: string;
+    originalPaymentId: string;
+    merchantAccountId: string;
+    customerAccountId: string;
+    refundAmount: string;
+    currency: string;
+    idempotencyKey: string;
+    refundMetadata?: {
+      reason?: string;
+      refundType?: 'full' | 'partial';
+      notes?: string;
+      [key: string]: any;
+    };
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, any>;
+  }): void {
+    if (this.aggregateId) {
+      throw new Error('Transaction already exists');
+    }
+
+    if (!params.merchantAccountId || !params.customerAccountId || !params.refundAmount) {
+      throw new Error('Merchant account, customer account, and refund amount are required');
+    }
+
+    if (params.merchantAccountId === params.customerAccountId) {
+      throw new Error('Merchant and customer accounts must be different');
+    }
+
+    const RefundRequestedEvent = require('../events/refund-requested.event').RefundRequestedEvent;
+    const event = new RefundRequestedEvent(
+      params.originalPaymentId,
+      params.merchantAccountId,
+      params.customerAccountId,
+      params.refundAmount,
+      params.currency,
+      params.idempotencyKey,
+      {
+        aggregateId: params.refundId,
+        aggregateVersion: 1,
+        correlationId: params.correlationId,
+        causationId: params.causationId,
+        metadata: params.metadata,
+      },
+      params.refundMetadata,
+    );
+
+    this.apply(event);
+  }
+
+  /**
+   * Event handler for RefundRequestedEvent
+   */
+  onRefundRequested(event: any): void {
+    this.aggregateId = event.aggregateId;
+    this.transactionType = TransactionType.REFUND;
+    this.status = TransactionStatus.PENDING;
+    this.sourceAccountId = event.merchantAccountId;
+    this.destinationAccountId = event.customerAccountId;
+    this.amount = event.refundAmount;
+    this.currency = event.currency;
+    this.idempotencyKey = event.idempotencyKey;
+    this.requestedAt = event.timestamp;
+  }
+
+  /**
+   * Completes a refund transaction
+   */
+  completeRefund(params: {
+    merchantNewBalance: string;
+    customerNewBalance: string;
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, any>;
+  }): void {
+    this.validateCanComplete();
+
+    const RefundCompletedEvent = require('../events/refund-completed.event').RefundCompletedEvent;
+    const event = new RefundCompletedEvent(
+      this.aggregateId,
+      params.merchantNewBalance,
+      params.customerNewBalance,
+      new Date(),
+      {
+        aggregateId: this.aggregateId,
+        aggregateVersion: this.version + 1,
+        correlationId: params.correlationId,
+        causationId: params.causationId,
+        metadata: params.metadata,
+      },
+    );
+
+    this.apply(event);
+  }
+
+  /**
+   * Event handler for RefundCompletedEvent
+   */
+  onRefundCompleted(event: any): void {
+    this.status = TransactionStatus.COMPLETED;
+    this.sourceNewBalance = event.merchantNewBalance;
+    this.destinationNewBalance = event.customerNewBalance;
+    this.completedAt = event.completedAt;
+  }
+
+  /**
    * Fails the transaction
    */
   fail(params: {

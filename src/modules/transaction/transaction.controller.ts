@@ -17,9 +17,11 @@ import { WithdrawalDto } from './dto/withdrawal.dto';
 import { TransferDto } from './dto/transfer.dto';
 import { RefundDto } from './dto/refund.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreateRefundDto } from './dto/create-refund.dto';
 import { Transaction } from './transaction.entity';
 import { TransactionResult, TransferResult } from '../../common/types';
 import { PaymentCommand } from './commands/payment.command';
+import { RefundCommand } from './commands/refund.command';
 import { v4 as uuidv4 } from 'uuid';
 
 @ApiTags('transactions')
@@ -88,21 +90,48 @@ export class TransactionController {
   }
 
   @Post('refund')
-  @ApiOperation({ summary: 'Refund a transaction', description: 'Refund a previous transaction (full or partial). Uses pipeline pattern for efficient processing.' })
-  @ApiResponse({ status: 201, description: 'Refund successful' })
-  @ApiResponse({ status: 400, description: 'Invalid refund (amount exceeds original, transaction not refundable)' })
-  @ApiResponse({ status: 404, description: 'Transaction not found' })
-  @ApiResponse({ status: 409, description: 'Duplicate refund' })
-  async refund(@Body() refundDto: RefundDto): Promise<TransactionResult> {
-    const context = {
-      correlationId: uuidv4(),
-      actorId: 'system',
-      actorType: 'api',
-      timestamp: new Date(),
-    };
+  @ApiOperation({
+    summary: 'Process refund',
+    description: 'Process a refund from merchant to customer for a previous payment (B2C transaction). Supports partial and full refunds. Uses CQRS/Event Sourcing with automatic compensation on failures.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Refund initiated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        refundId: { type: 'string', format: 'uuid' },
+        originalPaymentId: { type: 'string', format: 'uuid' },
+        status: { type: 'string', example: 'pending' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input or refund amount exceeds original payment' })
+  @ApiResponse({ status: 404, description: 'Original payment not found' })
+  @ApiResponse({ status: 409, description: 'Duplicate transaction (idempotency key already used)' })
+  async refund(@Body() dto: CreateRefundDto): Promise<{ refundId: string; originalPaymentId: string; status: string }> {
+    const refundId = uuidv4();
+    const correlationId = uuidv4();
+    const idempotencyKey = dto.idempotencyKey || uuidv4();
 
-    // Using pipeline-based implementation
-    return await this.transactionService.refund(refundDto, context);
+    const command = new RefundCommand(
+      refundId,
+      dto.originalPaymentId,
+      dto.refundAmount,
+      dto.currency,
+      idempotencyKey,
+      dto.refundMetadata,
+      correlationId,
+      'api', // actorId
+    );
+
+    await this.commandBus.execute(command);
+
+    return {
+      refundId,
+      originalPaymentId: dto.originalPaymentId,
+      status: 'pending',
+    };
   }
 
   @Get(':id')
