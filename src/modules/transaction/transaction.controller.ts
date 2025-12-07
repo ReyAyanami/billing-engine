@@ -26,7 +26,7 @@ export class TransactionController {
   constructor(private readonly transactionService: TransactionService) {}
 
   @Post('topup')
-  @ApiOperation({ summary: 'Top-up account', description: 'Add funds to an account. Requires unique idempotency key.' })
+  @ApiOperation({ summary: 'Top-up account', description: 'Add funds to an account. Uses pipeline pattern for efficient processing.' })
   @ApiResponse({ status: 201, description: 'Top-up successful' })
   @ApiResponse({ status: 400, description: 'Invalid input or account inactive' })
   @ApiResponse({ status: 404, description: 'Account not found' })
@@ -39,11 +39,12 @@ export class TransactionController {
       timestamp: new Date(),
     };
 
+    // Using pipeline-based implementation
     return await this.transactionService.topup(topupDto, context);
   }
 
   @Post('withdraw')
-  @ApiOperation({ summary: 'Withdraw from account', description: 'Remove funds from an account. Checks for sufficient balance.' })
+  @ApiOperation({ summary: 'Withdraw from account', description: 'Remove funds from an account. Uses pipeline pattern for efficient processing.' })
   @ApiResponse({ status: 201, description: 'Withdrawal successful' })
   @ApiResponse({ status: 400, description: 'Insufficient balance or invalid input' })
   @ApiResponse({ status: 404, description: 'Account not found' })
@@ -58,11 +59,12 @@ export class TransactionController {
       timestamp: new Date(),
     };
 
-    return await this.transactionService.withdraw(withdrawalDto, context);
+    // Using pipeline-based implementation (V2)
+    return await this.transactionService.withdrawV2(withdrawalDto, context);
   }
 
   @Post('transfer')
-  @ApiOperation({ summary: 'Transfer between accounts', description: 'Atomically transfer funds between two accounts using double-entry bookkeeping.' })
+  @ApiOperation({ summary: 'Transfer between accounts', description: 'Atomically transfer funds between two accounts. Uses pipeline pattern for efficient processing.' })
   @ApiResponse({ status: 201, description: 'Transfer successful' })
   @ApiResponse({ status: 400, description: 'Insufficient balance, currency mismatch, or invalid operation' })
   @ApiResponse({ status: 404, description: 'Account not found' })
@@ -75,11 +77,12 @@ export class TransactionController {
       timestamp: new Date(),
     };
 
-    return await this.transactionService.transfer(transferDto, context);
+    // Using pipeline-based implementation (V2)
+    return await this.transactionService.transferV2(transferDto, context);
   }
 
   @Post('refund')
-  @ApiOperation({ summary: 'Refund a transaction', description: 'Refund a previous transaction (full or partial). Updates original transaction status.' })
+  @ApiOperation({ summary: 'Refund a transaction', description: 'Refund a previous transaction (full or partial). Uses pipeline pattern for efficient processing.' })
   @ApiResponse({ status: 201, description: 'Refund successful' })
   @ApiResponse({ status: 400, description: 'Invalid refund (amount exceeds original, transaction not refundable)' })
   @ApiResponse({ status: 404, description: 'Transaction not found' })
@@ -92,7 +95,8 @@ export class TransactionController {
       timestamp: new Date(),
     };
 
-    return await this.transactionService.refund(refundDto, context);
+    // Using pipeline-based implementation (V2)
+    return await this.transactionService.refundV2(refundDto, context);
   }
 
   @Get(':id')

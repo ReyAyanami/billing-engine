@@ -30,6 +30,7 @@ describe('TransactionService', () => {
   let currencyService: CurrencyService;
   let auditService: AuditService;
   let dataSource: DataSource;
+  let pipeline: TransactionPipeline;
 
   const mockContext = {
     correlationId: 'test-correlation-id',
@@ -150,6 +151,7 @@ describe('TransactionService', () => {
     currencyService = module.get<CurrencyService>(CurrencyService);
     auditService = module.get<AuditService>(AuditService);
     dataSource = module.get<DataSource>(DataSource);
+    pipeline = module.get<TransactionPipeline>(TransactionPipeline);
   });
 
   it('should be defined', () => {
@@ -183,30 +185,24 @@ describe('TransactionService', () => {
         createdAt: new Date(),
       };
 
-      jest.spyOn(accountService, 'findAndLock')
-        .mockResolvedValueOnce(mockExternalAccount as Account)
-        .mockResolvedValueOnce(mockUserAccount as Account);
-      jest.spyOn(accountService, 'validateAccountActive').mockImplementation(() => {});
-      jest.spyOn(currencyService, 'validateCurrency').mockResolvedValue({
-        code: 'USD',
-        name: 'US Dollar',
-        type: 'fiat',
-        precision: 2,
-        isActive: true,
-        metadata: null,
-      });
-      jest.spyOn(accountService, 'updateBalance').mockResolvedValue(mockUserAccount as Account);
-      jest.spyOn(auditService, 'log').mockResolvedValue(null);
-
-      const mockEntityManager = {
-        findOne: jest.fn().mockResolvedValue(null), // No duplicate
-        create: jest.fn().mockReturnValue(mockTransaction),
-        save: jest.fn().mockResolvedValue(mockTransaction),
+      // Mock pipeline execute to return expected result
+      const expectedResult = {
+        transactionId: mockTransaction.id,
+        idempotencyKey: topupDto.idempotencyKey,
+        type: TransactionType.TOPUP,
+        sourceAccountId: mockTransaction.sourceAccountId,
+        destinationAccountId: mockTransaction.destinationAccountId,
+        amount: mockTransaction.amount,
+        currency: mockTransaction.currency,
+        sourceBalanceBefore: '0.00',
+        sourceBalanceAfter: '-50.00',
+        destinationBalanceBefore: '100.00',
+        destinationBalanceAfter: '150.00',
+        status: TransactionStatus.COMPLETED,
+        createdAt: mockTransaction.createdAt,
       };
 
-      jest.spyOn(dataSource, 'transaction').mockImplementation((callback: any) =>
-        callback(mockEntityManager),
-      );
+      jest.spyOn(pipeline, 'execute').mockResolvedValue(expectedResult);
 
       const result = await service.topup(topupDto, mockContext);
 
@@ -218,8 +214,7 @@ describe('TransactionService', () => {
         currency: mockTransaction.currency,
         status: mockTransaction.status,
       });
-      expect(accountService.findAndLock).toHaveBeenCalledTimes(2);
-      expect(currencyService.validateCurrency).toHaveBeenCalledWith('USD');
+      expect(pipeline.execute).toHaveBeenCalled();
     });
   });
 

@@ -82,7 +82,7 @@ describe('Pipeline Operations E2E', () => {
         timestamp: new Date(),
       };
 
-      const result = await transactionService.topupV2(
+      const result = await transactionService.topup(
         {
           idempotencyKey: uuidv4(),
           sourceAccountId: externalBankUSD,
@@ -342,7 +342,7 @@ describe('Pipeline Operations E2E', () => {
       const start = Date.now();
 
       for (let i = 0; i < operations; i++) {
-        await transactionService.topupV2(
+        await transactionService.topup(
           {
             idempotencyKey: uuidv4(),
             sourceAccountId: externalBankUSD,
@@ -387,7 +387,7 @@ describe('Pipeline Operations E2E', () => {
       };
 
       // Use pipeline version
-      const result = await transactionService.topupV2(dto, operationContext);
+      const result = await transactionService.topup(dto, operationContext);
 
       // Verify structure matches expected
       expect(result).toHaveProperty('transactionId');

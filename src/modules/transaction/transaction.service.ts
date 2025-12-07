@@ -66,118 +66,22 @@ export class TransactionService {
   ) {}
 
   /**
-   * Top-up: External Account (source) → User Account (destination)
-   * Money flows FROM external source TO user account
+   * Top-up (Pipeline-based): External Account (source) → User Account (destination)
+   * 
+   * Adds funds to an account from an external source. Uses pipeline pattern
+   * with composable, reusable steps for efficient transaction processing.
+   * 
+   * Pipeline Steps:
+   * 1. Check idempotency
+   * 2. Load and lock accounts
+   * 3. Validate accounts & currency
+   * 4. Calculate balances
+   * 5. Create transaction record
+   * 6. Update balances
+   * 7. Complete transaction
+   * 8. Audit log
    */
   async topup(
-    dto: TopupDto,
-    context: OperationContext,
-  ): Promise<TransactionResult> {
-    return await this.dataSource.transaction(async (manager) => {
-      // Check for duplicate transaction
-      await this.checkIdempotency(dto.idempotencyKey, manager);
-
-      // Find and lock both accounts
-      const sourceAccount = await this.accountService.findAndLock(
-        dto.sourceAccountId,
-        manager,
-      );
-      const destAccount = await this.accountService.findAndLock(
-        dto.destinationAccountId,
-        manager,
-      );
-
-      // Validate accounts are active
-      this.accountService.validateAccountActive(sourceAccount);
-      this.accountService.validateAccountActive(destAccount);
-
-      // Validate currency
-      await this.currencyService.validateCurrency(dto.currency);
-
-      // Validate currency match
-      if (sourceAccount.currency !== dto.currency || destAccount.currency !== dto.currency) {
-        throw new CurrencyMismatchException(destAccount.currency, dto.currency);
-      }
-
-      // Validate amount
-      this.validateAmount(dto.amount);
-      const amount = new Decimal(dto.amount);
-
-      // Check max balance limit on destination (if set)
-      if (destAccount.maxBalance) {
-        this.checkMaxBalance(destAccount, amount);
-      }
-
-      // Calculate balances
-      const sourceBalanceBefore = new Decimal(sourceAccount.balance);
-      const sourceBalanceAfter = sourceBalanceBefore.minus(amount);
-      const destBalanceBefore = new Decimal(destAccount.balance);
-      const destBalanceAfter = destBalanceBefore.plus(amount);
-
-      // Note: External accounts can go negative (they represent external systems)
-
-      // Create transaction
-      const transaction = manager.create(Transaction, {
-        idempotencyKey: dto.idempotencyKey,
-        type: TransactionType.TOPUP,
-        sourceAccountId: sourceAccount.id,
-        destinationAccountId: destAccount.id,
-        amount: amount.toString(),
-        currency: dto.currency,
-        sourceBalanceBefore: sourceBalanceBefore.toString(),
-        sourceBalanceAfter: sourceBalanceAfter.toString(),
-        destinationBalanceBefore: destBalanceBefore.toString(),
-        destinationBalanceAfter: destBalanceAfter.toString(),
-        status: TransactionStatus.PENDING,
-        reference: dto.reference,
-        metadata: dto.metadata,
-      });
-
-      const savedTransaction = await manager.save(Transaction, transaction);
-
-      // Update both account balances
-      await this.accountService.updateBalance(
-        sourceAccount,
-        sourceBalanceAfter.toString(),
-        manager,
-      );
-      await this.accountService.updateBalance(
-        destAccount,
-        destBalanceAfter.toString(),
-        manager,
-      );
-
-      // Mark transaction as completed
-      savedTransaction.status = TransactionStatus.COMPLETED;
-      savedTransaction.completedAt = new Date();
-      await manager.save(Transaction, savedTransaction);
-
-      // Audit log
-      await this.auditService.log(
-        'Transaction',
-        savedTransaction.id,
-        'TOPUP',
-        {
-          sourceAccountId: sourceAccount.id,
-          destinationAccountId: destAccount.id,
-          amount: amount.toString(),
-        },
-        context,
-      );
-
-      return this.mapToTransactionResult(savedTransaction);
-    });
-  }
-
-  /**
-   * Top-up V2 (Pipeline-based): External Account (source) → User Account (destination)
-   * 
-   * This is the new pipeline-based implementation that eliminates code duplication.
-   * Uses composable, reusable steps for transaction processing.
-   * 
-   * @experimental Running in parallel with existing topup() for comparison
-   */
-  async topupV2(
     dto: TopupDto,
     context: OperationContext,
   ): Promise<TransactionResult> {
