@@ -16,8 +16,21 @@ import { TransferHandler } from './handlers/transfer.handler';
 import { CompleteTopupHandler } from './handlers/complete-topup.handler';
 import { FailTransactionHandler } from './handlers/fail-transaction.handler';
 
-// CQRS Components - Events
+// CQRS Components - Events (Saga)
 import { TopupRequestedHandler } from './handlers/topup-requested.handler';
+
+// CQRS Components - Events (Projections)
+import { TopupRequestedProjectionHandler } from './handlers/projection/topup-requested-projection.handler';
+import { TopupCompletedProjectionHandler } from './handlers/projection/topup-completed-projection.handler';
+import { TransactionFailedProjectionHandler } from './handlers/projection/transaction-failed-projection.handler';
+
+// CQRS Components - Queries
+import { GetTransactionHandler } from './queries/handlers/get-transaction.handler';
+import { GetTransactionsByAccountHandler } from './queries/handlers/get-transactions-by-account.handler';
+
+// Projections (Read Model)
+import { TransactionProjection } from './projections/transaction-projection.entity';
+import { TransactionProjectionService } from './projections/transaction-projection.service';
 
 const CommandHandlers = [
   TopupHandler,
@@ -28,12 +41,22 @@ const CommandHandlers = [
 ];
 
 const EventHandlers = [
+  // Saga coordinators
   TopupRequestedHandler,
+  // Projection updaters
+  TopupRequestedProjectionHandler,
+  TopupCompletedProjectionHandler,
+  TransactionFailedProjectionHandler,
+];
+
+const QueryHandlers = [
+  GetTransactionHandler,
+  GetTransactionsByAccountHandler,
 ];
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Transaction]),
+    TypeOrmModule.forFeature([Transaction, TransactionProjection]),
     CqrsModule,
     AccountModule,
     CurrencyModule,
@@ -43,10 +66,12 @@ const EventHandlers = [
   controllers: [TransactionController],
   providers: [
     TransactionService,
+    TransactionProjectionService,
     ...CommandHandlers,
     ...EventHandlers,
+    ...QueryHandlers,
   ],
-  exports: [TransactionService],
+  exports: [TransactionService, TransactionProjectionService],
 })
 export class TransactionModule {}
 
