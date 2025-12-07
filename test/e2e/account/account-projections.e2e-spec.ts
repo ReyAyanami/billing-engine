@@ -2,14 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
-import { AppModule } from '../src/app.module';
-import { CreateAccountCommand } from '../src/modules/account/commands/create-account.command';
-import { GetAccountQuery } from '../src/modules/account/queries/get-account.query';
-import { GetAccountsByOwnerQuery } from '../src/modules/account/queries/get-accounts-by-owner.query';
-import { AccountType } from '../src/modules/account/account.entity';
-import { AccountAggregate } from '../src/modules/account/aggregates/account.aggregate';
-import { KafkaEventStore } from '../src/cqrs/kafka/kafka-event-store';
-import { EventPollingHelper } from './helpers/event-polling.helper';
+import { AppModule } from '../../../src/app.module';
+import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
+import { GetAccountQuery } from '../../../src/modules/account/queries/get-account.query';
+import { GetAccountsByOwnerQuery } from '../../../src/modules/account/queries/get-accounts-by-owner.query';
+import { AccountType } from '../../../src/modules/account/account.entity';
+import { AccountAggregate } from '../../../src/modules/account/aggregates/account.aggregate';
+import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
+import { EventPollingHelper } from '../../helpers/event-polling.helper';
 
 describe('Week 2 - Projections E2E Test', () => {
   jest.setTimeout(30000); // 30 seconds for Kafka operations

@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '../../../src/app.module';
 import { v4 as uuidv4 } from 'uuid';
 import { CommandBus } from '@nestjs/cqrs';
-import { CreateAccountCommand } from '../src/modules/account/commands/create-account.command';
-import { PaymentCommand } from '../src/modules/transaction/commands/payment.command';
-import { RefundCommand } from '../src/modules/transaction/commands/refund.command';
-import { AccountProjectionService } from '../src/modules/account/projections/account-projection.service';
-import { TransactionProjectionService } from '../src/modules/transaction/projections/transaction-projection.service';
-import { AccountType } from '../src/modules/account/account.entity';
-import { TransactionStatus, TransactionType } from '../src/modules/transaction/transaction.entity';
+import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
+import { PaymentCommand } from '../../../src/modules/transaction/commands/payment.command';
+import { RefundCommand } from '../../../src/modules/transaction/commands/refund.command';
+import { AccountProjectionService } from '../../../src/modules/account/projections/account-projection.service';
+import { TransactionProjectionService } from '../../../src/modules/transaction/projections/transaction-projection.service';
+import { AccountType } from '../../../src/modules/account/account.entity';
+import { TransactionStatus, TransactionType } from '../../../src/modules/transaction/transaction.entity';
 import Decimal from 'decimal.js';
 
 /**
@@ -103,7 +103,7 @@ describe('Refund Saga E2E', () => {
       // Step 4: Fund customer account with a topup (using old service method for simplicity)
       // In a real scenario, we'd use TopupCommand, but for this test we'll manually update balance
       // Actually, let's just create the payment with a funded customer account by using the UpdateBalanceCommand
-      const { UpdateBalanceCommand } = require('../src/modules/account/commands/update-balance.command');
+      const { UpdateBalanceCommand } = require('../../../src/modules/account/commands/update-balance.command');
       const fundCommand = new UpdateBalanceCommand(
         customerAccountId,
         '1000.00',
@@ -268,7 +268,7 @@ describe('Refund Saga E2E', () => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       
       // Fund customer
-      const { UpdateBalanceCommand } = require('../src/modules/account/commands/update-balance.command');
+      const { UpdateBalanceCommand } = require('../../../src/modules/account/commands/update-balance.command');
       await commandBus.execute(new UpdateBalanceCommand(
         customerAccountId,
         '500.00',

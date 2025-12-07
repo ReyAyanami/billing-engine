@@ -2,11 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { CommandBus, EventBus } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
-import { AppModule } from '../src/app.module';
-import { CreateAccountCommand } from '../src/modules/account/commands/create-account.command';
-import { AccountType } from '../src/modules/account/account.entity';
-import { KafkaEventStore } from '../src/cqrs/kafka/kafka-event-store';
-import { AccountAggregate } from '../src/modules/account/aggregates/account.aggregate';
+import { AppModule } from '../../../src/app.module';
+import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
+import { AccountType } from '../../../src/modules/account/account.entity';
+import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
+import { AccountAggregate } from '../../../src/modules/account/aggregates/account.aggregate';
 import { EventPollingHelper } from './helpers/event-polling.helper';
 
 describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {

@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
-import { AccountService } from './account.service';
-import { Account, AccountStatus } from './account.entity';
-import { CurrencyService } from '../currency/currency.service';
-import { AuditService } from '../audit/audit.service';
-import { CreateAccountDto } from './dto/create-account.dto';
-import { AccountNotFoundException, InvalidOperationException } from '../../common/exceptions/billing.exception';
+import { AccountService } from '../../src/modules/account/account.service';
+import { Account, AccountStatus } from '../../src/modules/account/account.entity';
+import { CurrencyService } from '../../src/modules/currency/currency.service';
+import { AuditService } from '../../src/modules/audit/audit.service';
+import { CreateAccountDto } from '../../src/modules/account/dto/create-account.dto';
+import { AccountNotFoundException, InvalidOperationException } from '../../src/common/exceptions/billing.exception';
 
 describe('AccountService', () => {
   let service: AccountService;

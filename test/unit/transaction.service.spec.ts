@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { TransactionService } from './transaction.service';
-import { Transaction, TransactionType, TransactionStatus } from './transaction.entity';
-import { AccountService } from '../account/account.service';
-import { CurrencyService } from '../currency/currency.service';
-import { AuditService } from '../audit/audit.service';
-import { Account, AccountStatus, AccountType } from '../account/account.entity';
-import { TopupDto } from './dto/topup.dto';
-import { WithdrawalDto } from './dto/withdrawal.dto';
-import { InsufficientBalanceException, CurrencyMismatchException } from '../../common/exceptions/billing.exception';
+import { TransactionService } from '../../src/modules/transaction/transaction.service';
+import { Transaction, TransactionType, TransactionStatus } from '../../src/modules/transaction/transaction.entity';
+import { AccountService } from '../../src/modules/account/account.service';
+import { CurrencyService } from '../../src/modules/currency/currency.service';
+import { AuditService } from '../../src/modules/audit/audit.service';
+import { Account, AccountStatus, AccountType } from '../../src/modules/account/account.entity';
+import { TopupDto } from '../../src/modules/transaction/dto/topup.dto';
+import { WithdrawalDto } from '../../src/modules/transaction/dto/withdrawal.dto';
+import { InsufficientBalanceException, CurrencyMismatchException } from '../../src/common/exceptions/billing.exception';
 // Pipeline imports
-import { TransactionPipeline } from './pipeline/transaction-pipeline';
+import { TransactionPipeline } from '../../src/modules/transaction/pipeline/transaction-pipeline';
 import {
   CheckIdempotencyStep,
   LoadAndLockAccountsStep,
@@ -21,7 +21,7 @@ import {
   UpdateBalancesStep,
   CompleteTransactionStep,
   AuditLogStep,
-} from './pipeline';
+} from '../../src/modules/transaction/pipeline';
 
 describe('TransactionService', () => {
   let service: TransactionService;

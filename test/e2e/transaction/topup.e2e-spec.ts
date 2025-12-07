@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '../../../src/app.module';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { CreateAccountCommand } from '../src/modules/account/commands/create-account.command';
-import { TopupCommand } from '../src/modules/transaction/commands/topup.command';
-import { GetTransactionQuery } from '../src/modules/transaction/queries/get-transaction.query';
-import { GetTransactionsByAccountQuery } from '../src/modules/transaction/queries/get-transactions-by-account.query';
-import { GetAccountQuery } from '../src/modules/account/queries/get-account.query';
-import { AccountType } from '../src/modules/account/account.entity';
-import { TransactionStatus } from '../src/modules/transaction/transaction.entity';
+import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
+import { TopupCommand } from '../../../src/modules/transaction/commands/topup.command';
+import { GetTransactionQuery } from '../../../src/modules/transaction/queries/get-transaction.query';
+import { GetTransactionsByAccountQuery } from '../../../src/modules/transaction/queries/get-transactions-by-account.query';
+import { GetAccountQuery } from '../../../src/modules/account/queries/get-account.query';
+import { AccountType } from '../../../src/modules/account/account.entity';
+import { TransactionStatus } from '../../../src/modules/transaction/transaction.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { Connection } from 'typeorm';
-import { KafkaEventStore } from '../src/cqrs/kafka/kafka-event-store';
+import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
 import { EventPollingHelper } from './helpers/event-polling.helper';
 
 describe('Week 3 - Complete Saga E2E Test', () => {
