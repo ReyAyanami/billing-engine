@@ -1,5 +1,8 @@
 import { AggregateRoot } from '../../../cqrs/base/aggregate-root';
 import { AccountCreatedEvent } from '../events/account-created.event';
+import { BalanceChangedEvent } from '../events/balance-changed.event';
+import { AccountStatusChangedEvent } from '../events/account-status-changed.event';
+import { AccountLimitsChangedEvent } from '../events/account-limits-changed.event';
 import { AccountType, AccountStatus } from '../account.entity';
 import Decimal from 'decimal.js';
 
@@ -132,6 +135,214 @@ export class AccountAggregate extends AggregateRoot {
 
   getUpdatedAt(): Date {
     return this.updatedAt;
+  }
+
+  /**
+   * Changes the account balance (command method)
+   * This emits a BalanceChangedEvent
+   */
+  changeBalance(params: {
+    changeAmount: string;
+    changeType: 'CREDIT' | 'DEBIT';
+    reason: string;
+    transactionId?: string;
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, any>;
+  }): void {
+    // Validate: Account must exist
+    if (!this.aggregateId) {
+      throw new Error('Account does not exist');
+    }
+
+    // Validate: Account must be active
+    if (this.status !== AccountStatus.ACTIVE) {
+      throw new Error(`Cannot change balance on account with status: ${this.status}`);
+    }
+
+    // Calculate new balance
+    const changeAmount = new Decimal(params.changeAmount);
+    const previousBalance = this.balance;
+    const newBalance =
+      params.changeType === 'CREDIT'
+        ? previousBalance.plus(changeAmount)
+        : previousBalance.minus(changeAmount);
+
+    // Validate: Check limits
+    if (this.maxBalance && newBalance.greaterThan(this.maxBalance)) {
+      throw new Error(
+        `New balance ${newBalance} would exceed max balance ${this.maxBalance}`,
+      );
+    }
+
+    if (this.minBalance && newBalance.lessThan(this.minBalance)) {
+      throw new Error(
+        `New balance ${newBalance} would be below min balance ${this.minBalance}`,
+      );
+    }
+
+    // Create and apply the event
+    const event = new BalanceChangedEvent(
+      previousBalance.toString(),
+      newBalance.toString(),
+      changeAmount.toString(),
+      params.changeType,
+      params.reason,
+      params.transactionId,
+      {
+        aggregateId: this.aggregateId,
+        aggregateVersion: this.version + 1,
+        correlationId: params.correlationId,
+        causationId: params.causationId,
+        metadata: params.metadata,
+      },
+    );
+
+    this.apply(event);
+  }
+
+  /**
+   * Event handler for BalanceChangedEvent
+   * Updates aggregate state when balance changes
+   */
+  onBalanceChanged(event: BalanceChangedEvent): void {
+    this.balance = new Decimal(event.newBalance);
+    this.updatedAt = event.timestamp;
+  }
+
+  /**
+   * Changes the account status (command method)
+   * This emits an AccountStatusChangedEvent
+   */
+  changeStatus(params: {
+    newStatus: AccountStatus;
+    reason: string;
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, any>;
+  }): void {
+    // Validate: Account must exist
+    if (!this.aggregateId) {
+      throw new Error('Account does not exist');
+    }
+
+    // Validate: Status must be different
+    if (this.status === params.newStatus) {
+      throw new Error(`Account already has status: ${params.newStatus}`);
+    }
+
+    // Validate: Status transitions (business rules)
+    if (this.status === AccountStatus.CLOSED) {
+      throw new Error('Cannot change status of a closed account');
+    }
+
+    // Create and apply the event
+    const event = new AccountStatusChangedEvent(
+      this.status,
+      params.newStatus,
+      params.reason,
+      {
+        aggregateId: this.aggregateId,
+        aggregateVersion: this.version + 1,
+        correlationId: params.correlationId,
+        causationId: params.causationId,
+        metadata: params.metadata,
+      },
+    );
+
+    this.apply(event);
+  }
+
+  /**
+   * Event handler for AccountStatusChangedEvent
+   * Updates aggregate state when status changes
+   */
+  onAccountStatusChanged(event: AccountStatusChangedEvent): void {
+    this.status = event.newStatus;
+    this.updatedAt = event.timestamp;
+  }
+
+  /**
+   * Changes the account balance limits (command method)
+   * This emits an AccountLimitsChangedEvent
+   */
+  changeLimits(params: {
+    newMaxBalance?: string;
+    newMinBalance?: string;
+    reason?: string;
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, any>;
+  }): void {
+    // Validate: Account must exist
+    if (!this.aggregateId) {
+      throw new Error('Account does not exist');
+    }
+
+    // Validate: At least one limit must be provided
+    if (!params.newMaxBalance && !params.newMinBalance) {
+      throw new Error('Must provide at least one new limit');
+    }
+
+    // Validate: New limits must be valid
+    if (params.newMaxBalance && params.newMinBalance) {
+      const max = new Decimal(params.newMaxBalance);
+      const min = new Decimal(params.newMinBalance);
+      if (max.lessThanOrEqualTo(min)) {
+        throw new Error('Max balance must be greater than min balance');
+      }
+    }
+
+    // Validate: Current balance must be within new limits
+    if (params.newMaxBalance) {
+      const max = new Decimal(params.newMaxBalance);
+      if (this.balance.greaterThan(max)) {
+        throw new Error(
+          `Current balance ${this.balance} exceeds new max ${max}`,
+        );
+      }
+    }
+
+    if (params.newMinBalance) {
+      const min = new Decimal(params.newMinBalance);
+      if (this.balance.lessThan(min)) {
+        throw new Error(
+          `Current balance ${this.balance} is below new min ${min}`,
+        );
+      }
+    }
+
+    // Create and apply the event
+    const event = new AccountLimitsChangedEvent(
+      this.maxBalance?.toString(),
+      params.newMaxBalance,
+      this.minBalance?.toString(),
+      params.newMinBalance,
+      params.reason,
+      {
+        aggregateId: this.aggregateId,
+        aggregateVersion: this.version + 1,
+        correlationId: params.correlationId,
+        causationId: params.causationId,
+        metadata: params.metadata,
+      },
+    );
+
+    this.apply(event);
+  }
+
+  /**
+   * Event handler for AccountLimitsChangedEvent
+   * Updates aggregate state when limits change
+   */
+  onAccountLimitsChanged(event: AccountLimitsChangedEvent): void {
+    if (event.newMaxBalance !== undefined) {
+      this.maxBalance = new Decimal(event.newMaxBalance);
+    }
+    if (event.newMinBalance !== undefined) {
+      this.minBalance = new Decimal(event.newMinBalance);
+    }
+    this.updatedAt = event.timestamp;
   }
 
   /**
