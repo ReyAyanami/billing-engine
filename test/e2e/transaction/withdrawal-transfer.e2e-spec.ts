@@ -13,7 +13,7 @@ import { TransactionStatus } from '../../../src/modules/transaction/transaction.
 import { v4 as uuidv4 } from 'uuid';
 import { Connection } from 'typeorm';
 import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
-import { EventPollingHelper } from './helpers/event-polling.helper';
+import { EventPollingHelper } from '../../helpers/event-polling.helper';
 
 describe('Week 4 - Withdrawal & Transfer Sagas E2E Test', () => {
   jest.setTimeout(90000); // 90 seconds for complex saga operations

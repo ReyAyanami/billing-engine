@@ -25,14 +25,18 @@ export abstract class AggregateRoot {
    * @param event The domain event to apply
    * @param isNew Whether this is a new event (true) or historical (false)
    */
-  protected apply(event: DomainEvent, isNew: boolean = true): void {
+  protected apply(event: DomainEvent | any, isNew: boolean = true): void {
     // Find and call the appropriate event handler
     const handler = this.getEventHandler(event);
     if (handler) {
       handler.call(this, event);
     } else {
+      // Get event type for warning message
+      const eventType = typeof event.getEventType === 'function' 
+        ? event.getEventType() 
+        : (event.eventType || 'Unknown');
       console.warn(
-        `No handler found for event ${event.getEventType()} on aggregate ${this.getAggregateType()}`,
+        `No handler found for event ${eventType} on aggregate ${this.getAggregateType()}`,
       );
     }
 
@@ -50,8 +54,21 @@ export abstract class AggregateRoot {
    * Handler methods should be named: on{EventType}
    * Example: onAccountCreated, onBalanceChanged
    */
-  private getEventHandler(event: DomainEvent): Function | undefined {
-    const eventType = event.getEventType();
+  private getEventHandler(event: DomainEvent | any): Function | undefined {
+    // Handle both proper DomainEvent instances and plain objects from event store
+    let eventType: string;
+    
+    if (typeof event.getEventType === 'function') {
+      // Proper DomainEvent instance
+      eventType = event.getEventType();
+    } else if (event.eventType) {
+      // Plain object from event store
+      eventType = event.eventType;
+    } else {
+      console.error('Unable to determine event type from event:', event);
+      return undefined;
+    }
+    
     const handlerName = `on${eventType}`;
 
     const handler = (this as any)[handlerName];

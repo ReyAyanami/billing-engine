@@ -10,7 +10,7 @@ import { GetAccountQuery } from '../../../src/modules/account/queries/get-accoun
 import { PaymentCommand } from '../../../src/modules/transaction/commands/payment.command';
 import { GetTransactionQuery } from '../../../src/modules/transaction/queries/get-transaction.query';
 import { TransactionStatus } from '../../../src/modules/transaction/transaction.entity';
-import { EventPollingHelper } from './helpers/event-polling.helper';
+import { EventPollingHelper } from '../../helpers/event-polling.helper';
 import Decimal from 'decimal.js';
 
 describe('Payment Saga E2E Test', () => {

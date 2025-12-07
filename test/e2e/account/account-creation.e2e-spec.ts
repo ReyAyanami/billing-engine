@@ -7,7 +7,7 @@ import { CreateAccountCommand } from '../../../src/modules/account/commands/crea
 import { AccountType } from '../../../src/modules/account/account.entity';
 import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
 import { AccountAggregate } from '../../../src/modules/account/aggregates/account.aggregate';
-import { EventPollingHelper } from './helpers/event-polling.helper';
+import { EventPollingHelper } from '../../helpers/event-polling.helper';
 
 describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
   jest.setTimeout(30000); // 30 seconds for Kafka operations

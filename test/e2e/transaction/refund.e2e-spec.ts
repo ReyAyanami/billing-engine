@@ -59,6 +59,8 @@ describe('Refund Saga E2E', () => {
         'USER',
         AccountType.USER,
         'USD',
+        undefined, // maxBalance
+        undefined, // minBalance
         correlationId,
         'test-e2e',
       );
@@ -76,6 +78,8 @@ describe('Refund Saga E2E', () => {
         'BUSINESS',
         AccountType.USER,
         'USD',
+        undefined, // maxBalance
+        undefined, // minBalance
         correlationId,
         'test-e2e',
       );
@@ -93,6 +97,8 @@ describe('Refund Saga E2E', () => {
         'SYSTEM',
         AccountType.EXTERNAL,
         'USD',
+        undefined, // maxBalance
+        undefined, // minBalance
         correlationId,
         'test-e2e',
       );
@@ -241,6 +247,8 @@ describe('Refund Saga E2E', () => {
         'USER',
         AccountType.USER,
         'USD',
+        undefined, // maxBalance
+        undefined, // minBalance
         correlationId,
         'test-e2e',
       ));
@@ -251,6 +259,8 @@ describe('Refund Saga E2E', () => {
         'BUSINESS',
         AccountType.USER,
         'USD',
+        undefined, // maxBalance
+        undefined, // minBalance
         correlationId,
         'test-e2e',
       ));
@@ -261,6 +271,8 @@ describe('Refund Saga E2E', () => {
         'SYSTEM',
         AccountType.EXTERNAL,
         'USD',
+        undefined, // maxBalance
+        undefined, // minBalance
         correlationId,
         'test-e2e',
       ));

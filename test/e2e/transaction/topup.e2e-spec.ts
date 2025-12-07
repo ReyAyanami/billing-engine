@@ -12,7 +12,7 @@ import { TransactionStatus } from '../../../src/modules/transaction/transaction.
 import { v4 as uuidv4 } from 'uuid';
 import { Connection } from 'typeorm';
 import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
-import { EventPollingHelper } from './helpers/event-polling.helper';
+import { EventPollingHelper } from '../../helpers/event-polling.helper';
 
 describe('Week 3 - Complete Saga E2E Test', () => {
   jest.setTimeout(60000); // 60 seconds timeout for async saga operations
