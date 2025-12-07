@@ -1,6 +1,10 @@
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
+import { config } from 'dotenv';
 
-export const getDatabaseConfig = (): TypeOrmModuleOptions => ({
+// Load environment variables
+config();
+
+export const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432', 10),
@@ -9,9 +13,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => ({
   database: process.env.DB_DATABASE || 'billing_engine',
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-  // Use migrations in production, synchronize in development
-  synchronize: process.env.NODE_ENV !== 'production' && process.env.USE_MIGRATIONS !== 'true',
-  migrationsRun: process.env.NODE_ENV === 'production' || process.env.USE_MIGRATIONS === 'true',
+  synchronize: false, // Always false when using migrations
   logging: process.env.NODE_ENV === 'development',
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });

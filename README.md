@@ -106,7 +106,20 @@ PORT=3000
 NODE_ENV=development
 ```
 
-5. **Start the application**
+5. **Run database migrations**
+
+For production or if you want to use migrations in development:
+```bash
+# Run migrations
+npm run migration:run
+
+# For development with auto-sync (default)
+# Just start the app, schema will be created automatically
+```
+
+To use migrations in development, set `USE_MIGRATIONS=true` in your `.env` file.
+
+6. **Start the application**
 ```bash
 # Development mode with hot reload
 npm run start:dev
@@ -130,6 +143,47 @@ npm run test:e2e
 # Test coverage
 npm run test:cov
 ```
+
+## 🗄️ Database Migrations
+
+### Available Migration Commands
+
+```bash
+# Run all pending migrations
+npm run migration:run
+
+# Revert the last migration
+npm run migration:revert
+
+# Show migration status
+npm run migration:show
+
+# Generate a new migration from entity changes
+npm run migration:generate -- src/migrations/MigrationName
+
+# Create an empty migration
+npm run migration:create -- src/migrations/MigrationName
+```
+
+### Migration Modes
+
+**Development (default):**
+- Uses `synchronize: true` - schema auto-updates
+- No migrations needed unless you set `USE_MIGRATIONS=true`
+
+**Production:**
+- Uses migrations automatically
+- `synchronize` is disabled for safety
+- Migrations run on application startup
+
+### Initial Schema
+
+The project includes an initial migration that creates:
+- All 4 tables (currencies, accounts, transactions, audit_logs)
+- All indexes and constraints
+- Default currency data (USD, EUR, GBP, BTC, ETH, POINTS)
+
+For more details, see [src/migrations/README.md](./src/migrations/README.md)
 
 ## 📖 API Usage Examples
 
