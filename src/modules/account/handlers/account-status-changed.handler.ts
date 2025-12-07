@@ -1,16 +1,19 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { AccountStatusChangedEvent } from '../events/account-status-changed.event';
+import { AccountProjectionService } from '../projections/account-projection.service';
 
 /**
  * Event handler for AccountStatusChangedEvent.
- * This would update projections, send notifications, trigger compliance checks, etc.
+ * Updates the read model projection when account status changes.
  */
 @EventsHandler(AccountStatusChangedEvent)
 export class AccountStatusChangedHandler
   implements IEventHandler<AccountStatusChangedEvent>
 {
   private readonly logger = new Logger(AccountStatusChangedHandler.name);
+
+  constructor(private readonly projectionService: AccountProjectionService) {}
 
   async handle(event: AccountStatusChangedEvent): Promise<void> {
     this.logger.log(
@@ -20,11 +23,18 @@ export class AccountStatusChangedHandler
     this.logger.log(`   New Status: ${event.newStatus}`);
     this.logger.log(`   Reason: ${event.reason}`);
 
-    // TODO: Update projection here (Week 2)
-    // TODO: Send notification if account frozen/closed
-    // For now, we'll just log it
+    try {
+      // Update read model projection
+      await this.projectionService.handleAccountStatusChanged(event);
 
-    this.logger.log(`✅ AccountStatusChangedEvent processed successfully`);
+      // TODO: Send notification if account frozen/closed
+      // TODO: Trigger compliance checks
+
+      this.logger.log(`✅ AccountStatusChangedEvent processed successfully`);
+    } catch (error) {
+      this.logger.error(`❌ Failed to process AccountStatusChangedEvent`, error);
+      throw error;
+    }
   }
 }
 

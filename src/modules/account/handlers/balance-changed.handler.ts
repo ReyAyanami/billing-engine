@@ -1,14 +1,17 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { BalanceChangedEvent } from '../events/balance-changed.event';
+import { AccountProjectionService } from '../projections/account-projection.service';
 
 /**
  * Event handler for BalanceChangedEvent.
- * This would update projections, trigger notifications, etc.
+ * Updates the read model projection when balance changes.
  */
 @EventsHandler(BalanceChangedEvent)
 export class BalanceChangedHandler implements IEventHandler<BalanceChangedEvent> {
   private readonly logger = new Logger(BalanceChangedHandler.name);
+
+  constructor(private readonly projectionService: AccountProjectionService) {}
 
   async handle(event: BalanceChangedEvent): Promise<void> {
     this.logger.log(`📨 Handling BalanceChangedEvent for account: ${event.aggregateId}`);
@@ -20,10 +23,17 @@ export class BalanceChangedHandler implements IEventHandler<BalanceChangedEvent>
       this.logger.log(`   Transaction: ${event.transactionId}`);
     }
 
-    // TODO: Update projection here (Week 2)
-    // For now, we'll just log it
+    try {
+      // Update read model projection
+      await this.projectionService.handleBalanceChanged(event);
 
-    this.logger.log(`✅ BalanceChangedEvent processed successfully`);
+      // TODO: Trigger notifications if balance low/high
+
+      this.logger.log(`✅ BalanceChangedEvent processed successfully`);
+    } catch (error) {
+      this.logger.error(`❌ Failed to process BalanceChangedEvent`, error);
+      throw error;
+    }
   }
 }
 

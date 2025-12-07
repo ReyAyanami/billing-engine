@@ -7,12 +7,22 @@ import { AccountController } from './account.controller';
 import { CurrencyModule } from '../currency/currency.module';
 import { AuditModule } from '../audit/audit.module';
 
-// CQRS Components
+// CQRS Components - Commands
 import { CreateAccountHandler } from './handlers/create-account.handler';
+
+// CQRS Components - Events
 import { AccountCreatedHandler } from './handlers/account-created.handler';
 import { BalanceChangedHandler } from './handlers/balance-changed.handler';
 import { AccountStatusChangedHandler } from './handlers/account-status-changed.handler';
 import { AccountLimitsChangedHandler } from './handlers/account-limits-changed.handler';
+
+// CQRS Components - Queries
+import { GetAccountHandler } from './queries/handlers/get-account.handler';
+import { GetAccountsByOwnerHandler } from './queries/handlers/get-accounts-by-owner.handler';
+
+// Projections (Read Model)
+import { AccountProjection } from './projections/account-projection.entity';
+import { AccountProjectionService } from './projections/account-projection.service';
 
 const CommandHandlers = [CreateAccountHandler];
 const EventHandlers = [
@@ -21,10 +31,11 @@ const EventHandlers = [
   AccountStatusChangedHandler,
   AccountLimitsChangedHandler,
 ];
+const QueryHandlers = [GetAccountHandler, GetAccountsByOwnerHandler];
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Account]),
+    TypeOrmModule.forFeature([Account, AccountProjection]),
     CqrsModule,
     CurrencyModule,
     AuditModule,
@@ -32,10 +43,12 @@ const EventHandlers = [
   controllers: [AccountController],
   providers: [
     AccountService,
+    AccountProjectionService,
     ...CommandHandlers,
     ...EventHandlers,
+    ...QueryHandlers,
   ],
-  exports: [AccountService],
+  exports: [AccountService, AccountProjectionService],
 })
 export class AccountModule {}
 

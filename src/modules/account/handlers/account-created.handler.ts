@@ -1,20 +1,17 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { AccountCreatedEvent } from '../events/account-created.event';
+import { AccountProjectionService } from '../projections/account-projection.service';
 
 /**
  * Event handler for AccountCreatedEvent.
- * This demonstrates async event processing.
- * 
- * In a real system, this would:
- * - Update read model projections
- * - Send notifications
- * - Trigger webhooks
- * - Update analytics
+ * Updates the read model projection when an account is created.
  */
 @EventsHandler(AccountCreatedEvent)
 export class AccountCreatedHandler implements IEventHandler<AccountCreatedEvent> {
   private readonly logger = new Logger(AccountCreatedHandler.name);
+
+  constructor(private readonly projectionService: AccountProjectionService) {}
 
   async handle(event: AccountCreatedEvent): Promise<void> {
     this.logger.log(`📨 Handling AccountCreatedEvent for account: ${event.aggregateId}`);
@@ -25,11 +22,17 @@ export class AccountCreatedHandler implements IEventHandler<AccountCreatedEvent>
     this.logger.log(`   Version: ${event.aggregateVersion}`);
     this.logger.log(`   Correlation ID: ${event.correlationId}`);
 
-    // TODO: Update projections here
-    // For now, we'll just log it
-    // In production, this would update a read model in PostgreSQL
+    try {
+      // Update read model projection
+      await this.projectionService.handleAccountCreated(event);
 
-    this.logger.log(`✅ AccountCreatedEvent processed successfully`);
+      // TODO: Send notifications, webhooks, etc.
+
+      this.logger.log(`✅ AccountCreatedEvent processed successfully`);
+    } catch (error) {
+      this.logger.error(`❌ Failed to process AccountCreatedEvent`, error);
+      throw error;
+    }
   }
 }
 
