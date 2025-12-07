@@ -34,6 +34,8 @@ import { WithdrawalRequestedProjectionHandler } from './handlers/projection/with
 import { WithdrawalCompletedProjectionHandler } from './handlers/projection/withdrawal-completed-projection.handler';
 import { TransferRequestedProjectionHandler } from './handlers/projection/transfer-requested-projection.handler';
 import { TransferCompletedProjectionHandler } from './handlers/projection/transfer-completed-projection.handler';
+import { PaymentRequestedProjectionHandler } from './handlers/projection/payment-requested-projection.handler';
+import { PaymentCompletedProjectionHandler } from './handlers/projection/payment-completed-projection.handler';
 import { TransactionFailedProjectionHandler } from './handlers/projection/transaction-failed-projection.handler';
 import { TransactionCompensatedProjectionHandler } from './handlers/projection/transaction-compensated-projection.handler';
 
@@ -71,6 +73,8 @@ const EventHandlers = [
   WithdrawalCompletedProjectionHandler,
   TransferRequestedProjectionHandler,
   TransferCompletedProjectionHandler,
+  PaymentRequestedProjectionHandler,
+  PaymentCompletedProjectionHandler,
   TransactionFailedProjectionHandler,
   TransactionCompensatedProjectionHandler,
 ];

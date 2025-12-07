@@ -10,20 +10,26 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { CommandBus } from '@nestjs/cqrs';
 import { TransactionService } from './transaction.service';
 import { TopupDto } from './dto/topup.dto';
 import { WithdrawalDto } from './dto/withdrawal.dto';
 import { TransferDto } from './dto/transfer.dto';
 import { RefundDto } from './dto/refund.dto';
+import { CreatePaymentDto } from './dto/create-payment.dto';
 import { Transaction } from './transaction.entity';
 import { TransactionResult, TransferResult } from '../../common/types';
+import { PaymentCommand } from './commands/payment.command';
 import { v4 as uuidv4 } from 'uuid';
 
 @ApiTags('transactions')
 @Controller('api/v1/transactions')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class TransactionController {
-  constructor(private readonly transactionService: TransactionService) {}
+  constructor(
+    private readonly transactionService: TransactionService,
+    private readonly commandBus: CommandBus,
+  ) {}
 
   @Post('topup')
   @ApiOperation({ summary: 'Top-up account', description: 'Add funds to an account. Uses pipeline pattern for efficient processing.' })
@@ -124,6 +130,50 @@ export class TransactionController {
       limit: limit || 50,
       offset: offset || 0,
     });
+  }
+
+  @Post('payment')
+  @ApiOperation({
+    summary: 'Process payment',
+    description: 'Process a payment from customer to merchant (C2B transaction). Uses CQRS/Event Sourcing with automatic compensation on failures.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Payment initiated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        transactionId: { type: 'string', format: 'uuid' },
+        status: { type: 'string', example: 'pending' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 404, description: 'Customer or merchant account not found' })
+  @ApiResponse({ status: 409, description: 'Duplicate transaction (idempotency key already used)' })
+  async payment(@Body() dto: CreatePaymentDto): Promise<{ transactionId: string; status: string }> {
+    const transactionId = uuidv4();
+    const correlationId = uuidv4();
+    const idempotencyKey = dto.idempotencyKey || uuidv4();
+
+    const command = new PaymentCommand(
+      transactionId,
+      dto.customerAccountId,
+      dto.merchantAccountId,
+      dto.amount,
+      dto.currency,
+      idempotencyKey,
+      dto.paymentMetadata,
+      correlationId,
+      'api', // actorId
+    );
+
+    await this.commandBus.execute(command);
+
+    return {
+      transactionId,
+      status: 'pending',
+    };
   }
 }
 
