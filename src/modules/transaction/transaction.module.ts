@@ -13,9 +13,11 @@ import { PipelineModule } from './pipeline/pipeline.module';
 import { TopupHandler } from './handlers/topup.handler';
 import { WithdrawalHandler } from './handlers/withdrawal.handler';
 import { TransferHandler } from './handlers/transfer.handler';
+import { PaymentHandler } from './handlers/payment.handler';
 import { CompleteTopupHandler } from './handlers/complete-topup.handler';
 import { CompleteWithdrawalHandler } from './handlers/complete-withdrawal.handler';
 import { CompleteTransferHandler } from './handlers/complete-transfer.handler';
+import { CompletePaymentHandler } from './handlers/complete-payment.handler';
 import { FailTransactionHandler } from './handlers/fail-transaction.handler';
 import { CompensateTransactionHandler } from './handlers/compensate-transaction.handler';
 
@@ -23,6 +25,7 @@ import { CompensateTransactionHandler } from './handlers/compensate-transaction.
 import { TopupRequestedHandler } from './handlers/topup-requested.handler';
 import { WithdrawalRequestedHandler } from './handlers/withdrawal-requested.handler';
 import { TransferRequestedHandler } from './handlers/transfer-requested.handler';
+import { PaymentRequestedHandler } from './handlers/payment-requested.handler';
 
 // CQRS Components - Events (Projections)
 import { TopupRequestedProjectionHandler } from './handlers/projection/topup-requested-projection.handler';
@@ -46,9 +49,11 @@ const CommandHandlers = [
   TopupHandler,
   WithdrawalHandler,
   TransferHandler,
+  PaymentHandler,
   CompleteTopupHandler,
   CompleteWithdrawalHandler,
   CompleteTransferHandler,
+  CompletePaymentHandler,
   FailTransactionHandler,
   CompensateTransactionHandler,
 ];
@@ -58,6 +63,7 @@ const EventHandlers = [
   TopupRequestedHandler,
   WithdrawalRequestedHandler,
   TransferRequestedHandler,
+  PaymentRequestedHandler,
   // Projection updaters
   TopupRequestedProjectionHandler,
   TopupCompletedProjectionHandler,

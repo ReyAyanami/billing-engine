@@ -22,9 +22,11 @@ export enum TransactionStatus {
  * Transaction type enum
  */
 export enum TransactionType {
-  TOPUP = 'TOPUP',
-  WITHDRAWAL = 'WITHDRAWAL',
-  TRANSFER = 'TRANSFER',
+  TOPUP = 'topup',
+  WITHDRAWAL = 'withdrawal',
+  TRANSFER = 'transfer',
+  PAYMENT = 'payment',
+  REFUND = 'refund',
 }
 
 /**
@@ -353,6 +355,114 @@ export class TransactionAggregate extends AggregateRoot {
     this.status = TransactionStatus.COMPLETED;
     this.sourceNewBalance = event.sourceNewBalance;
     this.destinationNewBalance = event.destinationNewBalance;
+    this.completedAt = event.completedAt;
+  }
+
+  /**
+   * Requests a payment transaction
+   */
+  requestPayment(params: {
+    transactionId: string;
+    customerAccountId: string;
+    merchantAccountId: string;
+    amount: string;
+    currency: string;
+    idempotencyKey: string;
+    paymentMetadata?: {
+      orderId?: string;
+      invoiceId?: string;
+      description?: string;
+      merchantReference?: string;
+      [key: string]: any;
+    };
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, any>;
+  }): void {
+    if (this.aggregateId) {
+      throw new Error('Transaction already exists');
+    }
+
+    if (!params.customerAccountId || !params.merchantAccountId || !params.amount) {
+      throw new Error('Customer account, merchant account, and amount are required');
+    }
+
+    if (params.customerAccountId === params.merchantAccountId) {
+      throw new Error('Customer and merchant accounts must be different');
+    }
+
+    const PaymentRequestedEvent = require('../events/payment-requested.event').PaymentRequestedEvent;
+    const event = new PaymentRequestedEvent(
+      params.customerAccountId,
+      params.merchantAccountId,
+      params.amount,
+      params.currency,
+      params.idempotencyKey,
+      {
+        aggregateId: params.transactionId,
+        aggregateVersion: 1,
+        correlationId: params.correlationId,
+        causationId: params.causationId,
+        metadata: params.metadata,
+      },
+      params.paymentMetadata,
+    );
+
+    this.apply(event);
+  }
+
+  /**
+   * Event handler for PaymentRequestedEvent
+   */
+  onPaymentRequested(event: any): void {
+    this.aggregateId = event.aggregateId;
+    this.transactionType = TransactionType.PAYMENT;
+    this.status = TransactionStatus.PENDING;
+    this.sourceAccountId = event.customerAccountId;
+    this.destinationAccountId = event.merchantAccountId;
+    this.amount = event.amount;
+    this.currency = event.currency;
+    this.idempotencyKey = event.idempotencyKey;
+    this.requestedAt = event.timestamp;
+  }
+
+  /**
+   * Completes a payment transaction
+   */
+  completePayment(params: {
+    customerNewBalance: string;
+    merchantNewBalance: string;
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, any>;
+  }): void {
+    this.validateCanComplete();
+
+    const PaymentCompletedEvent = require('../events/payment-completed.event').PaymentCompletedEvent;
+    const event = new PaymentCompletedEvent(
+      this.aggregateId,
+      params.customerNewBalance,
+      params.merchantNewBalance,
+      new Date(),
+      {
+        aggregateId: this.aggregateId,
+        aggregateVersion: this.version + 1,
+        correlationId: params.correlationId,
+        causationId: params.causationId,
+        metadata: params.metadata,
+      },
+    );
+
+    this.apply(event);
+  }
+
+  /**
+   * Event handler for PaymentCompletedEvent
+   */
+  onPaymentCompleted(event: any): void {
+    this.status = TransactionStatus.COMPLETED;
+    this.sourceNewBalance = event.customerNewBalance;
+    this.destinationNewBalance = event.merchantNewBalance;
     this.completedAt = event.completedAt;
   }
 
