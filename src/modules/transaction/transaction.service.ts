@@ -312,6 +312,42 @@ export class TransactionService {
   }
 
   /**
+   * Withdrawal V2 (Pipeline-based): User Account (source) → External Account (destination)
+   * 
+   * Uses the same pipeline steps as topup, demonstrating reusability.
+   * 
+   * @experimental Running in parallel with existing withdraw() for comparison
+   */
+  async withdrawV2(
+    dto: WithdrawalDto,
+    context: OperationContext,
+  ): Promise<TransactionResult> {
+    return this.pipeline.execute(
+      new TransactionContext({
+        idempotencyKey: dto.idempotencyKey,
+        type: TransactionType.WITHDRAWAL,
+        sourceAccountId: dto.sourceAccountId,
+        destinationAccountId: dto.destinationAccountId,
+        amount: dto.amount,
+        currency: dto.currency,
+        reference: dto.reference,
+        metadata: dto.metadata,
+        operationContext: context,
+      }),
+      [
+        this.checkIdempotencyStep,
+        this.loadAndLockAccountsStep,
+        this.validateAccountsStep,
+        this.calculateBalancesStep,      // Includes balance check for user accounts
+        this.createTransactionStep,
+        this.updateBalancesStep,
+        this.completeTransactionStep,
+        this.auditLogStep,
+      ],
+    );
+  }
+
+  /**
    * Transfer: Account A (source) → Account B (destination)
    * Money flows between two accounts
    */
@@ -417,6 +453,61 @@ export class TransactionService {
 
       return this.mapToTransferResult(savedTransaction);
     });
+  }
+
+  /**
+   * Transfer V2 (Pipeline-based): Account A (source) → Account B (destination)
+   * 
+   * Transfer uses the same pipeline steps, demonstrating the power of reusability.
+   * The only difference from topup/withdrawal is the transaction type and validation.
+   * 
+   * @experimental Running in parallel with existing transfer() for comparison
+   */
+  async transferV2(
+    dto: TransferDto,
+    context: OperationContext,
+  ): Promise<TransferResult> {
+    // Validate self-transfer before pipeline
+    if (dto.sourceAccountId === dto.destinationAccountId) {
+      throw new InvalidOperationException('SELF_TRANSFER_NOT_ALLOWED');
+    }
+
+    const result = await this.pipeline.execute(
+      new TransactionContext({
+        idempotencyKey: dto.idempotencyKey,
+        type: TransactionType.TRANSFER_DEBIT, // Using single transaction model
+        sourceAccountId: dto.sourceAccountId,
+        destinationAccountId: dto.destinationAccountId,
+        amount: dto.amount,
+        currency: dto.currency,
+        reference: dto.reference,
+        metadata: dto.metadata,
+        operationContext: context,
+      }),
+      [
+        this.checkIdempotencyStep,
+        this.loadAndLockAccountsStep,
+        this.validateAccountsStep,
+        this.calculateBalancesStep,
+        this.createTransactionStep,
+        this.updateBalancesStep,
+        this.completeTransactionStep,
+        this.auditLogStep,
+      ],
+    );
+
+    // Map to TransferResult format
+    return {
+      debitTransactionId: result.transactionId,
+      creditTransactionId: result.transactionId, // Single transaction model
+      sourceAccountId: result.sourceAccountId,
+      destinationAccountId: result.destinationAccountId,
+      amount: result.amount,
+      currency: result.currency,
+      status: result.status,
+      reference: result.reference,
+      createdAt: result.createdAt,
+    };
   }
 
   /**
@@ -572,6 +663,92 @@ export class TransactionService {
 
       return this.mapToTransactionResult(savedRefundTransaction);
     });
+  }
+
+  /**
+   * Refund V2 (Pipeline-based): Reverses a previous transaction
+   * 
+   * Refund has pre-pipeline logic to load original transaction and determine
+   * the refund parameters, then uses standard pipeline for execution.
+   * 
+   * @experimental Running in parallel with existing refund() for comparison
+   */
+  async refundV2(
+    dto: RefundDto,
+    context: OperationContext,
+  ): Promise<TransactionResult> {
+    // Pre-pipeline: Load original transaction and prepare refund context
+    const originalTransaction = await this.transactionRepository.findOne({
+      where: { id: dto.originalTransactionId },
+    });
+
+    if (!originalTransaction) {
+      throw new TransactionNotFoundException(dto.originalTransactionId);
+    }
+
+    // Validate original transaction
+    if (originalTransaction.status === TransactionStatus.REFUNDED) {
+      throw new RefundException('Transaction already refunded');
+    }
+    if (originalTransaction.status !== TransactionStatus.COMPLETED) {
+      throw new RefundException('Can only refund completed transactions');
+    }
+    if (!originalTransaction.amount) {
+      throw new RefundException(`Original transaction ${originalTransaction.id} has no amount`);
+    }
+
+    // Determine refund amount
+    const originalAmount = new Decimal(originalTransaction.amount);
+    let refundAmount: Decimal;
+    
+    if (dto.amount !== undefined && dto.amount !== null && dto.amount !== '') {
+      refundAmount = new Decimal(dto.amount);
+    } else {
+      refundAmount = originalAmount;
+    }
+
+    // Validate refund amount
+    if (refundAmount.greaterThan(originalAmount)) {
+      throw new RefundException('Refund amount cannot exceed original amount');
+    }
+
+    // Execute refund using pipeline (with reversed source/destination)
+    const refundResult = await this.pipeline.execute(
+      new TransactionContext({
+        idempotencyKey: dto.idempotencyKey,
+        type: TransactionType.REFUND,
+        sourceAccountId: originalTransaction.destinationAccountId,  // Reversed
+        destinationAccountId: originalTransaction.sourceAccountId,  // Reversed
+        amount: refundAmount.toString(),
+        currency: originalTransaction.currency,
+        reference: dto.reason || `Refund for ${originalTransaction.id}`,
+        metadata: {
+          ...dto.metadata,
+          originalTransactionId: originalTransaction.id,
+          refundReason: dto.reason,
+        },
+        parentTransactionId: originalTransaction.id,
+        operationContext: context,
+      }),
+      [
+        this.checkIdempotencyStep,
+        this.loadAndLockAccountsStep,
+        this.validateAccountsStep,
+        this.calculateBalancesStep,
+        this.createTransactionStep,
+        this.updateBalancesStep,
+        this.completeTransactionStep,
+        this.auditLogStep,
+      ],
+    );
+
+    // Post-pipeline: Mark original transaction as refunded
+    await this.dataSource.transaction(async (manager) => {
+      originalTransaction.status = TransactionStatus.REFUNDED;
+      await manager.save(Transaction, originalTransaction);
+    });
+
+    return refundResult;
   }
 
   /**
