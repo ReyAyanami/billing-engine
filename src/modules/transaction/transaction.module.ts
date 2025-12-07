@@ -6,6 +6,7 @@ import { TransactionController } from './transaction.controller';
 import { AccountModule } from '../account/account.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { AuditModule } from '../audit/audit.module';
+import { PipelineModule } from './pipeline/pipeline.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AuditModule } from '../audit/audit.module';
     AccountModule,
     CurrencyModule,
     AuditModule,
+    PipelineModule, // Pipeline-based transaction processing
   ],
   controllers: [TransactionController],
   providers: [TransactionService],

@@ -11,28 +11,30 @@ import { AccountNotFoundException } from '../../../../common/exceptions/billing.
 export class LoadAndLockAccountsStep extends TransactionStep {
   async execute(context: TransactionContext): Promise<void> {
     // Load and lock source account
-    context.sourceAccount = await context.manager
+    const sourceAccount = await context.manager
       .getRepository(Account)
       .createQueryBuilder('account')
       .setLock('pessimistic_write')
       .where('account.id = :id', { id: context.sourceAccountId })
       .getOne();
 
-    if (!context.sourceAccount) {
+    if (!sourceAccount) {
       throw new AccountNotFoundException(context.sourceAccountId);
     }
+    context.sourceAccount = sourceAccount;
 
     // Load and lock destination account
-    context.destinationAccount = await context.manager
+    const destinationAccount = await context.manager
       .getRepository(Account)
       .createQueryBuilder('account')
       .setLock('pessimistic_write')
       .where('account.id = :id', { id: context.destinationAccountId })
       .getOne();
 
-    if (!context.destinationAccount) {
+    if (!destinationAccount) {
       throw new AccountNotFoundException(context.destinationAccountId);
     }
+    context.destinationAccount = destinationAccount;
   }
 }
 

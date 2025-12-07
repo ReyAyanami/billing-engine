@@ -10,6 +10,18 @@ import { Account, AccountStatus, AccountType } from '../account/account.entity';
 import { TopupDto } from './dto/topup.dto';
 import { WithdrawalDto } from './dto/withdrawal.dto';
 import { InsufficientBalanceException, CurrencyMismatchException } from '../../common/exceptions/billing.exception';
+// Pipeline imports
+import { TransactionPipeline } from './pipeline/transaction-pipeline';
+import {
+  CheckIdempotencyStep,
+  LoadAndLockAccountsStep,
+  ValidateAccountsStep,
+  CalculateBalancesStep,
+  CreateTransactionStep,
+  UpdateBalancesStep,
+  CompleteTransactionStep,
+  AuditLogStep,
+} from './pipeline';
 
 describe('TransactionService', () => {
   let service: TransactionService;
@@ -89,6 +101,45 @@ describe('TransactionService', () => {
           useValue: {
             transaction: jest.fn((callback) => callback(mockEntityManager)),
           },
+        },
+        // Pipeline mocks
+        {
+          provide: TransactionPipeline,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: CheckIdempotencyStep,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: LoadAndLockAccountsStep,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: ValidateAccountsStep,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: CalculateBalancesStep,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: CreateTransactionStep,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: UpdateBalancesStep,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: CompleteTransactionStep,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: AuditLogStep,
+          useValue: { execute: jest.fn() },
         },
       ],
     }).compile();

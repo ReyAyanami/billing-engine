@@ -30,6 +30,20 @@ import { TransferDto } from './dto/transfer.dto';
 import { RefundDto } from './dto/refund.dto';
 import Decimal from 'decimal.js';
 
+// Pipeline imports
+import { TransactionPipeline } from './pipeline/transaction-pipeline';
+import { TransactionContext } from './pipeline/transaction-context';
+import {
+  CheckIdempotencyStep,
+  LoadAndLockAccountsStep,
+  ValidateAccountsStep,
+  CalculateBalancesStep,
+  CreateTransactionStep,
+  UpdateBalancesStep,
+  CompleteTransactionStep,
+  AuditLogStep,
+} from './pipeline';
+
 @Injectable()
 export class TransactionService {
   constructor(
@@ -39,6 +53,16 @@ export class TransactionService {
     private readonly currencyService: CurrencyService,
     private readonly auditService: AuditService,
     private readonly dataSource: DataSource,
+    // Pipeline dependencies
+    private readonly pipeline: TransactionPipeline,
+    private readonly checkIdempotencyStep: CheckIdempotencyStep,
+    private readonly loadAndLockAccountsStep: LoadAndLockAccountsStep,
+    private readonly validateAccountsStep: ValidateAccountsStep,
+    private readonly calculateBalancesStep: CalculateBalancesStep,
+    private readonly createTransactionStep: CreateTransactionStep,
+    private readonly updateBalancesStep: UpdateBalancesStep,
+    private readonly completeTransactionStep: CompleteTransactionStep,
+    private readonly auditLogStep: AuditLogStep,
   ) {}
 
   /**
@@ -143,6 +167,43 @@ export class TransactionService {
 
       return this.mapToTransactionResult(savedTransaction);
     });
+  }
+
+  /**
+   * Top-up V2 (Pipeline-based): External Account (source) → User Account (destination)
+   * 
+   * This is the new pipeline-based implementation that eliminates code duplication.
+   * Uses composable, reusable steps for transaction processing.
+   * 
+   * @experimental Running in parallel with existing topup() for comparison
+   */
+  async topupV2(
+    dto: TopupDto,
+    context: OperationContext,
+  ): Promise<TransactionResult> {
+    return this.pipeline.execute(
+      new TransactionContext({
+        idempotencyKey: dto.idempotencyKey,
+        type: TransactionType.TOPUP,
+        sourceAccountId: dto.sourceAccountId,
+        destinationAccountId: dto.destinationAccountId,
+        amount: dto.amount,
+        currency: dto.currency,
+        reference: dto.reference,
+        metadata: dto.metadata,
+        operationContext: context,
+      }),
+      [
+        this.checkIdempotencyStep,
+        this.loadAndLockAccountsStep,
+        this.validateAccountsStep,
+        this.calculateBalancesStep,
+        this.createTransactionStep,
+        this.updateBalancesStep,
+        this.completeTransactionStep,
+        this.auditLogStep,
+      ],
+    );
   }
 
   /**

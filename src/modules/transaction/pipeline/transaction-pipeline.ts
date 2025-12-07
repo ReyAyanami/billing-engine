@@ -46,13 +46,19 @@ export class TransactionPipeline {
 
     return {
       transactionId: context.transaction.id,
+      idempotencyKey: context.transaction.idempotencyKey,
+      type: context.transaction.type,
       sourceAccountId: context.transaction.sourceAccountId,
       destinationAccountId: context.transaction.destinationAccountId,
       amount: context.transaction.amount,
       currency: context.transaction.currency,
+      sourceBalanceBefore: context.transaction.sourceBalanceBefore,
       sourceBalanceAfter: context.transaction.sourceBalanceAfter,
+      destinationBalanceBefore: context.transaction.destinationBalanceBefore,
       destinationBalanceAfter: context.transaction.destinationBalanceAfter,
       status: context.transaction.status,
+      reference: context.transaction.reference,
+      metadata: context.transaction.metadata,
       createdAt: context.transaction.createdAt,
     };
   }
