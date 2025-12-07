@@ -37,7 +37,10 @@ export class InitialSchema1765108546941 implements MigrationInterface {
                 "version" INTEGER NOT NULL DEFAULT 1,
                 "created_at" TIMESTAMP NOT NULL DEFAULT NOW(),
                 "updated_at" TIMESTAMP NOT NULL DEFAULT NOW(),
-                CONSTRAINT "FK_accounts_currency" FOREIGN KEY ("currency") REFERENCES "currencies"("code"),
+                CONSTRAINT "FK_accounts_currency" FOREIGN KEY ("currency") 
+                    REFERENCES "currencies"("code") 
+                    ON DELETE RESTRICT 
+                    ON UPDATE CASCADE,
                 CONSTRAINT "CHK_balance_non_negative" CHECK ("balance" >= 0)
             )
         `);
@@ -73,9 +76,18 @@ export class InitialSchema1765108546941 implements MigrationInterface {
                 "parent_transaction_id" UUID,
                 "created_at" TIMESTAMP NOT NULL DEFAULT NOW(),
                 "completed_at" TIMESTAMP,
-                CONSTRAINT "FK_transactions_account" FOREIGN KEY ("account_id") REFERENCES "accounts"("id"),
-                CONSTRAINT "FK_transactions_counterparty" FOREIGN KEY ("counterparty_account_id") REFERENCES "accounts"("id"),
-                CONSTRAINT "FK_transactions_parent" FOREIGN KEY ("parent_transaction_id") REFERENCES "transactions"("id"),
+                CONSTRAINT "FK_transactions_account" FOREIGN KEY ("account_id") 
+                    REFERENCES "accounts"("id") 
+                    ON DELETE RESTRICT 
+                    ON UPDATE CASCADE,
+                CONSTRAINT "FK_transactions_counterparty" FOREIGN KEY ("counterparty_account_id") 
+                    REFERENCES "accounts"("id") 
+                    ON DELETE RESTRICT 
+                    ON UPDATE CASCADE,
+                CONSTRAINT "FK_transactions_parent" FOREIGN KEY ("parent_transaction_id") 
+                    REFERENCES "transactions"("id") 
+                    ON DELETE RESTRICT 
+                    ON UPDATE CASCADE,
                 CONSTRAINT "CHK_amount_positive" CHECK ("amount" > 0)
             )
         `);

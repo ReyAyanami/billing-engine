@@ -49,14 +49,21 @@ export class Transaction {
   @Column({ name: 'account_id', type: 'uuid' })
   accountId: string;
 
-  @ManyToOne(() => Account, (account) => account.transactions)
+  @ManyToOne(() => Account, (account) => account.transactions, { 
+    onDelete: 'RESTRICT', 
+    onUpdate: 'CASCADE' 
+  })
   @JoinColumn({ name: 'account_id' })
   account: Account;
 
   @Column({ name: 'counterparty_account_id', type: 'uuid', nullable: true })
   counterpartyAccountId: string | null;
 
-  @ManyToOne(() => Account, { nullable: true })
+  @ManyToOne(() => Account, { 
+    nullable: true, 
+    onDelete: 'RESTRICT', 
+    onUpdate: 'CASCADE' 
+  })
   @JoinColumn({ name: 'counterparty_account_id' })
   counterpartyAccount: Account | null;
 
@@ -88,7 +95,11 @@ export class Transaction {
   @Column({ name: 'parent_transaction_id', type: 'uuid', nullable: true })
   parentTransactionId: string | null;
 
-  @ManyToOne(() => Transaction, { nullable: true })
+  @ManyToOne(() => Transaction, { 
+    nullable: true, 
+    onDelete: 'RESTRICT', 
+    onUpdate: 'CASCADE' 
+  })
   @JoinColumn({ name: 'parent_transaction_id' })
   parentTransaction: Transaction | null;
 

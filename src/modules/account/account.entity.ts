@@ -36,7 +36,7 @@ export class Account {
   @Column({ length: 10 })
   currency: string;
 
-  @ManyToOne(() => Currency)
+  @ManyToOne(() => Currency, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'currency', referencedColumnName: 'code' })
   currencyDetails: Currency;
 
