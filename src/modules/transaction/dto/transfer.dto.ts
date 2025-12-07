@@ -14,7 +14,7 @@ export class TransferDto {
     example: '770e8400-e29b-41d4-a716-446655440003',
     format: 'uuid'
   })
-  @IsUUID('4')
+  @IsUUID()
   @IsNotEmpty()
   idempotencyKey: string;
 
@@ -23,7 +23,7 @@ export class TransferDto {
     example: '123e4567-e89b-12d3-a456-426614174000',
     format: 'uuid'
   })
-  @IsUUID('4')
+  @IsUUID()
   @IsNotEmpty()
   sourceAccountId: string;
 
@@ -32,7 +32,7 @@ export class TransferDto {
     example: '456e7890-e89b-12d3-a456-426614174001',
     format: 'uuid'
   })
-  @IsUUID('4')
+  @IsUUID()
   @IsNotEmpty()
   destinationAccountId: string;
 

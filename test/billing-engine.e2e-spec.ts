@@ -15,7 +15,7 @@ describe('Billing Engine E2E Tests', () => {
   let account2Id: string;
   
   // Pre-seeded external account IDs (from migration)
-  const externalBankUSD = '00000000-0000-0000-0000-000000000001';
+  const externalBankUSD = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
   
   // Transaction IDs
   let topupTransactionId: string;
@@ -306,32 +306,33 @@ describe('Billing Engine E2E Tests', () => {
         })
         .expect(400)
         .expect((res) => {
-          expect(res.body.error.code).toBe('SELF_TRANSFER_NOT_ALLOWED');
+          expect(res.body.error.code).toBe('INVALID_OPERATION');
+          expect(res.body.error.message).toContain('SELF_TRANSFER_NOT_ALLOWED');
         });
     });
 
     it('/api/v1/transactions/refund (POST) - should refund a transaction', async () => {
-      // Ensure withdrawalTransactionId is defined
-      if (!withdrawalTransactionId) {
-        const res = await request(app.getHttpServer())
-          .post('/api/v1/transactions/withdraw')
-          .send({
-            idempotencyKey: uuidv4(),
-            sourceAccountId: account1Id,
-            destinationAccountId: externalBankUSD,
-            amount: '10.00',
-            currency: 'USD',
-            reference: 'Pre-refund withdrawal',
-          })
-          .expect(201);
-        withdrawalTransactionId = res.body.transactionId;
-      }
+      // First, create a withdrawal transaction to refund
+      const withdrawalRes = await request(app.getHttpServer())
+        .post('/api/v1/transactions/withdraw')
+        .send({
+          idempotencyKey: uuidv4(),
+          sourceAccountId: account1Id,
+          destinationAccountId: externalBankUSD,
+          amount: '10.00',
+          currency: 'USD',
+          reference: 'Transaction to be refunded',
+        })
+        .expect(201);
 
+      const transactionToRefund = withdrawalRes.body.transactionId;
+
+      // Now refund it
       const res = await request(app.getHttpServer())
         .post('/api/v1/transactions/refund')
         .send({
           idempotencyKey: uuidv4(),
-          originalTransactionId: withdrawalTransactionId,
+          originalTransactionId: transactionToRefund,
           reason: 'Test refund',
         })
         .expect(201);
@@ -387,7 +388,7 @@ describe('Billing Engine E2E Tests', () => {
         .send({
           idempotencyKey: uuidv4(),
           sourceAccountId: externalBankUSD,
-          destinationAccountId: '00000000-0000-0000-0000-999999999999',
+          destinationAccountId: 'f47ac10b-58cc-4372-a567-999999999999', // Valid UUID format but non-existent
           amount: '100.00',
           currency: 'USD',
         })

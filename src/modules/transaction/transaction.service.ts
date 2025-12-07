@@ -7,7 +7,7 @@ import {
   TransactionType,
   TransactionStatus,
 } from './transaction.entity';
-import { Account } from '../account/account.entity';
+import { Account, AccountType } from '../account/account.entity';
 import { AccountService } from '../account/account.service';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
@@ -370,9 +370,11 @@ export class TransactionService {
       await this.checkIdempotency(dto.idempotencyKey, manager);
 
       // Find original transaction
-      const originalTransaction = await manager.findOne(Transaction, {
-        where: { id: dto.originalTransactionId },
-      });
+      const originalTransaction = await manager
+        .getRepository(Transaction)
+        .createQueryBuilder('transaction')
+        .where('transaction.id = :id', { id: dto.originalTransactionId })
+        .getOne();
 
       if (!originalTransaction) {
         throw new TransactionNotFoundException(dto.originalTransactionId);
@@ -387,13 +389,29 @@ export class TransactionService {
         throw new RefundException('Can only refund completed transactions');
       }
 
-      // Determine refund amount
-      const refundAmount = dto.amount
-        ? new Decimal(dto.amount)
-        : new Decimal(originalTransaction.amount);
+      // Validate original transaction has required fields
+      if (!originalTransaction.amount) {
+        throw new RefundException(`Original transaction ${originalTransaction.id} has no amount`);
+      }
+      if (!originalTransaction.sourceAccountId) {
+        throw new RefundException(`Original transaction ${originalTransaction.id} has no sourceAccountId`);
+      }
+      if (!originalTransaction.destinationAccountId) {
+        throw new RefundException(`Original transaction ${originalTransaction.id} has no destinationAccountId`);
+      }
+
+      // Determine refund amount (convert to Decimal)
+      const originalAmount = new Decimal(originalTransaction.amount);
+      let refundAmount: Decimal;
+      
+      if (dto.amount !== undefined && dto.amount !== null && dto.amount !== '') {
+        refundAmount = new Decimal(dto.amount);
+      } else {
+        refundAmount = originalAmount;
+      }
 
       // Validate refund amount
-      if (refundAmount.greaterThan(originalTransaction.amount)) {
+      if (refundAmount.greaterThan(originalAmount)) {
         throw new RefundException('Refund amount cannot exceed original amount');
       }
 
@@ -415,14 +433,22 @@ export class TransactionService {
       this.accountService.validateAccountActive(sourceAccount);
       this.accountService.validateAccountActive(destAccount);
 
+      // Validate accounts have balance field
+      if (sourceAccount.balance === undefined || sourceAccount.balance === null) {
+        throw new RefundException(`Source account ${sourceAccount.id} has no balance`);
+      }
+      if (destAccount.balance === undefined || destAccount.balance === null) {
+        throw new RefundException(`Destination account ${destAccount.id} has no balance`);
+      }
+
       // Calculate balances
       const sourceBalanceBefore = new Decimal(sourceAccount.balance);
       const sourceBalanceAfter = sourceBalanceBefore.minus(refundAmount);
       const destBalanceBefore = new Decimal(destAccount.balance);
       const destBalanceAfter = destBalanceBefore.plus(refundAmount);
 
-      // Check sufficient balance for refund
-      if (sourceBalanceAfter.lessThan(0)) {
+      // Check sufficient balance for refund (only for user accounts, external can go negative)
+      if (sourceAccount.accountType === AccountType.USER && sourceBalanceAfter.lessThan(0)) {
         throw new InsufficientBalanceException(sourceAccount.id, sourceBalanceBefore.toString(), refundAmount.toString());
       }
 

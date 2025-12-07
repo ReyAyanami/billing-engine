@@ -135,15 +135,16 @@ export class InitialDoubleEntrySchema1765110800000 implements MigrationInterface
         `);
 
     // Seed system/external accounts for common use cases
+    // Using proper UUID v4 values (not nil UUIDs) for class-validator compatibility
     await queryRunner.query(`
             INSERT INTO "accounts" ("id", "owner_id", "owner_type", "account_type", "account_subtype", "currency", "balance", "status") VALUES
-            ('00000000-0000-0000-0000-000000000001', 'system', 'system', 'external', 'bank', 'USD', 0, 'active'),
-            ('00000000-0000-0000-0000-000000000002', 'system', 'system', 'external', 'bank', 'EUR', 0, 'active'),
-            ('00000000-0000-0000-0000-000000000003', 'system', 'system', 'external', 'bank', 'GBP', 0, 'active'),
-            ('00000000-0000-0000-0000-000000000004', 'system', 'system', 'external', 'crypto_wallet', 'BTC', 0, 'active'),
-            ('00000000-0000-0000-0000-000000000005', 'system', 'system', 'external', 'crypto_wallet', 'ETH', 0, 'active'),
-            ('00000000-0000-0000-0000-000000000006', 'system', 'system', 'system', 'fee_collection', 'USD', 0, 'active'),
-            ('00000000-0000-0000-0000-000000000007', 'system', 'system', 'system', 'reserve', 'USD', 0, 'active')
+            ('f47ac10b-58cc-4372-a567-0e02b2c3d479', 'system', 'system', 'external', 'bank', 'USD', 0, 'active'),
+            ('f47ac10b-58cc-4372-a567-0e02b2c3d480', 'system', 'system', 'external', 'bank', 'EUR', 0, 'active'),
+            ('f47ac10b-58cc-4372-a567-0e02b2c3d481', 'system', 'system', 'external', 'bank', 'GBP', 0, 'active'),
+            ('f47ac10b-58cc-4372-a567-0e02b2c3d482', 'system', 'system', 'external', 'crypto_wallet', 'BTC', 0, 'active'),
+            ('f47ac10b-58cc-4372-a567-0e02b2c3d483', 'system', 'system', 'external', 'crypto_wallet', 'ETH', 0, 'active'),
+            ('f47ac10b-58cc-4372-a567-0e02b2c3d484', 'system', 'system', 'system', 'fee_collection', 'USD', 0, 'active'),
+            ('f47ac10b-58cc-4372-a567-0e02b2c3d485', 'system', 'system', 'system', 'reserve', 'USD', 0, 'active')
         `);
   }
 
