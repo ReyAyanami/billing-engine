@@ -32,6 +32,11 @@ docs/
 - **[Data Model](../DATA_MODEL.md)** - Database schema and entities
 - **[Quick Start](../QUICK_START.md)** - Get up and running in 5 minutes
 
+### 🚀 Future Architecture
+- **[Async & Event Sourcing Analysis](./async-and-event-sourcing-analysis.md)** - Complete analysis of transformation
+- **[Implementation Roadmap](./IMPLEMENTATION_ROADMAP.md)** - 12-week implementation plan
+- **[ADR-0007: Kafka Event Sourcing](./adr/0007-async-event-sourcing-kafka.md)** - Architectural decision
+
 ### 🏗️ Architecture & Design
 - **[Pipeline Architecture](./PIPELINE_ARCHITECTURE.md)** - Transaction pipeline pattern
 - **[Double-Entry Design](./adr/0004-double-entry-design.md)** - Accounting system design
