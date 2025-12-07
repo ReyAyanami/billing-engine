@@ -7,11 +7,15 @@ import { CreateAccountCommand } from '../src/modules/account/commands/create-acc
 import { AccountType } from '../src/modules/account/account.entity';
 import { KafkaEventStore } from '../src/cqrs/kafka/kafka-event-store';
 import { AccountAggregate } from '../src/modules/account/aggregates/account.aggregate';
+import { EventPollingHelper } from './helpers/event-polling.helper';
 
 describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
+  jest.setTimeout(30000); // 30 seconds for Kafka operations
+  
   let app: INestApplication;
   let commandBus: CommandBus;
   let eventStore: KafkaEventStore;
+  let eventPolling: EventPollingHelper;
   let accountId: string;
 
   beforeAll(async () => {
@@ -24,6 +28,7 @@ describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
 
     commandBus = app.get<CommandBus>(CommandBus);
     eventStore = app.get<KafkaEventStore>(KafkaEventStore);
+    eventPolling = new EventPollingHelper(eventStore);
 
     // Wait a bit for Kafka to be fully connected
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -59,14 +64,14 @@ describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
 
       console.log('   ✅ Command executed successfully\n');
 
-      // Wait for event to be processed
+      // Wait for event to be persisted to Kafka (with polling)
       console.log('⏳ Step 2: Waiting for event to be persisted to Kafka...');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      console.log('   ✅ Event persisted\n');
-
-      // Retrieve events from Kafka
-      console.log('📥 Step 3: Retrieving events from Kafka...');
-      const events = await eventStore.getEvents('Account', accountId);
+      const events = await eventPolling.waitForEvents('Account', accountId, {
+        minEvents: 1,
+        maxRetries: 30,
+        retryDelayMs: 500,
+        timeoutMs: 20000,
+      });
 
       console.log(`   ✅ Retrieved ${events.length} event(s) from Kafka\n`);
 

@@ -11,6 +11,8 @@ import { AccountType } from '../src/modules/account/account.entity';
 import { TransactionStatus } from '../src/modules/transaction/transaction.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { Connection } from 'typeorm';
+import { KafkaEventStore } from '../src/cqrs/kafka/kafka-event-store';
+import { EventPollingHelper } from './helpers/event-polling.helper';
 
 describe('Week 3 - Complete Saga E2E Test', () => {
   jest.setTimeout(60000); // 60 seconds timeout for async saga operations
@@ -18,6 +20,8 @@ describe('Week 3 - Complete Saga E2E Test', () => {
   let commandBus: CommandBus;
   let queryBus: QueryBus;
   let connection: Connection;
+  let eventStore: KafkaEventStore;
+  let eventPolling: EventPollingHelper;
 
   let userAccountId: string;
   let systemAccountId: string;
@@ -35,10 +39,15 @@ describe('Week 3 - Complete Saga E2E Test', () => {
     commandBus = app.get(CommandBus);
     queryBus = app.get(QueryBus);
     connection = app.get(Connection);
+    eventStore = app.get(KafkaEventStore);
+    eventPolling = new EventPollingHelper(eventStore);
 
     // Clear projections before tests
     await connection.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
     await connection.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
+    
+    // Wait for Kafka to be ready
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   });
 
   afterAll(async () => {
@@ -71,10 +80,23 @@ describe('Week 3 - Complete Saga E2E Test', () => {
       console.log('     ✅ User account created');
 
       // Wait for event to be persisted to Kafka and projection to update
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-
-      // Verify account projection
-      const accountProjection = await queryBus.execute(new GetAccountQuery(userAccountId));
+      console.log('     ⏳ Waiting for account projection...');
+      const accountProjection = await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(userAccountId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.id === userAccountId,
+        {
+          maxRetries: 30,
+          retryDelayMs: 500,
+          timeoutMs: 20000,
+          description: `user account projection ${userAccountId}`,
+        },
+      );
       expect(accountProjection).toBeDefined();
       expect(accountProjection.id).toBe(userAccountId);
       expect(accountProjection.balance).toBe('0.00');
@@ -102,7 +124,48 @@ describe('Week 3 - Complete Saga E2E Test', () => {
       console.log('     ✅ System account created');
 
       // Wait for event to be persisted to Kafka and projection to update
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      console.log('     ⏳ Waiting for system account projection...');
+      await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(systemAccountId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.id === systemAccountId,
+        {
+          maxRetries: 30,
+          retryDelayMs: 500,
+          timeoutMs: 20000,
+          description: `system account projection ${systemAccountId}`,
+        },
+      );
+      console.log('     ✅ System account projection ready');
+    });
+    
+    it('should verify account events are in Kafka before topup', async () => {
+      console.log('\n📝 Step 2.5: Verifying account events in Kafka...');
+      
+      // Wait for user account events to be in Kafka
+      console.log('     ⏳ Waiting for user account events in Kafka...');
+      const userEvents = await eventPolling.waitForEvents('Account', userAccountId, {
+        minEvents: 1,
+        maxRetries: 30,
+        retryDelayMs: 500,
+        timeoutMs: 20000,
+      });
+      console.log(`     ✅ User account has ${userEvents.length} event(s) in Kafka`);
+      
+      // Wait for system account events to be in Kafka
+      console.log('     ⏳ Waiting for system account events in Kafka...');
+      const systemEvents = await eventPolling.waitForEvents('Account', systemAccountId, {
+        minEvents: 1,
+        maxRetries: 30,
+        retryDelayMs: 500,
+        timeoutMs: 20000,
+      });
+      console.log(`     ✅ System account has ${systemEvents.length} event(s) in Kafka`);
     });
 
     it('should execute topup saga and update projections', async () => {
@@ -129,6 +192,9 @@ describe('Week 3 - Complete Saga E2E Test', () => {
       const result = await commandBus.execute(topupCommand);
       expect(result).toBe(transactionId);
       console.log('     ✅ Topup command executed');
+      
+      // Give a moment for the initial TopupRequestedEvent to be published
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       console.log('\n⏳ Step 4: Waiting for saga to complete...');
       console.log('     - TopupRequestedEvent published');
@@ -138,13 +204,26 @@ describe('Week 3 - Complete Saga E2E Test', () => {
       console.log('     - Projections updating');
       
       // Wait for saga and projections to complete
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      console.log('     ✅ Wait complete');
+      console.log('     ⏳ Waiting for transaction projection to complete...');
+      const transactionProjection = await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetTransactionQuery(transactionId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.id === transactionId && proj.status === TransactionStatus.COMPLETED,
+        {
+          maxRetries: 60,
+          retryDelayMs: 500,
+          timeoutMs: 35000,
+          description: `transaction projection ${transactionId} to be COMPLETED`,
+        },
+      );
+      console.log('     ✅ Saga complete, projection ready');
 
       console.log('\n🔍 Step 5: Query transaction projection...');
-      const transactionProjection = await queryBus.execute(
-        new GetTransactionQuery(transactionId),
-      );
 
       expect(transactionProjection).toBeDefined();
       expect(transactionProjection.id).toBe(transactionId);

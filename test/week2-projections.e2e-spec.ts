@@ -9,12 +9,16 @@ import { GetAccountsByOwnerQuery } from '../src/modules/account/queries/get-acco
 import { AccountType } from '../src/modules/account/account.entity';
 import { AccountAggregate } from '../src/modules/account/aggregates/account.aggregate';
 import { KafkaEventStore } from '../src/cqrs/kafka/kafka-event-store';
+import { EventPollingHelper } from './helpers/event-polling.helper';
 
 describe('Week 2 - Projections E2E Test', () => {
+  jest.setTimeout(30000); // 30 seconds for Kafka operations
+  
   let app: INestApplication;
   let commandBus: CommandBus;
   let queryBus: QueryBus;
   let eventStore: KafkaEventStore;
+  let eventPolling: EventPollingHelper;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -27,6 +31,7 @@ describe('Week 2 - Projections E2E Test', () => {
     commandBus = app.get<CommandBus>(CommandBus);
     queryBus = app.get<QueryBus>(QueryBus);
     eventStore = app.get<KafkaEventStore>(KafkaEventStore);
+    eventPolling = new EventPollingHelper(eventStore);
 
     // Wait for Kafka to be ready
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -65,12 +70,25 @@ describe('Week 2 - Projections E2E Test', () => {
       console.log('   ✅ Command executed\n');
 
       console.log('⏳ Step 2: Waiting for event to be processed and projection updated...');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      console.log('   ✅ Wait complete\n');
+      const projection = await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(accountId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.id === accountId,
+        {
+          maxRetries: 30,
+          retryDelayMs: 500,
+          timeoutMs: 20000,
+          description: `account projection ${accountId}`,
+        },
+      );
+      console.log('   ✅ Projection ready\n');
 
       console.log('🔍 Step 3: Query projection (Read Side)...');
-      const query = new GetAccountQuery(accountId);
-      const projection = await queryBus.execute(query);
 
       console.log('   ✅ Projection retrieved\n');
 
@@ -129,9 +147,14 @@ describe('Week 2 - Projections E2E Test', () => {
     it('should verify event sourcing (reconstruct from events)', async () => {
       console.log('🔄 Step 5: Testing event sourcing (aggregate reconstruction)...');
 
-      // Get events from Kafka
+      // Get events from Kafka (with polling)
       console.log('   📥 Loading events from Kafka...');
-      const events = await eventStore.getEvents('Account', accountId);
+      const events = await eventPolling.waitForEvents('Account', accountId, {
+        minEvents: 1,
+        maxRetries: 30,
+        retryDelayMs: 500,
+        timeoutMs: 20000,
+      });
 
       console.log(`   ✅ Retrieved ${events.length} event(s)\n`);
 
