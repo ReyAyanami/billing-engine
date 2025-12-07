@@ -9,6 +9,7 @@ import { AuditModule } from '../audit/audit.module';
 
 // CQRS Components - Commands
 import { CreateAccountHandler } from './handlers/create-account.handler';
+import { UpdateBalanceHandler } from './handlers/update-balance.handler';
 
 // CQRS Components - Events
 import { AccountCreatedHandler } from './handlers/account-created.handler';
@@ -24,7 +25,7 @@ import { GetAccountsByOwnerHandler } from './queries/handlers/get-accounts-by-ow
 import { AccountProjection } from './projections/account-projection.entity';
 import { AccountProjectionService } from './projections/account-projection.service';
 
-const CommandHandlers = [CreateAccountHandler];
+const CommandHandlers = [CreateAccountHandler, UpdateBalanceHandler];
 const EventHandlers = [
   AccountCreatedHandler,
   BalanceChangedHandler,
