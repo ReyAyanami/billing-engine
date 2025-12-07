@@ -62,8 +62,7 @@ export class AccountAggregate extends AggregateRoot {
       params.accountType,
       params.currency,
       AccountStatus.ACTIVE,
-      params.maxBalance,
-      params.minBalance,
+      '0.00', // Initial balance
       {
         aggregateId: params.accountId,
         aggregateVersion: 1,
@@ -71,6 +70,8 @@ export class AccountAggregate extends AggregateRoot {
         causationId: params.causationId,
         metadata: params.metadata,
       },
+      params.maxBalance,
+      params.minBalance,
     );
 
     this.apply(event);
@@ -188,7 +189,6 @@ export class AccountAggregate extends AggregateRoot {
       changeAmount.toString(),
       params.changeType,
       params.reason,
-      params.transactionId,
       {
         aggregateId: this.aggregateId,
         aggregateVersion: this.version + 1,
@@ -196,6 +196,7 @@ export class AccountAggregate extends AggregateRoot {
         causationId: params.causationId,
         metadata: params.metadata,
       },
+      params.transactionId,
     );
 
     this.apply(event);
@@ -314,11 +315,6 @@ export class AccountAggregate extends AggregateRoot {
 
     // Create and apply the event
     const event = new AccountLimitsChangedEvent(
-      this.maxBalance?.toString(),
-      params.newMaxBalance,
-      this.minBalance?.toString(),
-      params.newMinBalance,
-      params.reason,
       {
         aggregateId: this.aggregateId,
         aggregateVersion: this.version + 1,
@@ -326,6 +322,11 @@ export class AccountAggregate extends AggregateRoot {
         causationId: params.causationId,
         metadata: params.metadata,
       },
+      this.maxBalance?.toString(),
+      params.newMaxBalance,
+      this.minBalance?.toString(),
+      params.newMinBalance,
+      params.reason,
     );
 
     this.apply(event);

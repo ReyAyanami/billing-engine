@@ -6,14 +6,16 @@ import { AccountType, AccountStatus } from '../account.entity';
  * This is the first event in an account's lifecycle.
  */
 export class AccountCreatedEvent extends DomainEvent {
+  public readonly maxBalance?: string;
+  public readonly minBalance?: string;
+
   constructor(
     public readonly ownerId: string,
     public readonly ownerType: string,
     public readonly accountType: AccountType,
     public readonly currency: string,
     public readonly status: AccountStatus,
-    public readonly maxBalance?: string,
-    public readonly minBalance?: string,
+    public readonly balance: string,
     props: {
       aggregateId: string;
       aggregateVersion: number;
@@ -21,11 +23,15 @@ export class AccountCreatedEvent extends DomainEvent {
       causationId?: string;
       metadata?: Record<string, any>;
     },
+    maxBalance?: string,
+    minBalance?: string,
   ) {
     super({
       ...props,
       aggregateType: 'Account',
     });
+    this.maxBalance = maxBalance;
+    this.minBalance = minBalance;
   }
 
   getEventType(): string {
@@ -39,6 +45,7 @@ export class AccountCreatedEvent extends DomainEvent {
       accountType: this.accountType,
       currency: this.currency,
       status: this.status,
+      balance: this.balance,
       maxBalance: this.maxBalance,
       minBalance: this.minBalance,
     };

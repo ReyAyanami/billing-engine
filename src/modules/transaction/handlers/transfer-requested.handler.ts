@@ -70,6 +70,11 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
       // Step 3: Complete the transaction
       this.logger.log(`   ⚙️  Step 3: Completing transaction...`);
       
+      // At this point, sourceNewBalance is guaranteed to be defined
+      if (!sourceNewBalance) {
+        throw new Error('Source balance update failed');
+      }
+      
       const completeCommand = new CompleteTransferCommand(
         event.aggregateId,
         sourceNewBalance,

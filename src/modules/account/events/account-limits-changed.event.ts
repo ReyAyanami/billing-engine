@@ -5,12 +5,13 @@ import { DomainEvent } from '../../../cqrs/base/domain-event';
  * This happens when max or min balance constraints are updated.
  */
 export class AccountLimitsChangedEvent extends DomainEvent {
+  public readonly previousMaxBalance?: string;
+  public readonly newMaxBalance?: string;
+  public readonly previousMinBalance?: string;
+  public readonly newMinBalance?: string;
+  public readonly reason?: string;
+
   constructor(
-    public readonly previousMaxBalance?: string,
-    public readonly newMaxBalance?: string,
-    public readonly previousMinBalance?: string,
-    public readonly newMinBalance?: string,
-    public readonly reason?: string,
     props: {
       aggregateId: string;
       aggregateVersion: number;
@@ -18,11 +19,21 @@ export class AccountLimitsChangedEvent extends DomainEvent {
       causationId?: string;
       metadata?: Record<string, any>;
     },
+    previousMaxBalance?: string,
+    newMaxBalance?: string,
+    previousMinBalance?: string,
+    newMinBalance?: string,
+    reason?: string,
   ) {
     super({
       ...props,
       aggregateType: 'Account',
     });
+    this.previousMaxBalance = previousMaxBalance;
+    this.newMaxBalance = newMaxBalance;
+    this.previousMinBalance = previousMinBalance;
+    this.newMinBalance = newMinBalance;
+    this.reason = reason;
   }
 
   getEventType(): string {

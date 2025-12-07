@@ -2,7 +2,7 @@ import { CommandHandler, ICommandHandler, EventBus } from '@nestjs/cqrs';
 import { Inject, Logger } from '@nestjs/common';
 import { CompleteTransferCommand } from '../commands/complete-transfer.command';
 import { TransactionAggregate } from '../aggregates/transaction.aggregate';
-import { IEventStore } from '../../../cqrs/interfaces/event-store.interface';
+import type { IEventStore } from '../../../cqrs/interfaces/event-store.interface';
 
 /**
  * Handler for CompleteTransferCommand.

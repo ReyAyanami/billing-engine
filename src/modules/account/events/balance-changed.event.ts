@@ -5,13 +5,14 @@ import { DomainEvent } from '../../../cqrs/base/domain-event';
  * This is emitted for all balance modifications (topup, withdrawal, transfer, etc.)
  */
 export class BalanceChangedEvent extends DomainEvent {
+  public readonly transactionId?: string;
+
   constructor(
     public readonly previousBalance: string,
     public readonly newBalance: string,
     public readonly changeAmount: string,
     public readonly changeType: 'CREDIT' | 'DEBIT',
     public readonly reason: string,
-    public readonly transactionId?: string,
     props: {
       aggregateId: string;
       aggregateVersion: number;
@@ -19,11 +20,13 @@ export class BalanceChangedEvent extends DomainEvent {
       causationId?: string;
       metadata?: Record<string, any>;
     },
+    transactionId?: string,
   ) {
     super({
       ...props,
       aggregateType: 'Account',
     });
+    this.transactionId = transactionId;
   }
 
   getEventType(): string {

@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../src/app.module';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { CreateAccountCommand } from '../src/modules/account/commands/create-account.command';
+import { TopupCommand } from '../src/modules/transaction/commands/topup.command';
 import { WithdrawalCommand } from '../src/modules/transaction/commands/withdrawal.command';
 import { TransferCommand } from '../src/modules/transaction/commands/transfer.command';
 import { GetTransactionQuery } from '../src/modules/transaction/queries/get-transaction.query';
@@ -189,9 +190,6 @@ describe('Week 4 - Withdrawal & Transfer Sagas E2E Test', () => {
     it('should fund user account 1 for withdrawal test', async () => {
       console.log('\n📝 Setup Step 4: Fund user account 1 with 5000 USD...');
 
-      // We'll use the old TransactionService for setup (simpler)
-      const transactionService = app.get('TransactionService');
-      
       // Create a system account for topup source
       const topupSourceId = uuidv4();
       const createTopupSource = new CreateAccountCommand(
@@ -206,23 +204,55 @@ describe('Week 4 - Withdrawal & Transfer Sagas E2E Test', () => {
       );
       await commandBus.execute(createTopupSource);
       
-      // Wait for it
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Wait for projection
+      console.log('     ⏳ Waiting for topup source account...');
+      await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(topupSourceId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.id === topupSourceId,
+        {
+          maxRetries: 30,
+          retryDelayMs: 500,
+          timeoutMs: 20000,
+          description: `topup source account projection ${topupSourceId}`,
+        },
+      );
 
-      // Topup via old service (for test setup)
-      await transactionService.topup({
-        accountId: userAccount1Id,
-        amount: '5000.00',
-        currency: 'USD',
-        sourceAccountId: topupSourceId,
-        idempotencyKey: uuidv4(),
-        metadata: { purpose: 'test-setup' },
-      });
+      // Topup via CQRS command
+      const topupTransactionId = uuidv4();
+      const topupCommand = new TopupCommand(
+        topupTransactionId,
+        '5000.00',
+        'USD',
+        userAccount1Id,
+        uuidv4(),
+        correlationId,
+      );
+      await commandBus.execute(topupCommand);
 
       console.log('     ⏳ Waiting for balance update...');
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const accountProjection = await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(userAccount1Id));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.balance === '5000.00',
+        {
+          maxRetries: 60,
+          retryDelayMs: 500,
+          timeoutMs: 35000,
+          description: `user account 1 balance to be 5000`,
+        },
+      );
 
-      const accountProjection = await queryBus.execute(new GetAccountQuery(userAccount1Id));
       expect(accountProjection.balance).toBe('5000.00');
       console.log(`     ✅ Account funded (balance: ${accountProjection.balance})`);
     });
