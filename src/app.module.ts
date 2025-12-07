@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { getDatabaseConfig } from './config/database.config';
 import { AccountModule } from './modules/account/account.module';
 import { TransactionModule } from './modules/transaction/transaction.module';
@@ -23,9 +21,8 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     CurrencyModule,
     AuditModule,
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
-    AppService,
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
