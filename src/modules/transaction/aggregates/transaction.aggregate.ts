@@ -5,6 +5,10 @@ import { WithdrawalRequestedEvent } from '../events/withdrawal-requested.event';
 import { WithdrawalCompletedEvent } from '../events/withdrawal-completed.event';
 import { TransferRequestedEvent } from '../events/transfer-requested.event';
 import { TransferCompletedEvent } from '../events/transfer-completed.event';
+import { PaymentRequestedEvent } from '../events/payment-requested.event';
+import { PaymentCompletedEvent } from '../events/payment-completed.event';
+import { RefundRequestedEvent } from '../events/refund-requested.event';
+import { RefundCompletedEvent } from '../events/refund-completed.event';
 import { TransactionFailedEvent } from '../events/transaction-failed.event';
 import { TransactionCompensatedEvent } from '../events/transaction-compensated.event';
 
@@ -405,8 +409,6 @@ export class TransactionAggregate extends AggregateRoot {
       throw new Error('Customer and merchant accounts must be different');
     }
 
-    const PaymentRequestedEvent =
-      require('../events/payment-requested.event').PaymentRequestedEvent;
     const event = new PaymentRequestedEvent(
       params.customerAccountId,
       params.merchantAccountId,
@@ -453,8 +455,6 @@ export class TransactionAggregate extends AggregateRoot {
   }): void {
     this.validateCanComplete();
 
-    const PaymentCompletedEvent =
-      require('../events/payment-completed.event').PaymentCompletedEvent;
     const event = new PaymentCompletedEvent(
       this.aggregateId,
       params.customerNewBalance,
@@ -521,8 +521,6 @@ export class TransactionAggregate extends AggregateRoot {
       throw new Error('Merchant and customer accounts must be different');
     }
 
-    const RefundRequestedEvent =
-      require('../events/refund-requested.event').RefundRequestedEvent;
     const event = new RefundRequestedEvent(
       params.originalPaymentId,
       params.merchantAccountId,
@@ -570,8 +568,6 @@ export class TransactionAggregate extends AggregateRoot {
   }): void {
     this.validateCanComplete();
 
-    const RefundCompletedEvent =
-      require('../events/refund-completed.event').RefundCompletedEvent;
     const event = new RefundCompletedEvent(
       this.aggregateId,
       params.merchantNewBalance,
