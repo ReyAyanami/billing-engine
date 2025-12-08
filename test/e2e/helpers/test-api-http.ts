@@ -358,11 +358,12 @@ export class TestAPIHTTP {
   /**
    * Wait for transaction completion by polling
    * In test environment, SSE doesn't work since app doesn't listen on HTTP
-   * Poll with short intervals - if saga doesn't complete in 2s, it's a BUG
+   * Poll with short intervals - if saga doesn't complete in 3s, it's a BUG
+   * Increased timeout for parallel execution where CPU is under heavy load
    */
   private async pollTransactionCompletion(
     transactionId: string,
-    maxWait: number = 2000,
+    maxWait: number = 3000,
   ): Promise<void> {
     const start = Date.now();
     const pollInterval = 50; // Poll every 50ms

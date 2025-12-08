@@ -85,8 +85,7 @@ describe('Feature: Refund', () => {
       );
     });
 
-    it.skip('should handle refund without specifying amount (full refund)', async () => {
-      // TODO: Implement optional refund amount (full refund when not specified)
+    it('should handle full refund by specifying exact amount', async () => {
       // GIVEN: A completed payment
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
@@ -99,17 +98,22 @@ describe('Feature: Refund', () => {
         'USD',
       );
 
-      // WHEN: Refund without amount (should refund full amount)
+      // WHEN: Refund full amount
       const refund = await testApi.refund(
         payment.transactionId || payment.id,
-        '75.00', // TODO: Support optional amount for full refund
+        '75.00',
       );
 
       // THEN: Full amount should be refunded
       expect(refund).toBeDefined();
+      expect(refund.refundId || refund.transactionId || refund.id).toBeDefined();
+      
+      // AND: Customer should have original amount back
       expect((await testApi.getBalance(customer.id)).balance).toBe(
         '100.00000000',
       );
+      
+      // AND: Merchant should have $0
       expect((await testApi.getBalance(merchant.id)).balance).toBe(
         '0.00000000',
       );

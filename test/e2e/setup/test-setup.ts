@@ -98,8 +98,8 @@ export class TestSetup {
    */
   async beforeEach(): Promise<void> {
     // Wait for any pending async operations (sagas, event handlers)
-    // Slightly longer in parallel mode to avoid race conditions
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Longer delay for parallel mode where multiple workers compete for CPU
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Clean database for test isolation
     await this.cleanDatabase();
@@ -111,7 +111,8 @@ export class TestSetup {
    */
   async afterEach(): Promise<void> {
     // Wait for async event processing to complete
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Longer delay ensures all sagas finish before next test
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   /**
