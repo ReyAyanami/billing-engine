@@ -17,33 +17,33 @@ import { TransactionType, TransactionStatus } from '../transaction.entity';
 @Entity('transaction_projections')
 export class TransactionProjection {
   @PrimaryColumn('uuid')
-  id!: string;
+  readonly id!: string;
 
   @Column({ type: 'enum', enum: TransactionType })
   @Index()
-  type!: TransactionType;
+  readonly type!: TransactionType;
 
   @Column({ type: 'enum', enum: TransactionStatus })
   @Index()
   status!: TransactionStatus;
 
   @Column({ type: 'numeric', precision: 20, scale: 2 })
-  amount!: string;
+  readonly amount!: string;
 
   @Column({ length: 3 })
-  currency!: string;
+  readonly currency!: string;
 
   @Column({ name: 'source_account_id', type: 'uuid', nullable: true })
   @Index()
-  sourceAccountId?: string;
+  readonly sourceAccountId?: string;
 
   @Column({ name: 'destination_account_id', type: 'uuid', nullable: true })
   @Index()
-  destinationAccountId?: string;
+  readonly destinationAccountId?: string;
 
   @Column({ name: 'idempotency_key', length: 255, unique: true })
   @Index()
-  idempotencyKey!: string;
+  readonly idempotencyKey!: string;
 
   @Column({ name: 'correlation_id', type: 'uuid', nullable: true })
   @Index()
@@ -75,7 +75,7 @@ export class TransactionProjection {
 
   @CreateDateColumn({ name: 'requested_at' })
   @Index()
-  requestedAt!: Date;
+  readonly requestedAt!: Date;
 
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt?: Date;

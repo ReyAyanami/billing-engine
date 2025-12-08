@@ -23,19 +23,19 @@ import { AccountType, AccountStatus } from '../account.entity';
 @Index(['accountType'])
 export class AccountProjection {
   @PrimaryColumn('uuid')
-  id!: string;
+  readonly id!: string;
 
   @Column({ name: 'owner_id', type: 'varchar', length: 255 })
-  ownerId!: string;
+  readonly ownerId!: string;
 
   @Column({ name: 'owner_type', type: 'varchar', length: 50 })
-  ownerType!: string;
+  readonly ownerType!: string;
 
   @Column({ name: 'account_type', type: 'enum', enum: AccountType })
-  accountType!: AccountType;
+  readonly accountType!: AccountType;
 
   @Column({ type: 'varchar', length: 3 })
-  currency!: string;
+  readonly currency!: string;
 
   @Column({ type: 'enum', enum: AccountStatus })
   status!: AccountStatus;
@@ -62,10 +62,10 @@ export class AccountProjection {
   minBalance!: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  readonly createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
+  readonly updatedAt!: Date;
 
   /**
    * Event sourcing metadata

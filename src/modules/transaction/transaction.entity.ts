@@ -37,19 +37,19 @@ export enum TransactionStatus {
 @Index(['parentTransactionId'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  readonly id!: string;
 
   @Column({ name: 'idempotency_key', type: 'uuid', unique: true })
-  idempotencyKey!: string;
+  readonly idempotencyKey!: string;
 
   @Column({
     type: 'enum',
     enum: TransactionType,
   })
-  type!: TransactionType;
+  readonly type!: TransactionType;
 
   @Column({ name: 'source_account_id', type: 'uuid' })
-  sourceAccountId!: string;
+  readonly sourceAccountId!: string;
 
   @ManyToOne(() => Account, {
     onDelete: 'RESTRICT',
@@ -59,7 +59,7 @@ export class Transaction {
   sourceAccount!: Account;
 
   @Column({ name: 'destination_account_id', type: 'uuid' })
-  destinationAccountId!: string;
+  readonly destinationAccountId!: string;
 
   @ManyToOne(() => Account, {
     onDelete: 'RESTRICT',
@@ -69,10 +69,10 @@ export class Transaction {
   destinationAccount!: Account;
 
   @Column({ type: 'decimal', precision: 20, scale: 8 })
-  amount!: string;
+  readonly amount!: string;
 
   @Column({ length: 10 })
-  currency!: string;
+  readonly currency!: string;
 
   @Column({
     name: 'source_balance_before',
@@ -131,7 +131,7 @@ export class Transaction {
   parentTransaction!: Transaction | null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  readonly createdAt!: Date;
 
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt!: Date | null;

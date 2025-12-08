@@ -30,13 +30,13 @@ export enum AccountType {
 @Index(['createdAt'])
 export class Account {
   @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  readonly id!: string;
 
   @Column({ name: 'owner_id', length: 255 })
-  ownerId!: string;
+  readonly ownerId!: string;
 
   @Column({ name: 'owner_type', length: 50 })
-  ownerType!: string;
+  readonly ownerType!: string;
 
   @Column({
     name: 'account_type',
@@ -44,7 +44,7 @@ export class Account {
     enum: AccountType,
     default: AccountType.USER,
   })
-  accountType!: AccountType;
+  readonly accountType!: AccountType;
 
   @Column({
     name: 'account_subtype',
@@ -53,10 +53,10 @@ export class Account {
     nullable: true,
     default: null,
   })
-  accountSubtype?: string;
+  readonly accountSubtype?: string;
 
   @Column({ length: 10 })
-  currency!: string;
+  readonly currency!: string;
 
   @ManyToOne(() => Currency, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'currency', referencedColumnName: 'code' })
@@ -99,8 +99,8 @@ export class Account {
   version!: number;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  readonly createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
+  readonly updatedAt!: Date;
 }
