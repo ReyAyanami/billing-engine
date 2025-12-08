@@ -8,7 +8,7 @@ import {
   TransactionType,
   TransactionStatus,
 } from './transaction.entity';
-import { Account, AccountType } from '../account/account.entity';
+import { Account } from '../account/account.entity';
 import { AccountService } from '../account/account.service';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
@@ -35,7 +35,6 @@ import Decimal from 'decimal.js';
 import { TopupCommand } from './commands/topup.command';
 import { WithdrawalCommand } from './commands/withdrawal.command';
 import { TransferCommand } from './commands/transfer.command';
-import { PaymentCommand } from './commands/payment.command';
 import { RefundCommand } from './commands/refund.command';
 
 @Injectable()
@@ -79,16 +78,16 @@ export class TransactionService {
     const transactionId = uuidv4();
 
     // Execute CQRS command
-    const command = new TopupCommand(
+    const command = new TopupCommand({
       transactionId,
-      dto.destinationAccountId,
-      dto.amount,
-      dto.currency,
-      dto.sourceAccountId,
-      dto.idempotencyKey,
-      context.correlationId,
-      context.actorId,
-    );
+      accountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      sourceAccountId: dto.sourceAccountId,
+      idempotencyKey: dto.idempotencyKey,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
 
     await this.commandBus.execute(command);
 
@@ -166,16 +165,16 @@ export class TransactionService {
     const transactionId = uuidv4();
 
     // Execute CQRS command
-    const command = new WithdrawalCommand(
+    const command = new WithdrawalCommand({
       transactionId,
-      dto.sourceAccountId, // accountId (user account to withdraw from)
-      dto.amount, // amount
-      dto.currency, // currency
-      dto.destinationAccountId, // destinationAccountId (external account)
-      dto.idempotencyKey,
-      context.correlationId,
-      context.actorId,
-    );
+      accountId: dto.sourceAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      destinationAccountId: dto.destinationAccountId,
+      idempotencyKey: dto.idempotencyKey,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
 
     await this.commandBus.execute(command);
 
@@ -262,16 +261,16 @@ export class TransactionService {
     const transactionId = uuidv4();
 
     // Execute CQRS command
-    const command = new TransferCommand(
+    const command = new TransferCommand({
       transactionId,
-      dto.sourceAccountId,
-      dto.destinationAccountId,
-      dto.amount,
-      dto.currency,
-      dto.idempotencyKey,
-      context.correlationId,
-      context.actorId,
-    );
+      sourceAccountId: dto.sourceAccountId,
+      destinationAccountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      idempotencyKey: dto.idempotencyKey,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
 
     await this.commandBus.execute(command);
 
@@ -349,20 +348,20 @@ export class TransactionService {
     const transactionId = uuidv4();
 
     // Execute CQRS command
-    const command = new RefundCommand(
-      transactionId,
-      dto.originalTransactionId,
-      refundAmount.toString(),
-      originalTransaction.currency,
-      dto.idempotencyKey,
-      {
+    const command = new RefundCommand({
+      refundId: transactionId,
+      originalPaymentId: dto.originalTransactionId,
+      refundAmount: refundAmount.toString(),
+      currency: originalTransaction.currency,
+      idempotencyKey: dto.idempotencyKey,
+      refundMetadata: {
         reason: dto.reason,
         refundType: refundAmount.equals(originalAmount) ? 'full' : 'partial',
         ...dto.metadata,
       },
-      context.correlationId,
-      context.actorId,
-    );
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
 
     await this.commandBus.execute(command);
 
@@ -506,7 +505,7 @@ export class TransactionService {
 
       if (newBalance.greaterThan(maxBalance)) {
         throw new InvalidOperationException(
-          `MAX_BALANCE_EXCEEDED: Account ${account.id} would exceed maximum balance of ${maxBalance}`,
+          `MAX_BALANCE_EXCEEDED: Account ${account.id} would exceed maximum balance of ${maxBalance.toString()}`,
         );
       }
     }
@@ -521,7 +520,7 @@ export class TransactionService {
 
       if (newBalance.lessThan(minBalance)) {
         throw new InvalidOperationException(
-          `MIN_BALANCE_REQUIRED: Account ${account.id} requires minimum balance of ${minBalance}`,
+          `MIN_BALANCE_REQUIRED: Account ${account.id} requires minimum balance of ${minBalance.toString()}`,
         );
       }
     }

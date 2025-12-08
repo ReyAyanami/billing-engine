@@ -37,28 +37,28 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
 
     try {
       // Step 1: DEBIT the source account
-      const debitCommand = new UpdateBalanceCommand(
-        event.sourceAccountId,
-        event.amount,
-        'DEBIT',
-        `Transfer to ${event.destinationAccountId} (tx: ${event.aggregateId})`,
-        event.aggregateId,
-        event.correlationId,
-        event.metadata?.actorId,
-      );
+      const debitCommand = new UpdateBalanceCommand({
+        accountId: event.sourceAccountId,
+        changeAmount: event.amount,
+        changeType: 'DEBIT',
+        reason: `Transfer to ${event.destinationAccountId} (tx: ${event.aggregateId})`,
+        transactionId: event.aggregateId,
+        correlationId: event.correlationId,
+        actorId: event.metadata?.actorId,
+      });
 
       sourceNewBalance = await this.commandBus.execute(debitCommand);
 
       // Step 2: CREDIT the destination account
-      const creditCommand = new UpdateBalanceCommand(
-        event.destinationAccountId,
-        event.amount,
-        'CREDIT',
-        `Transfer from ${event.sourceAccountId} (tx: ${event.aggregateId})`,
-        event.aggregateId,
-        event.correlationId,
-        event.metadata?.actorId,
-      );
+      const creditCommand = new UpdateBalanceCommand({
+        accountId: event.destinationAccountId,
+        changeAmount: event.amount,
+        changeType: 'CREDIT',
+        reason: `Transfer from ${event.sourceAccountId} (tx: ${event.aggregateId})`,
+        transactionId: event.aggregateId,
+        correlationId: event.correlationId,
+        actorId: event.metadata?.actorId,
+      });
 
       const destinationNewBalance =
         await this.commandBus.execute(creditCommand);
@@ -84,31 +84,35 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
     } catch (error) {
       // Step 4 (on failure): Compensate and fail the transaction
       const failureStep = sourceNewBalance ? 'credit_destination' : 'debit_source';
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      const errorCode = (error as any)?.code as string | undefined;
+      
       this.logger.error(
         `SAGA: Transfer failed [txId=${event.aggregateId}, corr=${event.correlationId}, step=${failureStep}]`,
-        error.stack,
+        errorStack,
       );
 
       // Check if we need compensation (source was debited)
       if (sourceNewBalance) {
         try {
           // COMPENSATION: Credit back the source account
-          const compensateUpdateCommand = new UpdateBalanceCommand(
-            event.sourceAccountId,
-            event.amount,
-            'CREDIT', // Reverse the DEBIT
-            `Compensation for failed transfer ${event.aggregateId}`,
-            event.aggregateId,
-            event.correlationId,
-            event.metadata?.actorId,
-          );
+          const compensateUpdateCommand = new UpdateBalanceCommand({
+            accountId: event.sourceAccountId,
+            changeAmount: event.amount,
+            changeType: 'CREDIT', // Reverse the DEBIT
+            reason: `Compensation for failed transfer ${event.aggregateId}`,
+            transactionId: event.aggregateId,
+            correlationId: event.correlationId,
+            actorId: event.metadata?.actorId,
+          });
 
           await this.commandBus.execute(compensateUpdateCommand);
 
           // Mark transaction as compensated
           const compensateCommand = new CompensateTransactionCommand(
             event.aggregateId,
-            `Transfer failed after source debit: ${error.message}`,
+            `Transfer failed after source debit: ${errorMessage}`,
             [
               {
                 accountId: event.sourceAccountId,
@@ -127,24 +131,26 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
             `SAGA: Transfer compensated [txId=${event.aggregateId}, corr=${event.correlationId}]`,
           );
         } catch (compensationError) {
+          const compErrorStack = compensationError instanceof Error ? compensationError.stack : undefined;
           this.logger.error(
             `SAGA: COMPENSATION FAILED - MANUAL INTERVENTION REQUIRED [txId=${event.aggregateId}, corr=${event.correlationId}]`,
-            compensationError.stack,
+            compErrorStack,
           );
           // Still try to mark as failed
           try {
             const failCommand = new FailTransactionCommand(
               event.aggregateId,
-              `Transfer failed and compensation also failed: ${error.message}`,
+              `Transfer failed and compensation also failed: ${errorMessage}`,
               'COMPENSATION_FAILED',
               event.correlationId,
               event.metadata?.actorId,
             );
             await this.commandBus.execute(failCommand);
           } catch (failError) {
+            const failErrorStack = failError instanceof Error ? failError.stack : undefined;
             this.logger.error(
               `SAGA: Failed to mark as failed [txId=${event.aggregateId}]`,
-              failError.stack,
+              failErrorStack,
             );
           }
         }
@@ -153,17 +159,18 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
         try {
           const failCommand = new FailTransactionCommand(
             event.aggregateId,
-            error.message,
-            error.code || 'TRANSFER_FAILED',
+            errorMessage,
+            errorCode || 'TRANSFER_FAILED',
             event.correlationId,
             event.metadata?.actorId,
           );
 
           await this.commandBus.execute(failCommand);
         } catch (failError) {
+          const failErrorStack = failError instanceof Error ? failError.stack : undefined;
           this.logger.error(
             `SAGA: Failed to mark transaction as failed [txId=${event.aggregateId}]`,
-            failError.stack,
+            failErrorStack,
           );
         }
       }

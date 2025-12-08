@@ -2,8 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
 import { CommandBus } from '@nestjs/cqrs';
-import { v4 as uuidv4 } from 'uuid';
-import { Account, AccountStatus, AccountType } from './account.entity';
+import { Account, AccountStatus } from './account.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { CreateAccountCommand } from './commands/create-account.command';
 import {
@@ -52,17 +51,17 @@ export class AccountService {
 
     // ALSO save to event store for CQRS sagas
     // This ensures sagas can find the account
-    const command = new CreateAccountCommand(
-      savedAccount.id,
-      savedAccount.ownerId,
-      savedAccount.ownerType,
-      savedAccount.accountType,
-      savedAccount.currency,
-      savedAccount.maxBalance || undefined,
-      savedAccount.minBalance || undefined,
-      context.correlationId,
-      context.actorId,
-    );
+    const command = new CreateAccountCommand({
+      accountId: savedAccount.id,
+      ownerId: savedAccount.ownerId,
+      ownerType: savedAccount.ownerType,
+      accountType: savedAccount.accountType,
+      currency: savedAccount.currency,
+      maxBalance: savedAccount.maxBalance || undefined,
+      minBalance: savedAccount.minBalance || undefined,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
 
     try {
       await this.commandBus.execute(command);
@@ -71,8 +70,8 @@ export class AccountService {
       // (Hybrid architecture: HTTP works even if CQRS fails)
       this.logger.warn(
         `CQRS command failed (non-fatal) [accountId=${savedAccount.id}, ` +
-        `ownerId=${savedAccount.ownerId}, correlationId=${context.correlationId}]`,
-        error.stack,
+          `ownerId=${savedAccount.ownerId}, correlationId=${context.correlationId}]`,
+        error instanceof Error ? error.stack : String(error),
       );
     }
 
