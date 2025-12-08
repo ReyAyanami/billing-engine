@@ -38,7 +38,10 @@
     "noUnusedLocals": true,             // Flag unused local variables
     "noUnusedParameters": true,         // Flag unused parameters
     "noUncheckedIndexedAccess": true    // Array/object access returns T | undefined
-    // TODO: Enable after fixing bracket notation (see TYPE_SAFETY_ROADMAP.md):
-    // "noPropertyAccessFromIndexSignature": true // Require bracket notation (~20 fixes needed)
+    // TODO Phase 1.3: Enable noPropertyAccessFromIndexSignature (68 fixes needed)
+    // "noPropertyAccessFromIndexSignature": true // Require bracket notation for index signatures
+    // This requires changing metadata.actorId to metadata["actorId"] in 68 locations
+    // Primarily affects: runtime-validators.ts, metadata.types.ts, event handlers
+    // Lower priority - code style preference rather than critical safety feature
   }
 }

@@ -107,11 +107,11 @@ export function isError(value: unknown): value is Error {
 }
 
 export function hasErrorCode(value: unknown): value is { code: string } {
-  return isObject(value) && 'code' in value && isString(value.code);
+  return isObject(value) && 'code' in value && isString(value['code']);
 }
 
 export function hasErrorMessage(value: unknown): value is { message: string } {
-  return isObject(value) && 'message' in value && isString(value.message);
+  return isObject(value) && 'message' in value && isString(value['message']);
 }
 
 /**
