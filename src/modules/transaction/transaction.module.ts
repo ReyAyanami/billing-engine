@@ -7,7 +7,6 @@ import { TransactionController } from './transaction.controller';
 import { AccountModule } from '../account/account.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { AuditModule } from '../audit/audit.module';
-import { PipelineModule } from './pipeline/pipeline.module';
 
 // CQRS Components - Commands
 import { TopupHandler } from './handlers/topup.handler';
@@ -124,7 +123,6 @@ const QueryHandlers = [
     AccountModule,
     CurrencyModule,
     AuditModule,
-    PipelineModule, // Pipeline-based transaction processing
   ],
   controllers: [TransactionController],
   providers: [

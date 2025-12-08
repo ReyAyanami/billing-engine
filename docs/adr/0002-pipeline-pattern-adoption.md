@@ -1,4 +1,4 @@
-# ADR-0002: Transaction Pipeline Pattern Adoption
+# ADR-0002: Transaction Pipeline Pattern Adoption [DEPRECATED - Replaced by CQRS/Event Sourcing]
 
 **Status**: Accepted  
 **Date**: 2025-12-07  
