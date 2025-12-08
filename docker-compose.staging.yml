@@ -1,11 +1,11 @@
-# Docker Compose - Local Development Environment
-# Starts only infrastructure needed for development
-# Run your app locally with: npm run dev
+# Docker Compose - Staging/Production Environment
+# Full stack deployment including the application
+# Use: docker-compose -f docker-compose.staging.yml up
 
 version: '3.8'
 
 services:
-  # PostgreSQL - Always needed
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: billing_db
@@ -23,8 +23,9 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
 
-  # Single Kafka broker with KRaft (no Zookeeper!)
+  # Kafka Event Streaming
   kafka:
     image: apache/kafka:3.7.0
     container_name: billing_kafka
@@ -35,7 +36,7 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
@@ -44,10 +45,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_NUM_PARTITIONS: 3
-      # Simpler limits for local dev
       KAFKA_MESSAGE_MAX_BYTES: 1048576
-      KAFKA_LOG_RETENTION_HOURS: 24
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_LOG_RETENTION_HOURS: 168  # 7 days for production
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'  # Explicit topic creation in prod
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
@@ -56,8 +56,9 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    restart: unless-stopped
 
-  # Init container - Sets up Kafka topics and runs migrations
+  # Init Container - Setup
   init:
     image: node:18-alpine
     container_name: billing_init
@@ -74,7 +75,7 @@ services:
       DB_PASSWORD: postgres
       DB_DATABASE: billing_engine
       DB_SSL: false
-      NODE_ENV: development
+      NODE_ENV: production
       KAFKA_BROKERS: kafka:9092
     volumes:
       - ./package*.json:/app/
@@ -83,9 +84,46 @@ services:
       - ./src:/app/src
       - ./scripts/init-services.sh:/app/init-services.sh
       - init_node_modules:/app/node_modules
-      - /var/run/docker.sock:/var/run/docker.sock  # Allow docker commands
+      - /var/run/docker.sock:/var/run/docker.sock
     command: /bin/sh -c "chmod +x /app/init-services.sh && /app/init-services.sh"
     restart: "no"
+
+  # Billing Engine Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: billing_app
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: billing_engine
+      DB_SSL: false
+      PORT: 3000
+      NODE_ENV: production
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   # Optional: Kafka UI for debugging
   kafka-ui:
@@ -95,15 +133,14 @@ services:
       kafka:
         condition: service_healthy
     environment:
-      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_NAME: staging
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     ports:
       - "8080:8080"
-    profiles: ["debug"]  # Only start with: docker-compose --profile debug up
+    profiles: ["debug"]
 
 volumes:
   postgres_data:
   kafka_data:
   init_node_modules:
 
-# Note: For staging/production with app in Docker, use docker-compose.staging.yml

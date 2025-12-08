@@ -5,10 +5,74 @@ This guide will help you get the billing engine up and running in under 5 minute
 ## Prerequisites
 
 - Docker Desktop installed and running
-- Node.js 18+ installed
+- Node.js 18+ installed (optional for scriptless startup)
 - Basic command-line knowledge
 
-## Quick Start (Recommended)
+## ⚡ Scriptless Startup (Recommended - Fully Automated!)
+
+> **New!** No scripts to remember. Everything starts automatically.
+
+### Two Approaches: Choose What Works Best
+
+**Approach 1: Combined (One Command)**
+```bash
+npm start
+# Starts infrastructure + runs app locally with hot reload
+```
+
+**Approach 2: Separate (More Control)**
+```bash
+npm run env:start    # Start infrastructure (PostgreSQL, Kafka)
+npm run dev          # Run app locally with hot reload
+```
+
+Both approaches automatically:
+✅ Start PostgreSQL  
+✅ Start Kafka  
+✅ Create Kafka topics  
+✅ Run database migrations  
+✅ Ready for your app!
+
+### Verify It's Running
+
+```bash
+curl http://localhost:3000/api/v1/currencies
+```
+
+You should see a list of supported currencies.
+
+### View Logs
+
+```bash
+npm run env:logs    # Infrastructure logs
+# App logs appear in your terminal where you ran npm run dev
+```
+
+### Stop Everything
+
+```bash
+npm run env:stop    # Stop infrastructure
+# Ctrl+C to stop app
+```
+
+📖 **[Read the full Scriptless Startup Guide](./SCRIPTLESS_STARTUP.md)** for more details.
+
+---
+
+## 🚀 Staging/Production Deployment
+
+For staging or production where everything runs in Docker:
+
+```bash
+npm run start:staging           # Interactive with logs
+npm run start:staging:detached  # Background mode
+```
+
+---
+
+## Alternative: Manual Script Method
+
+If you prefer to run scripts manually:
 
 ### 1. Start All Services
 
@@ -42,7 +106,7 @@ npm run migration:run
 ### 4. Start the Application
 
 ```bash
-npm run start:dev
+npm run dev  # Local development with hot reload
 ```
 
 ### 5. Verify It's Running
@@ -53,9 +117,9 @@ curl http://localhost:3000/api/v1/currencies
 
 You should see a list of supported currencies.
 
-## Alternative: Docker Only (Without Kafka)
+## Alternative: Minimal Setup (Database Only)
 
-If you just want to test the database without event sourcing:
+If you just want to test the database without full orchestration:
 
 1. **Start the database**
 ```bash
@@ -69,7 +133,7 @@ npm install
 
 3. **Start the application**
 ```bash
-npm run start:dev
+npm run dev
 ```
 
 4. **Verify it's running**
@@ -77,7 +141,7 @@ npm run start:dev
 curl http://localhost:3000/api/v1/currencies
 ```
 
-## Option 2: Manual Setup
+## Alternative: Manual Setup (No Docker)
 
 1. **Create PostgreSQL database**
 ```sql
@@ -100,7 +164,7 @@ EOF
 3. **Install and start**
 ```bash
 npm install
-npm run start:dev
+npm run dev
 ```
 
 ## Your First Transaction

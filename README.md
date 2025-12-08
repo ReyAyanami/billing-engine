@@ -2,6 +2,10 @@
 
 A production-grade billing system demonstrating best practices in financial transaction management. Built with NestJS, TypeORM, and PostgreSQL.
 
+> **🚀 NEW: Scriptless Startup - One Command Does Everything!**  
+> No more scripts to remember! Just run `npm start` and the entire system (PostgreSQL, Kafka, migrations, app) starts automatically.  
+> 📖 [Read the Scriptless Startup Guide](./SCRIPTLESS_STARTUP.md) | 🔄 [Migration Guide](./SCRIPTLESS_MIGRATION_GUIDE.md)
+
 > **🎯 Version 2.0 - Double-Entry Bookkeeping System**  
 > This engine implements true double-entry bookkeeping where every transaction has both a source and destination account, ensuring complete auditability and compliance with accounting standards.  
 > 📖 [Learn about the double-entry design](./docs/adr/0004-double-entry-design.md) | ⚠️ [Breaking changes from v1](./docs/BREAKING_CHANGES_V2.md)
@@ -96,11 +100,49 @@ All significant architectural decisions are documented as ADRs:
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
-- PostgreSQL 14+
-- Docker (optional, for easy database setup)
+- Docker Desktop installed and running
+- Node.js 18+ installed
 
-### Installation
+### ⚡ Scriptless Startup (Recommended)
+
+**Local Development - Infrastructure in Docker, App runs locally:**
+
+```bash
+# Option 1: Combined command
+npm start
+
+# Option 2: Step by step
+npm run env:start    # Start PostgreSQL, Kafka (auto-creates topics, runs migrations)
+npm run dev          # Run app locally with hot reload
+```
+
+This automatically:
+- ✅ Starts PostgreSQL database
+- ✅ Starts Kafka event streaming
+- ✅ Creates all Kafka topics
+- ✅ Runs database migrations
+- ✅ Ready for your app to connect!
+
+Your app runs locally with hot reload for fast iteration.
+
+**Stop:**
+
+```bash
+npm run env:stop     # Stop infrastructure
+```
+
+**Staging/Production - Everything in Docker:**
+
+```bash
+npm run start:staging
+```
+
+📖 **[Full Scriptless Startup Guide](./SCRIPTLESS_STARTUP.md)** | 🚀 **[Quick Start Guide](./QUICK_START.md)**
+
+### Alternative: Manual Installation
+
+<details>
+<summary>Click to expand manual setup instructions</summary>
 
 1. **Clone the repository**
 ```bash
@@ -117,7 +159,7 @@ npm install
 
 Using Docker:
 ```bash
-docker-compose up -d
+docker-compose up -d postgres kafka
 ```
 
 Or manually create a database:
@@ -138,32 +180,28 @@ DB_SSL=false
 
 PORT=3000
 NODE_ENV=development
+KAFKA_BROKERS=localhost:9092
 ```
 
 5. **Run database migrations**
 
-For production or if you want to use migrations in development:
 ```bash
-# Run migrations
 npm run migration:run
-
-# For development with auto-sync (default)
-# Just start the app, schema will be created automatically
 ```
-
-To use migrations in development, set `USE_MIGRATIONS=true` in your `.env` file.
 
 6. **Start the application**
 ```bash
 # Development mode with hot reload
-npm run start:dev
+npm run dev
 
 # Production mode
 npm run build
-npm run start:prod
+npm run prod
 ```
 
 The API will be available at `http://localhost:3000`
+
+</details>
 
 ## 🧪 Testing
 
