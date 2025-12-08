@@ -10,7 +10,11 @@ import {
 } from './transaction.entity';
 import { Account } from '../account/account.entity';
 import { AccountService } from '../account/account.service';
-import { toAccountId } from '../../common/types/branded.types';
+import {
+  toAccountId,
+  TransactionId,
+  IdempotencyKey,
+} from '../../common/types/branded.types';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -392,7 +396,7 @@ export class TransactionService {
   /**
    * Get transaction by ID
    */
-  async findById(id: string): Promise<Transaction> {
+  async findById(id: TransactionId): Promise<Transaction> {
     const transaction = await this.transactionRepository.findOne({
       where: { id },
       relations: ['sourceAccount', 'destinationAccount', 'parentTransaction'],
@@ -416,7 +420,7 @@ export class TransactionService {
    * Find transaction by idempotency key (helper for controller)
    */
   async findByIdempotencyKey(
-    idempotencyKey: string,
+    idempotencyKey: IdempotencyKey,
   ): Promise<Transaction | null> {
     return await this.transactionRepository.findOne({
       where: { idempotencyKey },

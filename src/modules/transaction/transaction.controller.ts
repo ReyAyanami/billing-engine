@@ -35,6 +35,10 @@ import {
   InsufficientBalanceException,
 } from '../../common/exceptions/billing.exception';
 import Decimal from 'decimal.js';
+import {
+  toTransactionId,
+  toIdempotencyKey,
+} from '../../common/types/branded.types';
 
 @ApiTags('transactions')
 @Controller('api/v1/transactions')
@@ -171,8 +175,9 @@ export class TransactionController {
     const idempotencyKey = dto.idempotencyKey || uuidv4();
 
     // Check idempotency first
-    const existing =
-      await this.transactionService.findByIdempotencyKey(idempotencyKey);
+    const existing = await this.transactionService.findByIdempotencyKey(
+      toIdempotencyKey(idempotencyKey),
+    );
     if (existing) {
       throw new DuplicateTransactionException(idempotencyKey, existing.id);
     }
@@ -212,7 +217,7 @@ export class TransactionController {
   })
   @ApiResponse({ status: 404, description: 'Transaction not found' })
   async findById(@Param('id') id: string): Promise<Transaction> {
-    return await this.transactionService.findById(id);
+    return await this.transactionService.findById(toTransactionId(id));
   }
 
   @Get()
@@ -283,8 +288,9 @@ export class TransactionController {
     const idempotencyKey = dto.idempotencyKey || uuidv4();
 
     // Check idempotency first
-    const existing =
-      await this.transactionService.findByIdempotencyKey(idempotencyKey);
+    const existing = await this.transactionService.findByIdempotencyKey(
+      toIdempotencyKey(idempotencyKey),
+    );
     if (existing) {
       throw new DuplicateTransactionException(idempotencyKey, existing.id);
     }
