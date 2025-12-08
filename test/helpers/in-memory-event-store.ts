@@ -18,13 +18,12 @@ import { IEventStore } from '../../src/cqrs/interfaces/event-store.interface';
 export class InMemoryEventStore implements IEventStore {
   private readonly logger = new Logger(InMemoryEventStore.name);
   private readonly events: Map<string, DomainEvent[]> = new Map();
-  private readonly eventBus: EventBus;
 
   constructor(eventBus?: EventBus) {
     // GUARDRAIL: Prevent accidental production use
     this.validateTestEnvironment();
+    void eventBus; // Reserved for future event publishing
 
-    this.eventBus = eventBus!;
     this.logger.warn('⚠️  InMemoryEventStore initialized - TEST MODE ONLY');
     this.logger.warn(
       '⚠️  Events are NOT persisted and will be lost on restart!',

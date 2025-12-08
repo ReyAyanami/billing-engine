@@ -34,10 +34,10 @@
     // ===== ADDITIONAL SAFETY FLAGS =====
     "noFallthroughCasesInSwitch": true, // Prevent fallthrough in switch
     "noImplicitReturns": true,          // All code paths must return
-    "noImplicitOverride": true          // Require 'override' keyword
-    // TODO: Enable in next phase (see TYPE_SAFETY_ROADMAP.md):
-    // "noUnusedLocals": true,             // Flag unused local variables (~18 fixes needed)
-    // "noUnusedParameters": true,         // Flag unused parameters
+    "noImplicitOverride": true,         // Require 'override' keyword
+    "noUnusedLocals": true,             // Flag unused local variables
+    "noUnusedParameters": true          // Flag unused parameters
+    // TODO: Enable after fixing index signature issues (see TYPE_SAFETY_ROADMAP.md):
     // "noUncheckedIndexedAccess": true,   // Array/object access returns T | undefined (~30 fixes needed)
     // "noPropertyAccessFromIndexSignature": true // Require bracket notation (~20 fixes needed)
   }

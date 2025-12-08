@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { CommandBus } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -43,9 +43,10 @@ export class TransactionService {
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
     private readonly accountService: AccountService,
-    private readonly currencyService: CurrencyService,
-    private readonly auditService: AuditService,
-    private readonly dataSource: DataSource,
+    // Reserved for future direct use (validation/auditing currently in CQRS handlers)
+    _currencyService: CurrencyService,
+    _auditService: AuditService,
+    _dataSource: DataSource,
     private readonly commandBus: CommandBus,
   ) {}
 
@@ -463,133 +464,6 @@ export class TransactionService {
     return await query.getMany();
   }
 
-  // ==================== Helper Methods ====================
-
-  /**
-   * Check idempotency to prevent duplicate transactions
-   */
-  private async checkIdempotency(
-    idempotencyKey: string,
-    manager: EntityManager,
-  ): Promise<void> {
-    const existingTransaction = await manager.findOne(Transaction, {
-      where: { idempotencyKey },
-    });
-
-    if (existingTransaction) {
-      throw new DuplicateTransactionException(
-        idempotencyKey,
-        existingTransaction.id,
-      );
-    }
-  }
-
-  /**
-   * Validate amount is positive
-   */
-  private validateAmount(amount: string): void {
-    const decimalAmount = new Decimal(amount);
-    if (decimalAmount.lessThanOrEqualTo(0)) {
-      throw new InvalidOperationException('INVALID_AMOUNT');
-    }
-  }
-
-  /**
-   * Check maximum balance limit
-   */
-  private checkMaxBalance(account: Account, additionalAmount: Decimal): void {
-    if (account.maxBalance) {
-      const currentBalance = new Decimal(account.balance);
-      const newBalance = currentBalance.plus(additionalAmount);
-      const maxBalance = new Decimal(account.maxBalance);
-
-      if (newBalance.greaterThan(maxBalance)) {
-        throw new InvalidOperationException(
-          `MAX_BALANCE_EXCEEDED: Account ${account.id} would exceed maximum balance of ${maxBalance.toString()}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Check minimum balance requirement
-   */
-  private checkMinBalance(account: Account, newBalance: Decimal): void {
-    if (account.minBalance) {
-      const minBalance = new Decimal(account.minBalance);
-
-      if (newBalance.lessThan(minBalance)) {
-        throw new InvalidOperationException(
-          `MIN_BALANCE_REQUIRED: Account ${account.id} requires minimum balance of ${minBalance.toString()}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Lock accounts in deterministic order to prevent deadlocks
-   */
-  private async lockAccountsInOrder(
-    accountId1: string,
-    accountId2: string,
-    manager: EntityManager,
-  ): Promise<[Account, Account]> {
-    const [firstId, secondId] = [accountId1, accountId2].sort();
-
-    const firstAccount = await this.accountService.findAndLock(
-      firstId,
-      manager,
-    );
-    const secondAccount = await this.accountService.findAndLock(
-      secondId,
-      manager,
-    );
-
-    // Return in original order
-    return accountId1 === firstId
-      ? [firstAccount, secondAccount]
-      : [secondAccount, firstAccount];
-  }
-
-  /**
-   * Map Transaction entity to TransactionResult
-   */
-  private mapToTransactionResult(transaction: Transaction): TransactionResult {
-    return {
-      transactionId: transaction.id,
-      idempotencyKey: transaction.idempotencyKey,
-      type: transaction.type,
-      sourceAccountId: transaction.sourceAccountId,
-      destinationAccountId: transaction.destinationAccountId,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      sourceBalanceBefore: transaction.sourceBalanceBefore,
-      sourceBalanceAfter: transaction.sourceBalanceAfter,
-      destinationBalanceBefore: transaction.destinationBalanceBefore,
-      destinationBalanceAfter: transaction.destinationBalanceAfter,
-      status: transaction.status,
-      reference: transaction.reference,
-      metadata: transaction.metadata,
-      createdAt: transaction.createdAt,
-      completedAt: transaction.completedAt,
-    };
-  }
-
-  /**
-   * Map Transaction entity to TransferResult
-   */
-  private mapToTransferResult(transaction: Transaction): TransferResult {
-    return {
-      debitTransactionId: transaction.id,
-      creditTransactionId: transaction.id, // In new model, it's a single transaction
-      sourceAccountId: transaction.sourceAccountId,
-      destinationAccountId: transaction.destinationAccountId,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      status: transaction.status,
-      reference: transaction.reference,
-      createdAt: transaction.createdAt,
-      completedAt: transaction.completedAt,
-    };
-  }
+  // Note: All business logic has moved to CQRS aggregates and handlers
+  // This service is now a thin coordinator that dispatches commands
 }

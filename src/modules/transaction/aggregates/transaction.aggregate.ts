@@ -60,18 +60,7 @@ export class TransactionAggregate extends AggregateRoot {
   private sourceNewBalance?: string;
   private destinationNewBalance?: string;
 
-  // Compensation tracking (currently unused but kept for future saga rollbacks)
-
-  private compensationReason?: string;
-
-  private compensatedAt?: Date;
-
-  private compensationActions?: Array<{
-    accountId: string;
-    action: 'CREDIT' | 'DEBIT';
-    amount: string;
-    reason: string;
-  }>;
+  // TODO: Add compensation tracking for saga rollbacks in future
 
   protected getAggregateType(): string {
     return 'Transaction';
@@ -694,9 +683,9 @@ export class TransactionAggregate extends AggregateRoot {
    */
   onTransactionCompensated(event: TransactionCompensatedEvent): void {
     this.status = TransactionStatus.COMPENSATED;
-    this.compensationReason = event.reason;
-    this.compensationActions = event.compensationActions;
-    this.compensatedAt = event.compensatedAt;
+    // TODO: Store compensation details when implementing saga rollbacks
+    // Reason and actions available in event.reason and event.compensationActions
+    void event; // Suppress unused warning
   }
 
   /**

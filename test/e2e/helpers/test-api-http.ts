@@ -18,7 +18,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
-import { EventSource } from 'eventsource';
 import {
   AccountType,
   AccountStatus,
@@ -63,14 +62,10 @@ export class TestAPIHTTP {
   private server: any;
   private externalAccounts: Record<string, any> = {};
   private dataSource: DataSource;
-  private workerPrefix: string;
 
   constructor(app: INestApplication) {
     this.server = app.getHttpServer();
     this.dataSource = app.get(DataSource);
-    // Add worker ID prefix for parallel test isolation
-    const workerId = process.env.JEST_WORKER_ID || '1';
-    this.workerPrefix = `w${workerId}`;
   }
 
   /**
@@ -84,9 +79,9 @@ export class TestAPIHTTP {
    * Generate a unique ID for test data
    * Returns valid UUID for parallel test isolation
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   generateId(prefix?: string): string {
     // Always return valid UUID - worker isolation handled by database cleanup
+    void prefix; // Reserved for future use
     return uuidv4();
   }
 
