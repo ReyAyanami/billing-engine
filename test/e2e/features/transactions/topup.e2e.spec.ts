@@ -12,27 +12,29 @@ import { TestAPIHTTP } from '../../helpers/test-api-http';
 describe('Feature: Account Top-up', () => {
   let app: INestApplication;
   let testApi: TestAPIHTTP;
+  let testSetup: TestSetup;
 
   // ============================================
   // TEST LIFECYCLE
   // ============================================
 
   beforeAll(async () => {
-    app = await TestSetup.beforeAll();
+    testSetup = new TestSetup();
+    app = await testSetup.beforeAll();
     testApi = new TestAPIHTTP(app);
   });
 
   afterAll(async () => {
-    await TestSetup.afterAll();
+    await testSetup.afterAll();
   });
 
   beforeEach(async () => {
-    await TestSetup.beforeEach();
+    await testSetup.beforeEach();
     testApi.reset();  // Clear cached external accounts
   });
 
   afterEach(async () => {
-    await TestSetup.afterEach();
+    await testSetup.afterEach();
   });
 
   // ============================================

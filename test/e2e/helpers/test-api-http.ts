@@ -17,7 +17,7 @@
 
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { v4 as uuid } from 'uuid';
+import { v4 as uuid, v4 as uuidv4 } from 'uuid';
 import { EventSource } from 'eventsource';
 import { AccountType, AccountStatus } from '../../../src/modules/account/account.entity';
 import { DataSource } from 'typeorm';
@@ -60,10 +60,14 @@ export class TestAPIHTTP {
   private server: any;
   private externalAccounts: Record<string, any> = {};
   private dataSource: DataSource;
+  private workerPrefix: string;
 
   constructor(app: INestApplication) {
     this.server = app.getHttpServer();
     this.dataSource = app.get(DataSource);
+    // Add worker ID prefix for parallel test isolation
+    const workerId = process.env.JEST_WORKER_ID || '1';
+    this.workerPrefix = `w${workerId}`;
   }
   
   /**
@@ -71,6 +75,15 @@ export class TestAPIHTTP {
    */
   reset() {
     this.externalAccounts = {};
+  }
+  
+  /**
+   * Generate a unique ID for test data
+   * Returns valid UUID for parallel test isolation
+   */
+  generateId(prefix?: string): string {
+    // Always return valid UUID - worker isolation handled by database cleanup
+    return uuidv4();
   }
   
   /**
@@ -431,9 +444,6 @@ export class TestAPIHTTP {
   /**
    * Generate a unique ID (valid UUID)
    */
-  generateId(prefix?: string): string {
-    return uuid();
-  }
 
   /**
    * Wait for account projection to be ready
