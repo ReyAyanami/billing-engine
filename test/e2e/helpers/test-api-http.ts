@@ -53,6 +53,7 @@ export interface RefundOptions {
   idempotencyKey?: string;
   reason?: string;
   metadata?: Record<string, any>;
+  skipPolling?: boolean;
 }
 
 export class TestAPIHTTP {
@@ -370,12 +371,28 @@ export class TestAPIHTTP {
       .post('/api/v1/transactions/refund')
       .send({
         idempotencyKey: options.idempotencyKey || this.generateId('idempotency'),
-        originalTransactionId,
-        amount,
-        reason: options.reason || 'Test refund',
-        metadata: options.metadata,
-      })
-      .expect(201);
+        originalPaymentId: originalTransactionId, // DTO expects 'originalPaymentId'
+        refundAmount: amount, // DTO expects 'refundAmount'
+        currency: 'USD', // Required field
+        refundMetadata: options.metadata ? {
+          reason: options.reason || 'Test refund',
+          ...options.metadata,
+        } : { reason: options.reason || 'Test refund' },
+      });
+
+    if (response.status !== 201) {
+      throw new Error(
+        `Refund failed (${response.status}): ${JSON.stringify(response.body)}`
+      );
+    }
+
+    // Poll for completion (async saga processing)
+    if (!options.skipPolling) {
+      const refundId = response.body.refundId;
+      if (refundId) {
+        await this.pollTransactionCompletion(refundId);
+      }
+    }
 
     return response.body;
   }

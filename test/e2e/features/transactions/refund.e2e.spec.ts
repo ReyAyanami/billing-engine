@@ -64,7 +64,7 @@ describe('Feature: Refund', () => {
 
       // THEN: Refund should be completed
       expect(refund).toBeDefined();
-      expect(refund.transactionId || refund.id).toBeDefined();
+      expect(refund.refundId || refund.transactionId || refund.id).toBeDefined();
 
       // AND: Customer should have original amount back
       expect((await testApi.getBalance(customer.id)).balance).toBe('100.00000000');
