@@ -41,9 +41,17 @@ export default tseslint.config(
       '@typescript-eslint/require-await': 'warn',
       '@typescript-eslint/prefer-promise-reject-errors': 'warn',
       
-      // ===== EXPLICIT RETURN TYPES (Phase 1: Off, will enable in Phase 2) =====
-      // '@typescript-eslint/explicit-function-return-type': 'off',
-      // '@typescript-eslint/explicit-module-boundary-types': 'off',
+      // ===== EXPLICIT RETURN TYPES =====
+      '@typescript-eslint/explicit-function-return-type': [
+        'warn',
+        {
+          allowExpressions: true,
+          allowTypedFunctionExpressions: true,
+          allowHigherOrderFunctions: true,
+          allowDirectConstAssertionInArrowFunctions: true,
+        },
+      ],
+      '@typescript-eslint/explicit-module-boundary-types': 'warn',
       
       // ===== OTHER RULES =====
       '@typescript-eslint/unbound-method': 'off',
