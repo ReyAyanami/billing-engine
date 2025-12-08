@@ -1,97 +1,91 @@
 # Billing Engine - Scripts Directory
 
-This directory contains all operational scripts for managing the Billing Engine infrastructure and development workflow.
+Simple scripts for local development workflow.
 
 ## Directory Structure
 
 ```
 scripts/
-├── start.sh              # Main startup script (starts all services)
-├── stop.sh               # Stop all services (preserves data)
-├── setup/                # Initial setup and configuration scripts
-│   ├── create-topics.sh  # Create Kafka topics for event sourcing
-│   └── reset.sh          # Complete reset (removes all data)
 ├── dev/                  # Development utility scripts
-│   ├── logs.sh           # View service logs
+│   ├── start-env.sh      # Start development environment
+│   ├── stop-env.sh       # Stop environment (keeps data)
+│   ├── reset-env.sh      # Reset everything (clean slate)
+│   ├── logs.sh           # View service logs  
 │   └── status.sh         # Check service status
+├── setup/                # Setup scripts
+│   ├── create-topics.sh  # Create Kafka topics (if using Kafka)
+│   └── reset.sh          # Complete reset
 ├── test/                 # Testing scripts
-│   ├── run-e2e.sh                # Run all E2E tests
-│   ├── run-e2e-individually.sh   # Run E2E tests one by one
-│   └── reset-and-test.sh         # Reset environment and run tests
-└── utils/                # Utility and diagnostic scripts
-    └── diagnose-kafka.sh # Kafka diagnostic tool
+│   ├── run-e2e.sh                # Run E2E tests
+│   ├── run-e2e-individually.sh   # Run tests one by one
+│   └── reset-and-test.sh         # Reset and test
+└── utils/                # Utility scripts
+    └── diagnose-kafka.sh # Kafka diagnostics
 ```
 
 ## Quick Start
 
-### 1. Start All Services
+### 1. Start Development Environment
 
 ```bash
-./scripts/start.sh
+./scripts/dev/start-env.sh
 ```
 
 This starts:
 - PostgreSQL database
-- Kafka cluster (3 brokers)
-- Zookeeper
-- Schema Registry
-- Kafka UI
-- Prometheus
-- Grafana
+- Kafka broker (single, KRaft mode - no Zookeeper!)
 
-### 2. Create Kafka Topics
+### 2. Stop Environment
 
 ```bash
-./scripts/setup/create-topics.sh
+./scripts/dev/stop-env.sh  # Keeps data
+./scripts/dev/reset-env.sh # Clean slate
 ```
 
-Creates all required event sourcing topics with proper configuration.
-
-### 3. Run E2E Tests
+### 3. Or use docker-compose directly
 
 ```bash
-./scripts/test/run-e2e.sh
+docker-compose up -d    # Start
+docker-compose down     # Stop
+docker-compose down -v  # Reset
 ```
 
 ## Main Scripts
 
-### `start.sh`
-**Purpose:** Start all required services for the billing engine.
-
-**What it does:**
-- Checks if Docker is running
-- Starts all services using docker-compose
-- Waits for services to be healthy
-- Displays access information and next steps
-- Optionally opens Kafka UI in browser
+### `dev/start-env.sh`
+**Purpose:** Start development environment (PostgreSQL + Kafka)
 
 **Usage:**
 ```bash
-./scripts/start.sh
+./scripts/dev/start-env.sh
 ```
 
-**Access Points After Startup:**
+**Access Points:**
 - PostgreSQL: `localhost:5432` (postgres/postgres)
-- Kafka Brokers: `localhost:9092`, `localhost:9093`, `localhost:9094`
-- Kafka UI: http://localhost:8080
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3000 (admin/admin)
+- Kafka: `localhost:9092`
+- Kafka UI: http://localhost:8080 (with `--profile debug`)
 
 ---
 
-### `stop.sh`
-**Purpose:** Gracefully stop all services while preserving data.
-
-**What it does:**
-- Stops all Docker containers
-- Keeps all volumes intact (data is preserved)
+### `dev/stop-env.sh`
+**Purpose:** Stop services (preserves data)
 
 **Usage:**
 ```bash
-./scripts/stop.sh
+./scripts/dev/stop-env.sh
 ```
 
-**Note:** To start again, just run `./scripts/start.sh`
+---
+
+### `dev/reset-env.sh`  
+**Purpose:** Complete reset (removes all data)
+
+**Usage:**
+```bash
+./scripts/dev/reset-env.sh
+```
+
+**Use when:** You want a completely fresh start
 
 ## Setup Scripts
 
@@ -121,24 +115,14 @@ Creates all required event sourcing topics with proper configuration.
 ---
 
 ### `setup/reset.sh`
-**Purpose:** Complete environment reset (⚠️ DESTRUCTIVE ⚠️)
-
-**What it does:**
-- Stops all services
-- Removes ALL Docker volumes
-- Deletes all data (PostgreSQL, Kafka, monitoring data)
+**Purpose:** Complete environment reset
 
 **Usage:**
 ```bash
 ./scripts/setup/reset.sh
 ```
 
-**⚠️ WARNING:** This is irreversible! All data will be lost.
-
-**When to use:**
-- Starting fresh
-- Fixing corrupted state
-- Before running tests in clean environment
+**Note:** For local development, prefer `./scripts/dev/reset-env.sh`
 
 ## Development Scripts
 
@@ -157,13 +141,7 @@ Creates all required event sourcing topics with proper configuration.
 
 **Available Services:**
 - `postgres` - PostgreSQL database
-- `kafka-1`, `kafka-2`, `kafka-3` - Kafka brokers
-- `kafka-all` - All Kafka brokers
-- `zookeeper` - Zookeeper
-- `schema-registry` - Schema Registry
-- `kafka-ui` - Kafka UI
-- `prometheus` - Prometheus
-- `grafana` - Grafana
+- `kafka` - Kafka broker
 - `all` - All services
 
 **Options:**
@@ -271,32 +249,29 @@ Creates all required event sourcing topics with proper configuration.
 
 ### First-Time Setup
 ```bash
-# 1. Start all services
-./scripts/start.sh
+# 1. Start environment
+./scripts/dev/start-env.sh
 
-# 2. Create Kafka topics
-./scripts/setup/create-topics.sh
-
-# 3. Run database migrations
+# 2. Run migrations (optional, uses auto-sync by default)
 npm run migration:run
 
-# 4. Start the application
+# 3. Start the application
 npm run start:dev
 ```
 
 ### Daily Development
 ```bash
-# Start services (if stopped)
-./scripts/start.sh
+# Start environment
+./scripts/dev/start-env.sh
 
 # Check status
 ./scripts/dev/status.sh
 
-# View logs while developing
-./scripts/dev/logs.sh kafka-1 -f
+# View logs
+./scripts/dev/logs.sh kafka -f
 
-# Run tests
-./scripts/test/run-e2e.sh
+# Run tests (don't need Kafka!)
+npm run test:e2e:new
 ```
 
 ### Testing Workflow
@@ -330,17 +305,13 @@ npm run start:dev
 
 ## Environment Requirements
 
-- **Docker:** Docker Desktop must be running
-- **Docker Compose:** Version 3.8 or higher
-- **Node.js:** For running the application and tests
-- **Ports:** Ensure the following ports are available:
+- **Docker:** Docker Desktop running
+- **Docker Compose:** Version 3.8+
+- **Node.js:** For running app and tests
+- **Ports:** Must be available:
   - 5432 (PostgreSQL)
-  - 9092, 9093, 9094 (Kafka brokers)
-  - 2181 (Zookeeper)
-  - 8081 (Schema Registry)
-  - 8080 (Kafka UI)
-  - 9090 (Prometheus)
-  - 3000 (Grafana)
+  - 9092 (Kafka)
+  - 8080 (Kafka UI, optional)
 
 ## Best Practices
 
