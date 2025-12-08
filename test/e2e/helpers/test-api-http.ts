@@ -304,9 +304,14 @@ export class TestAPIHTTP {
         merchantAccountId,
         amount,
         currency,
-        metadata: options.metadata,
-      })
-      .expect(201);
+        paymentMetadata: options.metadata, // DTO expects 'paymentMetadata' not 'metadata'
+      });
+
+    if (response.status !== 201) {
+      throw new Error(
+        `Payment failed (${response.status}): ${JSON.stringify(response.body)}`
+      );
+    }
 
     // Poll for completion (async saga processing)
     if (!options.skipPolling) {
@@ -320,55 +325,37 @@ export class TestAPIHTTP {
    * Wait for transaction completion via SSE (real-time)
    * If saga doesn't complete within 1 second, it's a BUG, not a timeout issue
    */
-  private async pollTransactionCompletion(transactionId: string, maxWait: number = 1000): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const baseUrl = `http://localhost:${process.env.PORT || 3000}`;
-      const eventSource = new EventSource(
-        `${baseUrl}/api/v1/events/transactions/${transactionId}?transactionId=${transactionId}`
-      );
-
-      const timeout = setTimeout(() => {
-        eventSource.close();
-        reject(new Error(
-          `❌ BUG: Transaction ${transactionId} did not complete within ${maxWait}ms. ` +
-          `Saga should complete in milliseconds. This indicates a processing failure.`
-        ));
-      }, maxWait);
-
-      eventSource.onmessage = (event: any) => {
-        try {
-          const data = JSON.parse(event.data);
-          const eventType = data.type;
-          
-          // Listen for completion events
-          const completionEvents = [
-            'TopupCompletedEvent',
-            'WithdrawalCompletedEvent', 
-            'TransferCompletedEvent',
-            'PaymentCompletedEvent',
-            'RefundCompletedEvent',
-            'TransactionFailedEvent',
-            'TransactionCompensatedEvent'
-          ];
-
-          if (completionEvents.includes(eventType)) {
-            clearTimeout(timeout);
-            eventSource.close();
-            resolve();
-          }
-        } catch (error) {
-          // Ignore parse errors, wait for valid events
+  /**
+   * Wait for transaction completion by polling
+   * In test environment, SSE doesn't work since app doesn't listen on HTTP
+   * Poll with short intervals - if saga doesn't complete in 2s, it's a BUG
+   */
+  private async pollTransactionCompletion(transactionId: string, maxWait: number = 2000): Promise<void> {
+    const start = Date.now();
+    const pollInterval = 50; // Poll every 50ms
+    
+    while (Date.now() - start < maxWait) {
+      const response = await request(this.server)
+        .get(`/api/v1/transactions/${transactionId}`);
+      
+      if (response.status === 200) {
+        const status = response.body.status;
+        
+        // Check if reached final state
+        if (status === 'completed' || status === 'failed' || status === 'compensated') {
+          return; // Success!
         }
-      };
-
-      eventSource.onerror = (error: any) => {
-        clearTimeout(timeout);
-        eventSource.close();
-        // Don't reject on error - transaction might already be completed
-        // Just resolve and let the test verify the final state
-        resolve();
-      };
-    });
+      }
+      
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+    
+    // Timeout - this is a BUG
+    throw new Error(
+      `❌ BUG: Transaction ${transactionId} did not complete within ${maxWait}ms. ` +
+      `Saga should complete in milliseconds. This indicates a processing failure.`
+    );
   }
 
   /**

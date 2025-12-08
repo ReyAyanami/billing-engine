@@ -18,16 +18,16 @@ export class TransferCompletedEntityHandler implements IEventHandler<TransferCom
     this.logger.log(`📝 Completing Transaction entity: ${event.aggregateId}`);
 
     try {
-      const transaction = await this.transactionRepository.findOne({
-        where: { id: event.aggregateId },
-      });
+      // Retry logic: Handle race condition where completion arrives before creation
+      const transaction = await this.waitForTransaction(event.aggregateId, 1000);
 
       if (!transaction) {
-        this.logger.error(`Transaction not found: ${event.aggregateId}`);
+        this.logger.error(`Transaction not found after retries: ${event.aggregateId}`);
         return;
       }
 
       transaction.status = TransactionStatus.COMPLETED;
+      transaction.completedAt = event.completedAt;
       await this.transactionRepository.save(transaction);
 
       this.logger.log(`✅ Transaction entity completed: ${event.aggregateId}`);
@@ -35,6 +35,23 @@ export class TransferCompletedEntityHandler implements IEventHandler<TransferCom
       this.logger.error(`❌ Failed to complete Transaction entity`, error);
       throw error;
     }
+  }
+
+  /**
+   * Wait for transaction to be created (with retries)
+   */
+  private async waitForTransaction(transactionId: string, maxWait: number): Promise<Transaction | null> {
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      const transaction = await this.transactionRepository.findOne({
+        where: { id: transactionId },
+      });
+      if (transaction) {
+        return transaction;
+      }
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    return null;
   }
 }
 
