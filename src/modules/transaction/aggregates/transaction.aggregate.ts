@@ -425,11 +425,11 @@ export class TransactionAggregate extends AggregateRoot {
     this.aggregateId = event.aggregateId;
     this.transactionType = TransactionType.PAYMENT;
     this.status = TransactionStatus.PENDING;
-    this.sourceAccountId = event.customerAccountId as string;
-    this.destinationAccountId = event.merchantAccountId as string;
-    this.amount = event.amount as string;
-    this.currency = event.currency as string;
-    this.idempotencyKey = event.idempotencyKey as string;
+    this.sourceAccountId = event['customerAccountId'] as string;
+    this.destinationAccountId = event['merchantAccountId'] as string;
+    this.amount = event['amount'] as string;
+    this.currency = event['currency'] as string;
+    this.idempotencyKey = event['idempotencyKey'] as string;
     this.requestedAt = new Date(event.timestamp);
   }
 
@@ -467,10 +467,10 @@ export class TransactionAggregate extends AggregateRoot {
    */
   onPaymentCompleted(event: DeserializedEvent): void {
     this.status = TransactionStatus.COMPLETED;
-    this.sourceNewBalance = event.customerNewBalance as string;
-    this.destinationNewBalance = event.merchantNewBalance as string;
-    this.completedAt = event.completedAt
-      ? new Date(event.completedAt as string)
+    this.sourceNewBalance = event['customerNewBalance'] as string;
+    this.destinationNewBalance = event['merchantNewBalance'] as string;
+    this.completedAt = event['completedAt']
+      ? new Date(event['completedAt'] as string)
       : undefined;
   }
 
@@ -535,11 +535,11 @@ export class TransactionAggregate extends AggregateRoot {
     this.aggregateId = event.aggregateId;
     this.transactionType = TransactionType.REFUND;
     this.status = TransactionStatus.PENDING;
-    this.sourceAccountId = event.merchantAccountId as string;
-    this.destinationAccountId = event.customerAccountId as string;
-    this.amount = event.refundAmount as string;
-    this.currency = event.currency as string;
-    this.idempotencyKey = event.idempotencyKey as string;
+    this.sourceAccountId = event['merchantAccountId'] as string;
+    this.destinationAccountId = event['customerAccountId'] as string;
+    this.amount = event['refundAmount'] as string;
+    this.currency = event['currency'] as string;
+    this.idempotencyKey = event['idempotencyKey'] as string;
     this.requestedAt = new Date(event.timestamp);
   }
 
@@ -577,10 +577,10 @@ export class TransactionAggregate extends AggregateRoot {
    */
   onRefundCompleted(event: DeserializedEvent): void {
     this.status = TransactionStatus.COMPLETED;
-    this.sourceNewBalance = event.merchantNewBalance as string;
-    this.destinationNewBalance = event.customerNewBalance as string;
-    this.completedAt = event.completedAt
-      ? new Date(event.completedAt as string)
+    this.sourceNewBalance = event['merchantNewBalance'] as string;
+    this.destinationNewBalance = event['customerNewBalance'] as string;
+    this.completedAt = event['completedAt']
+      ? new Date(event['completedAt'] as string)
       : undefined;
   }
 

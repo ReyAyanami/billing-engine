@@ -46,9 +46,9 @@ export class EventsController {
             if (!(event instanceof DomainEvent)) return false;
             const eventData = event.toJSON();
             return (
-              eventData.accountId === accountId ||
-              eventData.sourceAccountId === accountId ||
-              eventData.destinationAccountId === accountId
+              eventData['accountId'] === accountId ||
+              eventData['sourceAccountId'] === accountId ||
+              eventData['destinationAccountId'] === accountId
             );
           }),
           map((event: unknown) => {

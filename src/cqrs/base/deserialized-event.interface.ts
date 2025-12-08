@@ -50,12 +50,12 @@ export function isDeserializedEvent(obj: unknown): obj is DeserializedEvent {
   const event = obj as Record<string, unknown>;
 
   return (
-    typeof event.eventId === 'string' &&
-    typeof event.eventType === 'string' &&
-    typeof event.aggregateId === 'string' &&
-    typeof event.aggregateType === 'string' &&
-    typeof event.aggregateVersion === 'number' &&
-    typeof event.timestamp === 'string' &&
-    typeof event.correlationId === 'string'
+    typeof event['eventId'] === 'string' &&
+    typeof event['eventType'] === 'string' &&
+    typeof event['aggregateId'] === 'string' &&
+    typeof event['aggregateType'] === 'string' &&
+    typeof event['aggregateVersion'] === 'number' &&
+    typeof event['timestamp'] === 'string' &&
+    typeof event['correlationId'] === 'string'
   );
 }

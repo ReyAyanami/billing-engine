@@ -102,5 +102,5 @@ export class Account {
   readonly createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  readonly updatedAt!: Date;
+  updatedAt!: Date;
 }

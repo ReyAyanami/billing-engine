@@ -50,7 +50,7 @@ export class TransferRequestedEntityHandler implements IEventHandler<TransferReq
           destinationBalanceBefore: '0',
           destinationBalanceAfter: '0',
           idempotencyKey: event.idempotencyKey,
-          reference: event.metadata?.reference || 'Transfer',
+          reference: event.metadata?.['reference'] || 'Transfer',
           metadata: event.metadata || {},
         } as QueryDeepPartialEntity<Transaction>)
         .execute();

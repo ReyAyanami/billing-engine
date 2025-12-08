@@ -50,7 +50,7 @@ export class PaymentRequestedEntityHandler implements IEventHandler<PaymentReque
           destinationBalanceBefore: '0',
           destinationBalanceAfter: '0',
           idempotencyKey: event.idempotencyKey,
-          reference: event.metadata?.reference || 'Payment',
+          reference: event.metadata?.['reference'] || 'Payment',
           metadata: {
             ...event.metadata,
             paymentMetadata: event.paymentMetadata,

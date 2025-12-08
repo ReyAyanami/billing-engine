@@ -65,9 +65,9 @@ export class AppTestModule implements OnModuleInit {
    * @throws Error if used in production
    */
   private validateTestEnvironment(): void {
-    const nodeEnv = process.env.NODE_ENV;
+    const nodeEnv = process.env['NODE_ENV'];
     const isTest =
-      nodeEnv === 'test' || process.env.JEST_WORKER_ID !== undefined;
+      nodeEnv === 'test' || process.env['JEST_WORKER_ID'] !== undefined;
 
     if (!isTest) {
       const error = `

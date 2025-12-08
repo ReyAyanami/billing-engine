@@ -50,7 +50,7 @@ export class WithdrawalRequestedEntityHandler implements IEventHandler<Withdrawa
           destinationBalanceBefore: '0',
           destinationBalanceAfter: '0',
           idempotencyKey: event.idempotencyKey,
-          reference: event.metadata?.reference || 'Withdrawal',
+          reference: event.metadata?.['reference'] || 'Withdrawal',
           metadata: event.metadata || {},
         } as QueryDeepPartialEntity<Transaction>)
         .execute();

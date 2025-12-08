@@ -152,13 +152,16 @@ export function isEventMetadata(value: unknown): value is EventMetadata {
   const metadata = value as Record<string, unknown>;
 
   // Check optional fields if present
-  if (metadata.actorId !== undefined && typeof metadata.actorId !== 'string') {
+  if (
+    metadata['actorId'] !== undefined &&
+    typeof metadata['actorId'] !== 'string'
+  ) {
     return false;
   }
 
   if (
-    metadata.actorType !== undefined &&
-    typeof metadata.actorType !== 'string'
+    metadata['actorType'] !== undefined &&
+    typeof metadata['actorType'] !== 'string'
   ) {
     return false;
   }

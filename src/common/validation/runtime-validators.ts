@@ -113,23 +113,23 @@ export function validateEventMetadata(metadata: unknown): ValidationResult {
   }
 
   // Validate optional standard fields
-  if (hasProperty(metadata, 'actorId') && !isString(metadata.actorId)) {
+  if (hasProperty(metadata, 'actorId') && !isString(metadata['actorId'])) {
     errors.push('actorId must be a string');
   }
 
-  if (hasProperty(metadata, 'actorType') && !isString(metadata.actorType)) {
+  if (hasProperty(metadata, 'actorType') && !isString(metadata['actorType'])) {
     errors.push('actorType must be a string');
   }
 
-  if (hasProperty(metadata, 'ipAddress') && !isString(metadata.ipAddress)) {
+  if (hasProperty(metadata, 'ipAddress') && !isString(metadata['ipAddress'])) {
     errors.push('ipAddress must be a string');
   }
 
-  if (hasProperty(metadata, 'userAgent') && !isString(metadata.userAgent)) {
+  if (hasProperty(metadata, 'userAgent') && !isString(metadata['userAgent'])) {
     errors.push('userAgent must be a string');
   }
 
-  if (hasProperty(metadata, 'source') && !isString(metadata.source)) {
+  if (hasProperty(metadata, 'source') && !isString(metadata['source'])) {
     errors.push('source must be a string');
   }
 
@@ -170,50 +170,56 @@ export function validateDeserializedEvent(event: unknown): ValidationResult {
   }
 
   // Type validation for required fields
-  if (hasProperty(event, 'eventId') && !isString(event.eventId)) {
+  if (hasProperty(event, 'eventId') && !isString(event['eventId'])) {
     errors.push('eventId must be a string');
   }
 
-  if (hasProperty(event, 'eventType') && !isString(event.eventType)) {
+  if (hasProperty(event, 'eventType') && !isString(event['eventType'])) {
     errors.push('eventType must be a string');
   }
 
-  if (hasProperty(event, 'aggregateId') && !isString(event.aggregateId)) {
+  if (hasProperty(event, 'aggregateId') && !isString(event['aggregateId'])) {
     errors.push('aggregateId must be a string');
   }
 
-  if (hasProperty(event, 'aggregateType') && !isString(event.aggregateType)) {
+  if (
+    hasProperty(event, 'aggregateType') &&
+    !isString(event['aggregateType'])
+  ) {
     errors.push('aggregateType must be a string');
   }
 
   if (
     hasProperty(event, 'aggregateVersion') &&
-    !isNumber(event.aggregateVersion)
+    !isNumber(event['aggregateVersion'])
   ) {
     errors.push('aggregateVersion must be a number');
   }
 
-  if (hasProperty(event, 'timestamp') && !isString(event.timestamp)) {
+  if (hasProperty(event, 'timestamp') && !isString(event['timestamp'])) {
     errors.push('timestamp must be a string');
   }
 
-  if (hasProperty(event, 'correlationId') && !isString(event.correlationId)) {
+  if (
+    hasProperty(event, 'correlationId') &&
+    !isString(event['correlationId'])
+  ) {
     errors.push('correlationId must be a string');
   }
 
   // Optional fields
   if (
     hasProperty(event, 'causationId') &&
-    event.causationId !== null &&
-    event.causationId !== undefined &&
-    !isString(event.causationId)
+    event['causationId'] !== null &&
+    event['causationId'] !== undefined &&
+    !isString(event['causationId'])
   ) {
     errors.push('causationId must be a string or null/undefined');
   }
 
   // Validate metadata if present
-  if (hasProperty(event, 'metadata') && event.metadata !== null) {
-    const metadataResult = validateEventMetadata(event.metadata);
+  if (hasProperty(event, 'metadata') && event['metadata'] !== null) {
+    const metadataResult = validateEventMetadata(event['metadata']);
     if (!metadataResult.valid) {
       errors.push(...metadataResult.errors.map((e) => `Metadata: ${e}`));
     }

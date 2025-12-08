@@ -203,10 +203,10 @@ export class KafkaEventStore implements IEventStore {
 
                   const eventData = parseResult.data as Record<string, unknown>;
                   const eventType =
-                    typeof eventData.eventType === 'string'
-                      ? eventData.eventType
+                    typeof eventData['eventType'] === 'string'
+                      ? eventData['eventType']
                       : 'unknown';
-                  const version = String(eventData.aggregateVersion);
+                  const version = String(eventData['aggregateVersion']);
                   this.logger.debug(
                     `Found event for ${aggregateId}: ${eventType} (version ${version})`,
                   );
@@ -214,8 +214,8 @@ export class KafkaEventStore implements IEventStore {
                   // Apply version filter if specified
                   if (
                     !fromVersion ||
-                    (typeof eventData.aggregateVersion === 'number' &&
-                      eventData.aggregateVersion >= fromVersion)
+                    (typeof eventData['aggregateVersion'] === 'number' &&
+                      eventData['aggregateVersion'] >= fromVersion)
                   ) {
                     events.push(eventData as unknown as DomainEvent);
                   }
@@ -290,8 +290,8 @@ export class KafkaEventStore implements IEventStore {
             // Apply timestamp filter if specified
             if (
               !fromTimestamp ||
-              (typeof eventData.timestamp === 'string' &&
-                new Date(eventData.timestamp) >= fromTimestamp)
+              (typeof eventData['timestamp'] === 'string' &&
+                new Date(eventData['timestamp']) >= fromTimestamp)
             ) {
               eventQueue.push(eventData as unknown as DomainEvent);
             }

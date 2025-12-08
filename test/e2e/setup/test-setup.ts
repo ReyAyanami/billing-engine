@@ -29,7 +29,7 @@ export class TestSetup {
    */
   async beforeAll(): Promise<INestApplication> {
     // Generate unique schema name based on worker ID and timestamp
-    const workerId = process.env.JEST_WORKER_ID || '1';
+    const workerId = process.env['JEST_WORKER_ID'] || '1';
     const timestamp = Date.now();
     this.schemaName = `test_w${workerId}_${timestamp}`;
 
@@ -66,7 +66,7 @@ export class TestSetup {
   async afterAll(): Promise<void> {
     if (this.dataSource && this.schemaName) {
       try {
-        const workerId = process.env.JEST_WORKER_ID || '1';
+        const workerId = process.env['JEST_WORKER_ID'] || '1';
         console.log(`[Worker ${workerId}] Dropping schema: ${this.schemaName}`);
 
         // Switch back to public schema

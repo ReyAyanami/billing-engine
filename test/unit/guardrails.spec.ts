@@ -14,7 +14,7 @@ describe('Guardrails: Test-Only Modules', () => {
   describe('InMemoryEventStore', () => {
     it('should initialize successfully in test environment', () => {
       // GIVEN: Test environment (Jest sets NODE_ENV=test)
-      expect(process.env.NODE_ENV).toBe('test');
+      expect(process.env['NODE_ENV']).toBe('test');
 
       // WHEN: InMemoryEventStore is created
       const eventStore = new InMemoryEventStore();
@@ -52,12 +52,12 @@ describe('Guardrails: Test-Only Modules', () => {
   describe('Environment Validation Logic', () => {
     it('should recognize test environment via NODE_ENV', () => {
       // Test that test environment is correctly detected
-      expect(process.env.NODE_ENV).toBe('test');
+      expect(process.env['NODE_ENV']).toBe('test');
     });
 
     it('should recognize test environment via JEST_WORKER_ID', () => {
       // Jest sets JEST_WORKER_ID during test execution
-      expect(process.env.JEST_WORKER_ID).toBeDefined();
+      expect(process.env['JEST_WORKER_ID']).toBeDefined();
     });
   });
 

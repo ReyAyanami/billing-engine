@@ -56,7 +56,7 @@ export class TopupRequestedEntityHandler implements IEventHandler<TopupRequested
           destinationBalanceBefore: '0',
           destinationBalanceAfter: '0',
           idempotencyKey: event.idempotencyKey,
-          reference: event.metadata?.reference || 'Topup',
+          reference: event.metadata?.['reference'] || 'Topup',
           metadata: event.metadata || {},
         } as QueryDeepPartialEntity<Transaction>)
         .execute();
