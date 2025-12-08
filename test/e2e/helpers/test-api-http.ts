@@ -17,7 +17,7 @@
 
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { v4 as uuid, v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import { EventSource } from 'eventsource';
 import {
   AccountType,
@@ -84,6 +84,7 @@ export class TestAPIHTTP {
    * Generate a unique ID for test data
    * Returns valid UUID for parallel test isolation
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   generateId(prefix?: string): string {
     // Always return valid UUID - worker isolation handled by database cleanup
     return uuidv4();

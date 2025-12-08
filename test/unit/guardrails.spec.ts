@@ -1,12 +1,14 @@
 /**
  * Guardrail Tests - Verify test-only modules have proper safeguards
- * 
+ *
  * These tests verify that InMemoryEventStore and AppTestModule
  * have guardrails to prevent accidental production use.
  */
 
 import { Logger } from '@nestjs/common';
 import { InMemoryEventStore } from '../helpers/in-memory-event-store';
+import * as fs from 'fs';
+import * as path from 'path';
 
 describe('Guardrails: Test-Only Modules', () => {
   describe('InMemoryEventStore', () => {
@@ -40,7 +42,7 @@ describe('Guardrails: Test-Only Modules', () => {
 
       // THEN: Should log warnings
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('TEST MODE ONLY')
+        expect.stringContaining('TEST MODE ONLY'),
       );
 
       warnSpy.mockRestore();
@@ -62,13 +64,14 @@ describe('Guardrails: Test-Only Modules', () => {
   describe('Documentation', () => {
     it('should have clear warnings in module comments', async () => {
       // Verify that source files have proper documentation
-      const fs = require('fs');
-      const path = require('path');
 
       // Check InMemoryEventStore has warnings
-      const eventStorePath = path.join(__dirname, '../helpers/in-memory-event-store.ts');
+      const eventStorePath = path.join(
+        __dirname,
+        '../helpers/in-memory-event-store.ts',
+      );
       const eventStoreContent = fs.readFileSync(eventStorePath, 'utf-8');
-      
+
       expect(eventStoreContent).toContain('TEST-ONLY');
       expect(eventStoreContent).toContain('WARNING');
       expect(eventStoreContent).toContain('NEVER use this in production');
@@ -76,7 +79,7 @@ describe('Guardrails: Test-Only Modules', () => {
       // Check AppTestModule has warnings
       const appTestModulePath = path.join(__dirname, '../app-test.module.ts');
       const appTestModuleContent = fs.readFileSync(appTestModulePath, 'utf-8');
-      
+
       expect(appTestModuleContent).toContain('TEST-ONLY');
       expect(appTestModuleContent).toContain('WARNING');
       expect(appTestModuleContent).toContain('NEVER use this in production');

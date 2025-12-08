@@ -29,8 +29,8 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
   async handle(event: RefundRequestedEvent): Promise<void> {
     this.logger.log(
       `SAGA: Refund initiated [txId=${event.aggregateId}, paymentId=${event.originalPaymentId}, ` +
-      `merchant=${event.merchantAccountId}, customer=${event.customerAccountId}, ` +
-      `amt=${event.refundAmount} ${event.currency}, corr=${event.correlationId}]`,
+        `merchant=${event.merchantAccountId}, customer=${event.customerAccountId}, ` +
+        `amt=${event.refundAmount} ${event.currency}, corr=${event.correlationId}]`,
     );
 
     let merchantNewBalance: string | undefined;
@@ -47,7 +47,10 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
         actorId: event.metadata?.actorId,
       });
 
-      merchantNewBalance = await this.commandBus.execute<UpdateBalanceCommand, string>(debitCommand);
+      merchantNewBalance = await this.commandBus.execute<
+        UpdateBalanceCommand,
+        string
+      >(debitCommand);
 
       // Step 2: CREDIT the customer account
       const creditCommand = new UpdateBalanceCommand({
@@ -60,7 +63,10 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
         actorId: event.metadata?.actorId,
       });
 
-      const customerNewBalance = await this.commandBus.execute<UpdateBalanceCommand, string>(creditCommand);
+      const customerNewBalance = await this.commandBus.execute<
+        UpdateBalanceCommand,
+        string
+      >(creditCommand);
 
       // Step 3: Complete the refund
       if (!merchantNewBalance) {
@@ -82,11 +88,14 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
       );
     } catch (error) {
       // Step 4 (on failure): Compensate and fail the refund
-      const failureStep = merchantNewBalance ? 'credit_customer' : 'debit_merchant';
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const failureStep = merchantNewBalance
+        ? 'credit_customer'
+        : 'debit_merchant';
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      const errorCode = (error as any)?.code as string | undefined;
-      
+      const errorCode = error?.code as string | undefined;
+
       this.logger.error(
         `SAGA: Refund failed [txId=${event.aggregateId}, corr=${event.correlationId}, step=${failureStep}]`,
         errorStack,
@@ -130,7 +139,10 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
             `SAGA: Refund compensated [txId=${event.aggregateId}, corr=${event.correlationId}]`,
           );
         } catch (compensationError) {
-          const compErrorStack = compensationError instanceof Error ? compensationError.stack : undefined;
+          const compErrorStack =
+            compensationError instanceof Error
+              ? compensationError.stack
+              : undefined;
           this.logger.error(
             `SAGA: COMPENSATION FAILED - MANUAL INTERVENTION REQUIRED [txId=${event.aggregateId}, corr=${event.correlationId}]`,
             compErrorStack,
@@ -146,7 +158,8 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
             );
             await this.commandBus.execute(failCommand);
           } catch (failError) {
-            const failErrorStack = failError instanceof Error ? failError.stack : undefined;
+            const failErrorStack =
+              failError instanceof Error ? failError.stack : undefined;
             this.logger.error(
               `SAGA: Failed to mark as failed [txId=${event.aggregateId}]`,
               failErrorStack,
@@ -166,7 +179,8 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
 
           await this.commandBus.execute(failCommand);
         } catch (failError) {
-          const failErrorStack = failError instanceof Error ? failError.stack : undefined;
+          const failErrorStack =
+            failError instanceof Error ? failError.stack : undefined;
           this.logger.error(
             `SAGA: Failed to mark refund as failed [txId=${event.aggregateId}]`,
             failErrorStack,

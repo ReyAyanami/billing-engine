@@ -20,7 +20,7 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
   async execute(command: WithdrawalCommand): Promise<string> {
     this.logger.log(
       `[WithdrawalHandler] Processing [txId=${command.transactionId}, accountId=${command.accountId}, ` +
-      `amt=${command.amount}, corr=${command.correlationId}]`,
+        `amt=${command.amount}, corr=${command.correlationId}]`,
     );
 
     try {

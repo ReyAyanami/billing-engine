@@ -2,7 +2,6 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { RefundCompletedEvent } from '../../events/refund-completed.event';
 import { TransactionProjectionService } from '../../projections/transaction-projection.service';
-import { TransactionStatus } from '../../transaction.entity';
 
 /**
  * Event handler to update transaction projection when refund is completed.

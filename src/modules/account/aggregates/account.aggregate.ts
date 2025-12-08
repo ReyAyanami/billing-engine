@@ -178,7 +178,7 @@ export class AccountAggregate extends AggregateRoot {
     // Validate: Check limits
     if (this.maxBalance && newBalance.greaterThan(this.maxBalance)) {
       throw new Error(
-        `New balance ${newBalance} would exceed max balance ${this.maxBalance}`,
+        `New balance ${newBalance.toString()} would exceed max balance ${this.maxBalance.toString()}`,
       );
     }
 

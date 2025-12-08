@@ -30,7 +30,7 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
   async handle(event: TransferRequestedEvent): Promise<void> {
     this.logger.log(
       `SAGA: Transfer initiated [txId=${event.aggregateId}, src=${event.sourceAccountId}, ` +
-      `dst=${event.destinationAccountId}, amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
+        `dst=${event.destinationAccountId}, amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
     );
 
     let sourceNewBalance: string | undefined;
@@ -47,7 +47,10 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
         actorId: event.metadata?.actorId,
       });
 
-      sourceNewBalance = await this.commandBus.execute<UpdateBalanceCommand, string>(debitCommand);
+      sourceNewBalance = await this.commandBus.execute<
+        UpdateBalanceCommand,
+        string
+      >(debitCommand);
 
       // Step 2: CREDIT the destination account
       const creditCommand = new UpdateBalanceCommand({
@@ -60,8 +63,10 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
         actorId: event.metadata?.actorId,
       });
 
-      const destinationNewBalance =
-        await this.commandBus.execute<UpdateBalanceCommand, string>(creditCommand);
+      const destinationNewBalance = await this.commandBus.execute<
+        UpdateBalanceCommand,
+        string
+      >(creditCommand);
 
       // Step 3: Complete the transaction
       if (!sourceNewBalance) {
@@ -83,11 +88,14 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
       );
     } catch (error) {
       // Step 4 (on failure): Compensate and fail the transaction
-      const failureStep = sourceNewBalance ? 'credit_destination' : 'debit_source';
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const failureStep = sourceNewBalance
+        ? 'credit_destination'
+        : 'debit_source';
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      const errorCode = (error as any)?.code as string | undefined;
-      
+      const errorCode = error?.code as string | undefined;
+
       this.logger.error(
         `SAGA: Transfer failed [txId=${event.aggregateId}, corr=${event.correlationId}, step=${failureStep}]`,
         errorStack,
@@ -131,7 +139,10 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
             `SAGA: Transfer compensated [txId=${event.aggregateId}, corr=${event.correlationId}]`,
           );
         } catch (compensationError) {
-          const compErrorStack = compensationError instanceof Error ? compensationError.stack : undefined;
+          const compErrorStack =
+            compensationError instanceof Error
+              ? compensationError.stack
+              : undefined;
           this.logger.error(
             `SAGA: COMPENSATION FAILED - MANUAL INTERVENTION REQUIRED [txId=${event.aggregateId}, corr=${event.correlationId}]`,
             compErrorStack,
@@ -147,7 +158,8 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
             );
             await this.commandBus.execute(failCommand);
           } catch (failError) {
-            const failErrorStack = failError instanceof Error ? failError.stack : undefined;
+            const failErrorStack =
+              failError instanceof Error ? failError.stack : undefined;
             this.logger.error(
               `SAGA: Failed to mark as failed [txId=${event.aggregateId}]`,
               failErrorStack,
@@ -167,7 +179,8 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
 
           await this.commandBus.execute(failCommand);
         } catch (failError) {
-          const failErrorStack = failError instanceof Error ? failError.stack : undefined;
+          const failErrorStack =
+            failError instanceof Error ? failError.stack : undefined;
           this.logger.error(
             `SAGA: Failed to mark transaction as failed [txId=${event.aggregateId}]`,
             failErrorStack,

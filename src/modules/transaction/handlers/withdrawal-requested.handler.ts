@@ -25,7 +25,7 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
   async handle(event: WithdrawalRequestedEvent): Promise<void> {
     this.logger.log(
       `SAGA: Withdrawal initiated [txId=${event.aggregateId}, accountId=${event.accountId}, ` +
-      `amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
+        `amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
     );
 
     try {
@@ -40,7 +40,10 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
         actorId: event.metadata?.actorId,
       });
 
-      const newBalance = await this.commandBus.execute<UpdateBalanceCommand, string>(updateBalanceCommand);
+      const newBalance = await this.commandBus.execute<
+        UpdateBalanceCommand,
+        string
+      >(updateBalanceCommand);
 
       // Step 2: Complete the transaction
       const completeCommand = new CompleteWithdrawalCommand(
@@ -57,10 +60,11 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
       );
     } catch (error) {
       // Step 3 (on failure): Fail the transaction
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      const errorCode = (error as any)?.code as string | undefined;
-      
+      const errorCode = error?.code as string | undefined;
+
       this.logger.error(
         `SAGA: Withdrawal failed [txId=${event.aggregateId}, corr=${event.correlationId}]`,
         errorStack,
@@ -77,7 +81,8 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
 
         await this.commandBus.execute(failCommand);
       } catch (failError) {
-        const failErrorStack = failError instanceof Error ? failError.stack : undefined;
+        const failErrorStack =
+          failError instanceof Error ? failError.stack : undefined;
         this.logger.error(
           `SAGA: Failed to mark transaction as failed [txId=${event.aggregateId}]`,
           failErrorStack,

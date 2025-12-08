@@ -20,7 +20,7 @@ export class TransferHandler implements ICommandHandler<TransferCommand> {
   async execute(command: TransferCommand): Promise<string> {
     this.logger.log(
       `[TransferHandler] Processing [txId=${command.transactionId}, src=${command.sourceAccountId}, ` +
-      `dst=${command.destinationAccountId}, amt=${command.amount}, corr=${command.correlationId}]`,
+        `dst=${command.destinationAccountId}, amt=${command.amount}, corr=${command.correlationId}]`,
     );
 
     try {

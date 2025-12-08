@@ -24,7 +24,7 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
   }> {
     this.logger.log(
       `[RefundHandler] Executing [refundId=${command.refundId}, paymentId=${command.originalPaymentId}, ` +
-      `amt=${command.refundAmount} ${command.currency}, corr=${command.correlationId}]`,
+        `amt=${command.refundAmount} ${command.currency}, corr=${command.correlationId}]`,
     );
 
     try {

@@ -27,6 +27,7 @@ export abstract class AggregateRoot {
    * @param event The domain event to apply
    * @param isNew Whether this is a new event (true) or historical (false)
    */
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   protected apply(event: DomainEvent | any, isNew: boolean = true): void {
     // Find and call the appropriate event handler
     const handler = this.getEventHandler(event);
@@ -34,22 +35,27 @@ export abstract class AggregateRoot {
       handler.call(this, event);
     } else {
       // Get event type for warning message
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const eventType =
         typeof event.getEventType === 'function'
-          ? event.getEventType()
-          : event.eventType || 'Unknown';
+          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+            event.getEventType()
+          : // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            event.eventType || 'Unknown';
       AggregateRoot.logger.warn(
         `No handler found [eventType=${eventType}, aggregateType=${this.getAggregateType()}, ` +
-        `aggregateId=${this.aggregateId}]`,
+          `aggregateId=${this.aggregateId}]`,
       );
     }
 
     // Add to uncommitted events if this is a new event
     if (isNew) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       this.uncommittedEvents.push(event);
     }
 
     // Update version
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     this.version = event.aggregateVersion;
   }
 
@@ -58,7 +64,10 @@ export abstract class AggregateRoot {
    * Handler methods should be named: on{EventType}
    * Example: onAccountCreated, onBalanceChanged
    */
-  private getEventHandler(event: DomainEvent | any): Function | undefined {
+  private getEventHandler(
+    event: DomainEvent | any,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+  ): Function | undefined {
     // Handle both proper DomainEvent instances and plain objects from event store
     let eventType: string;
 

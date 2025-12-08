@@ -20,7 +20,7 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
   async execute(command: TopupCommand): Promise<string> {
     this.logger.log(
       `[TopupHandler] Processing [txId=${command.transactionId}, accountId=${command.accountId}, ` +
-      `amt=${command.amount}, corr=${command.correlationId}]`,
+        `amt=${command.amount}, corr=${command.correlationId}]`,
     );
 
     try {

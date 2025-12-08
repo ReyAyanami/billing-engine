@@ -66,8 +66,9 @@ export class AppTestModule implements OnModuleInit {
    */
   private validateTestEnvironment(): void {
     const nodeEnv = process.env.NODE_ENV;
-    const isTest = nodeEnv === 'test' || process.env.JEST_WORKER_ID !== undefined;
-    
+    const isTest =
+      nodeEnv === 'test' || process.env.JEST_WORKER_ID !== undefined;
+
     if (!isTest) {
       const error = `
 ╔════════════════════════════════════════════════════════════════╗
@@ -88,12 +89,14 @@ export class AppTestModule implements OnModuleInit {
 ║  Current NODE_ENV: ${nodeEnv || 'undefined'}                   ║
 ╚════════════════════════════════════════════════════════════════╝
       `;
-      
+
       this.logger.error(error);
       throw new Error('AppTestModule cannot be used outside test environment');
     }
-    
+
     this.logger.warn('⚠️  AppTestModule loaded - TEST MODE ONLY');
-    this.logger.warn('⚠️  Using InMemoryEventStore - events are NOT persisted!');
+    this.logger.warn(
+      '⚠️  Using InMemoryEventStore - events are NOT persisted!',
+    );
   }
 }

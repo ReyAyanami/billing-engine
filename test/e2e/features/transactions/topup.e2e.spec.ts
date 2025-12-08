@@ -146,8 +146,8 @@ describe('Feature: Account Top-up', () => {
       const account = await testApi.createAccount({ currency: 'USD' });
       const idempotencyKey = testApi.generateId();
 
-      // WHEN: I send the same request twice
-      const tx1 = await testApi.topup(account.id, '100.00', 'USD', {
+      // WHEN: I send the same request twice (first call succeeds)
+      await testApi.topup(account.id, '100.00', 'USD', {
         idempotencyKey,
       });
 

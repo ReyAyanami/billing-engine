@@ -4,6 +4,7 @@ export class BillingException extends HttpException {
   constructor(
     public readonly code: string,
     message: string,
+
     public readonly details?: any,
     httpStatus: HttpStatus = HttpStatus.BAD_REQUEST,
   ) {
@@ -12,6 +13,7 @@ export class BillingException extends HttpException {
         error: {
           code,
           message,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           details,
           timestamp: new Date().toISOString(),
         },

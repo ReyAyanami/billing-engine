@@ -11,7 +11,7 @@ import { IEventStore } from '../../src/cqrs/interfaces/event-store.interface';
  * - Does NOT persist events (data lost on restart)
  * - Does NOT support distributed systems
  * - Does NOT scale beyond single process
- * 
+ *
  * NEVER use this in production! Use KafkaEventStore instead.
  */
 @Injectable()
@@ -23,10 +23,12 @@ export class InMemoryEventStore implements IEventStore {
   constructor(eventBus?: EventBus) {
     // GUARDRAIL: Prevent accidental production use
     this.validateTestEnvironment();
-    
+
     this.eventBus = eventBus!;
     this.logger.warn('⚠️  InMemoryEventStore initialized - TEST MODE ONLY');
-    this.logger.warn('⚠️  Events are NOT persisted and will be lost on restart!');
+    this.logger.warn(
+      '⚠️  Events are NOT persisted and will be lost on restart!',
+    );
   }
 
   /**
@@ -35,8 +37,9 @@ export class InMemoryEventStore implements IEventStore {
    */
   private validateTestEnvironment(): void {
     const nodeEnv = process.env.NODE_ENV;
-    const isTest = nodeEnv === 'test' || process.env.JEST_WORKER_ID !== undefined;
-    
+    const isTest =
+      nodeEnv === 'test' || process.env.JEST_WORKER_ID !== undefined;
+
     if (!isTest) {
       const error = `
 ╔════════════════════════════════════════════════════════════════╗
@@ -56,9 +59,11 @@ export class InMemoryEventStore implements IEventStore {
 ║  Current NODE_ENV: ${nodeEnv || 'undefined'}                   ║
 ╚════════════════════════════════════════════════════════════════╝
       `;
-      
+
       this.logger.error(error);
-      throw new Error('InMemoryEventStore cannot be used outside test environment');
+      throw new Error(
+        'InMemoryEventStore cannot be used outside test environment',
+      );
     }
   }
 
