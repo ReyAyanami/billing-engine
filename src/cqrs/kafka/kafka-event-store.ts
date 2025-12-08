@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { IEventStore } from '../interfaces/event-store.interface';
 import { DomainEvent } from '../base/domain-event';
 import { KafkaService } from './kafka.service';
+import {
+  validateDeserializedEvent,
+  parseJsonSafe,
+} from '../../common/validation/runtime-validators';
 
 /**
  * Kafka implementation of the Event Store.
@@ -184,23 +188,36 @@ export class KafkaEventStore implements IEventStore {
 
                 // Only process messages for this specific aggregate
                 if (messageKey === aggregateId) {
-                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                  const eventData = JSON.parse(message.value!.toString());
+                  // Parse and validate event data
+                  const parseResult = parseJsonSafe(
+                    message.value!.toString(),
+                    validateDeserializedEvent,
+                  );
+
+                  if (!parseResult.success) {
+                    this.logger.warn(
+                      `Invalid event data for ${aggregateId}: ${parseResult.error}`,
+                    );
+                    return;
+                  }
+
+                  const eventData = parseResult.data as Record<string, unknown>;
+                  const eventType =
+                    typeof eventData.eventType === 'string'
+                      ? eventData.eventType
+                      : 'unknown';
+                  const version = String(eventData.aggregateVersion);
                   this.logger.debug(
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    `Found event for ${aggregateId}: ${eventData.eventType} (version ${eventData.aggregateVersion})`,
+                    `Found event for ${aggregateId}: ${eventType} (version ${version})`,
                   );
 
                   // Apply version filter if specified
                   if (
                     !fromVersion ||
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    eventData.aggregateVersion >= fromVersion
+                    (typeof eventData.aggregateVersion === 'number' &&
+                      eventData.aggregateVersion >= fromVersion)
                   ) {
-                    // TODO: Deserialize back to proper DomainEvent subclass
-                    // For now, we'll store the raw data
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                    events.push(eventData);
+                    events.push(eventData as unknown as DomainEvent);
                   }
                 }
               } catch (error) {
@@ -252,16 +269,31 @@ export class KafkaEventStore implements IEventStore {
 
       // Start consuming in background
       void consumer.run({
+        // eslint-disable-next-line @typescript-eslint/require-await
         eachMessage: async ({ message }) => {
           try {
-            const eventData = JSON.parse(message.value!.toString());
+            // Parse and validate event data
+            const parseResult = parseJsonSafe(
+              message.value!.toString(),
+              validateDeserializedEvent,
+            );
+
+            if (!parseResult.success) {
+              this.logger.warn(
+                `Invalid event data in stream: ${parseResult.error}`,
+              );
+              return;
+            }
+
+            const eventData = parseResult.data as Record<string, unknown>;
 
             // Apply timestamp filter if specified
             if (
               !fromTimestamp ||
-              new Date(eventData.timestamp) >= fromTimestamp
+              (typeof eventData.timestamp === 'string' &&
+                new Date(eventData.timestamp) >= fromTimestamp)
             ) {
-              eventQueue.push(eventData);
+              eventQueue.push(eventData as unknown as DomainEvent);
             }
           } catch (error) {
             this.logger.error('Error processing message in stream', error);
