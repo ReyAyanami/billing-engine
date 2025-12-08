@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 import { AccountStatus } from '../account.entity';
 
 /**
@@ -29,7 +30,7 @@ export class AccountStatusChangedEvent extends DomainEvent {
     return 'AccountStatusChanged';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       previousStatus: this.previousStatus ?? null,
       newStatus: this.newStatus ?? null,

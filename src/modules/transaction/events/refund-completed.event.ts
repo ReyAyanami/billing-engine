@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Domain event emitted when a refund transaction is completed.
@@ -32,7 +33,7 @@ export class RefundCompletedEvent extends DomainEvent {
     return 'RefundCompleted';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       refundId: this.refundId ?? null,
       merchantNewBalance: this.merchantNewBalance ?? null,

@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Domain event emitted when a payment transaction is requested.
@@ -33,7 +34,7 @@ export class PaymentRequestedEvent extends DomainEvent {
     return 'PaymentRequested';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       customerAccountId: this.customerAccountId ?? null,
       merchantAccountId: this.merchantAccountId ?? null,

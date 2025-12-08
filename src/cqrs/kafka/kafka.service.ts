@@ -63,7 +63,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     this.admin = this.kafka.admin();
   }
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     try {
       await this.producer.connect();
       this.logger.log('✅ Kafka producer connected');
@@ -83,7 +83,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async onModuleDestroy() {
+  async onModuleDestroy(): Promise<void> {
     this.logger.log('Disconnecting from Kafka...');
 
     try {

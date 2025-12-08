@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Domain event emitted when a transaction is compensated (rolled back).
@@ -39,7 +40,7 @@ export class TransactionCompensatedEvent extends DomainEvent {
     return 'TransactionCompensated';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       transactionId: this.transactionId ?? null,
       reason: this.reason ?? null,

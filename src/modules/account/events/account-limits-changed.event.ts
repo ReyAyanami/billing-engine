@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Domain event emitted when an account's balance limits change.
@@ -41,7 +42,7 @@ export class AccountLimitsChangedEvent extends DomainEvent {
     return 'AccountLimitsChanged';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       previousMaxBalance: this.previousMaxBalance ?? null,
       newMaxBalance: this.newMaxBalance ?? null,

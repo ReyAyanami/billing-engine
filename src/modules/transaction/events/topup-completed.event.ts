@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Domain event emitted when a topup transaction is completed successfully.
@@ -29,7 +30,7 @@ export class TopupCompletedEvent extends DomainEvent {
     return 'TopupCompleted';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       accountId: this.accountId ?? null,
       amount: this.amount ?? null,

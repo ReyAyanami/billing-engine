@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Domain event emitted when an account's balance changes.
@@ -34,7 +35,7 @@ export class BalanceChangedEvent extends DomainEvent {
     return 'BalanceChanged';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       previousBalance: this.previousBalance ?? null,
       newBalance: this.newBalance ?? null,

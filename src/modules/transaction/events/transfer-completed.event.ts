@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Domain event emitted when a transfer transaction is completed successfully.
@@ -31,7 +32,7 @@ export class TransferCompletedEvent extends DomainEvent {
     return 'TransferCompleted';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       sourceAccountId: this.sourceAccountId ?? null,
       destinationAccountId: this.destinationAccountId ?? null,

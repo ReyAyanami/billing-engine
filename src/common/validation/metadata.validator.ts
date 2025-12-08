@@ -41,11 +41,11 @@ export class IsValidTransactionMetadataConstraint implements ValidatorConstraint
  */
 export function IsValidTransactionMetadata(
   validationOptions?: ValidationOptions,
-) {
-  return function (object: object, propertyName: string) {
+): PropertyDecorator {
+  return function (object: object, propertyName: string | symbol): void {
     registerDecorator({
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName: propertyName as string,
       options: validationOptions,
       constraints: [],
       validator: IsValidTransactionMetadataConstraint,
@@ -74,11 +74,13 @@ export class IsValidAccountMetadataConstraint implements ValidatorConstraintInte
 /**
  * Decorator to validate account metadata
  */
-export function IsValidAccountMetadata(validationOptions?: ValidationOptions) {
-  return function (object: object, propertyName: string) {
+export function IsValidAccountMetadata(
+  validationOptions?: ValidationOptions,
+): PropertyDecorator {
+  return function (object: object, propertyName: string | symbol): void {
     registerDecorator({
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName: propertyName as string,
       options: validationOptions,
       constraints: [],
       validator: IsValidAccountMetadataConstraint,
@@ -107,11 +109,13 @@ export class IsValidEventMetadataConstraint implements ValidatorConstraintInterf
 /**
  * Decorator to validate event metadata
  */
-export function IsValidEventMetadata(validationOptions?: ValidationOptions) {
-  return function (object: object, propertyName: string) {
+export function IsValidEventMetadata(
+  validationOptions?: ValidationOptions,
+): PropertyDecorator {
+  return function (object: object, propertyName: string | symbol): void {
     registerDecorator({
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName: propertyName as string,
       options: validationOptions,
       constraints: [],
       validator: IsValidEventMetadataConstraint,

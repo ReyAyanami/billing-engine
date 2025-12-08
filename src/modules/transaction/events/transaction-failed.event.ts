@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Domain event emitted when a transaction fails.
@@ -28,7 +29,7 @@ export class TransactionFailedEvent extends DomainEvent {
     return 'TransactionFailed';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       reason: this.reason ?? null,
       errorCode: this.errorCode ?? null,

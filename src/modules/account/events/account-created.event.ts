@@ -1,5 +1,6 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
 import { AccountType, AccountStatus } from '../account.entity';
 
 /**
@@ -39,7 +40,7 @@ export class AccountCreatedEvent extends DomainEvent {
     return 'AccountCreated';
   }
 
-  protected override getEventData() {
+  protected override getEventData(): JsonObject {
     return {
       ownerId: this.ownerId ?? null,
       ownerType: this.ownerType ?? null,
