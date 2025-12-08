@@ -4,14 +4,62 @@ This guide will help you get the billing engine up and running in under 5 minute
 
 ## Prerequisites
 
-- Docker installed (easiest way)
-- OR Node.js 18+ and PostgreSQL 14+
+- Docker Desktop installed and running
+- Node.js 18+ installed
+- Basic command-line knowledge
 
-## Option 1: Quick Start with Docker (Recommended)
+## Quick Start (Recommended)
+
+### 1. Start All Services
+
+```bash
+# Start PostgreSQL, Kafka cluster, and monitoring tools
+./scripts/start.sh
+```
+
+This starts all required infrastructure:
+- PostgreSQL database
+- Kafka cluster (3 brokers)
+- Zookeeper
+- Schema Registry
+- Kafka UI (http://localhost:8080)
+- Prometheus & Grafana
+
+### 2. Create Kafka Topics
+
+```bash
+# Create event sourcing topics
+./scripts/setup/create-topics.sh
+```
+
+### 3. Run Database Migrations
+
+```bash
+npm install
+npm run migration:run
+```
+
+### 4. Start the Application
+
+```bash
+npm run start:dev
+```
+
+### 5. Verify It's Running
+
+```bash
+curl http://localhost:3000/api/v1/currencies
+```
+
+You should see a list of supported currencies.
+
+## Alternative: Docker Only (Without Kafka)
+
+If you just want to test the database without event sourcing:
 
 1. **Start the database**
 ```bash
-docker-compose up -d
+docker-compose up -d postgres
 ```
 
 2. **Install dependencies**
@@ -28,8 +76,6 @@ npm run start:dev
 ```bash
 curl http://localhost:3000/api/v1/currencies
 ```
-
-You should see a list of supported currencies.
 
 ## Option 2: Manual Setup
 
@@ -133,8 +179,14 @@ Run the test suite:
 # Unit tests
 npm test
 
-# E2E tests (requires database to be running)
-npm run test:e2e
+# E2E tests (requires all services running)
+./scripts/test/run-e2e.sh
+
+# Run tests individually (for debugging)
+./scripts/test/run-e2e-individually.sh
+
+# Reset environment and test (clean state)
+./scripts/test/reset-and-test.sh
 
 # Coverage report
 npm run test:cov
@@ -142,37 +194,69 @@ npm run test:cov
 
 ## Common Issues
 
+### Services Won't Start
+```bash
+# Check Docker is running
+docker info
+
+# Check service status
+./scripts/dev/status.sh
+
+# View logs
+./scripts/dev/logs.sh postgres -f
+./scripts/dev/logs.sh kafka-1 -f
+```
+
 ### Database Connection Failed
-- Make sure PostgreSQL is running: `docker-compose ps`
+- Make sure PostgreSQL is running: `./scripts/dev/status.sh`
 - Check .env file has correct credentials
 - Test connection: `psql -h localhost -U postgres -d billing_engine`
 
 ### Port Already in Use
 - Change PORT in .env file
-- Or stop the process using port 3000: `lsof -ti:3000 | xargs kill`
+- Or stop the process: `lsof -ti:3000 | xargs kill`
 
-### TypeORM Synchronize Not Working
-- Drop and recreate the database:
+### Kafka Issues
 ```bash
-docker-compose down -v
-docker-compose up -d
+# Run diagnostics
+./scripts/utils/diagnose-kafka.sh
+
+# View Kafka logs
+./scripts/dev/logs.sh kafka-all -f
+```
+
+### Need a Clean Start
+```bash
+# Complete reset (deletes all data!)
+./scripts/setup/reset.sh
+
+# Start fresh
+./scripts/start.sh
+./scripts/setup/create-topics.sh
+npm run migration:run
 ```
 
 ## Useful Commands
 
 ```bash
-# View logs
-docker-compose logs -f postgres
+# Check all services status
+./scripts/dev/status.sh
+
+# View logs for any service
+./scripts/dev/logs.sh <service> -f
+# Examples: postgres, kafka-1, kafka-all, zookeeper
+
+# Stop all services (preserves data)
+./scripts/stop.sh
+
+# Start all services
+./scripts/start.sh
 
 # Access PostgreSQL CLI
 docker exec -it billing_engine_db psql -U postgres -d billing_engine
 
-# Restart everything
-docker-compose restart
-
-# Clean up
-docker-compose down -v
-npm run build
+# Complete cleanup (removes all data)
+./scripts/setup/reset.sh
 ```
 
 ## API Testing with Postman/Thunder Client
@@ -196,9 +280,12 @@ Import this collection to test all endpoints:
 
 ## Need Help?
 
-- Check [README.md](./README.md) for detailed documentation
-- Review [ARCHITECTURE.md](./ARCHITECTURE.md) for system design
-- See [REQUIREMENTS.md](./REQUIREMENTS.md) for complete specifications
+- **Scripts Documentation**: [scripts/README.md](./scripts/README.md) - All available scripts and workflows
+- **Detailed Docs**: [README.md](./README.md) - Complete documentation
+- **Architecture**: [ARCHITECTURE.md](./ARCHITECTURE.md) - System design details
+- **Requirements**: [REQUIREMENTS.md](./REQUIREMENTS.md) - Complete specifications
+- **Kafka Setup**: [infrastructure/kafka/README.md](./infrastructure/kafka/README.md) - Kafka cluster details
+- **Testing Guide**: [docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) - Testing documentation
 
 ## Ready for Production?
 

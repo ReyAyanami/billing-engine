@@ -65,63 +65,68 @@ Event-driven billing engine infrastructure using Apache Kafka for event sourcing
 
 ## 🚀 Quick Start
 
-### 1. Start the Cluster
+> **Note:** All services are now managed from the project root using unified scripts.
+
+### 1. Start All Services
 
 ```bash
-cd infrastructure/kafka
-
-# Start all services
-docker-compose up -d
-
-# Wait for cluster to be healthy (2-3 minutes)
-docker-compose ps
-
-# Check health
-docker-compose logs -f kafka-1
+# From project root
+./scripts/start.sh
 ```
+
+This starts PostgreSQL, Kafka cluster (3 brokers), Zookeeper, Schema Registry, Kafka UI, Prometheus, and Grafana.
 
 ### 2. Create Topics
 
 ```bash
-# Make script executable
-chmod +x create-topics.sh
-
-# Create all topics
-./create-topics.sh
+# From project root
+./scripts/setup/create-topics.sh
 ```
 
 ### 3. Verify Setup
 
 ```bash
-# Check Kafka UI
+# Check service status
+./scripts/dev/status.sh
+
+# View Kafka UI
 open http://localhost:8080
 
-# Check Prometheus
+# View Prometheus
 open http://localhost:9090
 
-# Check Grafana
+# View Grafana
 open http://localhost:3000
 # Login: admin / admin
 ```
+
+**For more scripts and options, see:** `scripts/README.md`
 
 ## 🔧 Management Commands
 
 ### Cluster Management
 
 ```bash
-# Start cluster
-docker-compose up -d
+# Start all services (from project root)
+./scripts/start.sh
 
-# Stop cluster
-docker-compose stop
-
-# Restart cluster
-docker-compose restart
-
-# View logs
-docker-compose logs -f [service-name]
+# Stop all services
+./scripts/stop.sh
 
 # Check status
+./scripts/dev/status.sh
+
+# View logs (convenient wrapper)
+./scripts/dev/logs.sh kafka-1 -f
+./scripts/dev/logs.sh kafka-all -f
+
+# Complete reset (removes all data)
+./scripts/setup/reset.sh
+
+# Or use docker-compose directly (from project root)
+docker-compose up -d
+docker-compose stop
+docker-compose logs -f kafka-1
 docker-compose ps
 ```
 
@@ -218,9 +223,22 @@ docker exec billing-kafka-1 kafka-consumer-groups --reset-offsets \
 
 ## 🧹 Cleanup
 
-### Stop and Remove Containers
+### Quick Cleanup (Recommended)
 
 ```bash
+# Stop services (keeps data)
+./scripts/stop.sh
+
+# Complete reset (removes all data - use from project root)
+./scripts/setup/reset.sh
+```
+
+### Manual Cleanup
+
+```bash
+# From project root
+cd ../..
+
 # Stop services
 docker-compose stop
 
@@ -294,6 +312,20 @@ Topics are created with:
 
 ## 🚨 Troubleshooting
 
+### Use Diagnostic Tools
+
+```bash
+# Run comprehensive Kafka diagnostics (from project root)
+./scripts/utils/diagnose-kafka.sh
+
+# View logs
+./scripts/dev/logs.sh kafka-1 -f
+./scripts/dev/logs.sh kafka-all --tail 100
+
+# Check service status
+./scripts/dev/status.sh
+```
+
 ### Issue: Message size exceeded
 
 ```
@@ -340,21 +372,22 @@ lsof -i :9094
 # Kill processes using the ports
 kill -9 <PID>
 
-# Or use different ports in docker-compose.yml
+# Or use different ports in root docker-compose.yml
 ```
 
 ### Issue: Cluster is unhealthy
 
 ```bash
-# Check individual broker logs
-docker-compose logs kafka-1
-docker-compose logs kafka-2
-docker-compose logs kafka-3
+# Check individual broker logs (from project root)
+./scripts/dev/logs.sh kafka-1 --tail 100
+./scripts/dev/logs.sh kafka-2 --tail 100
+./scripts/dev/logs.sh kafka-3 --tail 100
 
 # Check Zookeeper
-docker-compose logs zookeeper
+./scripts/dev/logs.sh zookeeper --tail 100
 
-# Restart unhealthy broker
+# Or use docker-compose directly
+cd ../..
 docker-compose restart kafka-1
 ```
 

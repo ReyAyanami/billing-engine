@@ -6,6 +6,13 @@
 **Start Date**: TBD (Set by team)  
 **Decision**: [ADR-0007](./adr/0007-async-event-sourcing-kafka.md)
 
+> **📝 Update (Dec 2025):** This document describes the original setup process. The infrastructure is now consolidated and managed through organized scripts. For current setup instructions, see:
+> - [QUICK_START.md](../QUICK_START.md) - Getting started guide
+> - [SCRIPTS_GUIDE.md](../SCRIPTS_GUIDE.md) - Quick reference for all scripts
+> - [scripts/README.md](../scripts/README.md) - Detailed script documentation
+>
+> Quick start: `./scripts/start.sh` → `./scripts/setup/create-topics.sh` → `npm run start:dev`
+
 ---
 
 ## 🎯 Week 1 Goals
