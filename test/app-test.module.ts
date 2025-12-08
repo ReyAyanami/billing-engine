@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
-import { databaseConfig } from '../src/config/database.config';
+import { getDatabaseConfig } from '../src/config/database.config';
 
 // Import modules WITHOUT KafkaModule
 import { AccountModule } from '../src/modules/account/account.module';
@@ -24,7 +24,7 @@ import { AuditModule } from '../src/modules/audit/audit.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    TypeOrmModule.forRoot(databaseConfig),
+    TypeOrmModule.forRoot(getDatabaseConfig()),
     CqrsModule.forRoot(),
     // Business modules
     AccountModule,
