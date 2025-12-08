@@ -126,10 +126,13 @@ export class TransactionController {
 
     await this.commandBus.execute(command);
 
+    // Wait for saga to complete
+    const transaction = await this.transactionService.waitForTransactionCompletion(refundId);
+
     return {
       refundId,
       originalPaymentId: dto.originalPaymentId,
-      status: 'pending',
+      status: transaction.status,
     };
   }
 
@@ -194,8 +197,11 @@ export class TransactionController {
     }
 
     // Validate currency match
-    if (customerAccount.currency !== dto.currency || merchantAccount.currency !== dto.currency) {
-      throw new CurrencyMismatchException([customerAccount.currency, merchantAccount.currency, dto.currency]);
+    if (customerAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException(customerAccount.currency, dto.currency);
+    }
+    if (merchantAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException(merchantAccount.currency, dto.currency);
     }
 
     // Validate sufficient balance
@@ -219,9 +225,12 @@ export class TransactionController {
 
     await this.commandBus.execute(command);
 
+    // Wait for saga to complete
+    const transaction = await this.transactionService.waitForTransactionCompletion(transactionId);
+
     return {
       transactionId,
-      status: 'pending',
+      status: transaction.status,
     };
   }
 }

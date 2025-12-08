@@ -116,7 +116,15 @@ export class TransactionService {
   }
 
   /**
-   * Wait for transaction to be persisted (polls database)
+   * Wait for transaction to be completed by saga (polls database)
+   * Public so controller can use it
+   */
+  async waitForTransactionCompletion(transactionId: string, maxWait: number = 5000): Promise<Transaction> {
+    return this.waitForTransaction(transactionId, maxWait);
+  }
+
+  /**
+   * Internal wait for transaction completion
    */
   private async waitForTransaction(transactionId: string, maxWait: number = 5000): Promise<Transaction> {
     const start = Date.now();
@@ -124,12 +132,29 @@ export class TransactionService {
       const transaction = await this.transactionRepository.findOne({
         where: { id: transactionId },
       });
+      
       if (transaction) {
-        return transaction;
+        // Check if transaction has reached a final state
+        if (transaction.status === TransactionStatus.COMPLETED || 
+            transaction.status === TransactionStatus.FAILED ||
+            transaction.status === TransactionStatus.COMPENSATED) {
+          return transaction;
+        }
       }
-      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
-    throw new Error(`Transaction not persisted after ${maxWait}ms: ${transactionId}`);
+    
+    // If we timeout, check one more time and return what we have
+    const transaction = await this.transactionRepository.findOne({
+      where: { id: transactionId },
+    });
+    
+    if (transaction) {
+      return transaction;
+    }
+    
+    throw new Error(`Transaction not completed after ${maxWait}ms: ${transactionId}`);
   }
 
   /**
@@ -159,7 +184,7 @@ export class TransactionService {
 
     // Validate currency match
     if (sourceAccount.currency !== dto.currency) {
-      throw new CurrencyMismatchException([sourceAccount.currency, dto.currency]);
+      throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
     }
 
     // Validate sufficient balance
@@ -241,8 +266,11 @@ export class TransactionService {
     this.accountService.validateAccountActive(destinationAccount);
 
     // Validate currency match
-    if (sourceAccount.currency !== dto.currency || destinationAccount.currency !== dto.currency) {
-      throw new CurrencyMismatchException([sourceAccount.currency, destinationAccount.currency, dto.currency]);
+    if (sourceAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
+    }
+    if (destinationAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException(destinationAccount.currency, dto.currency);
     }
 
     // Validate sufficient balance

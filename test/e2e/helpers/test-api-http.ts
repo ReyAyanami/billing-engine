@@ -227,12 +227,6 @@ export class TestAPIHTTP {
       })
       .expect(201);
 
-    // Wait for transaction to complete (saga is async)
-    const transactionId = response.body.transactionId;
-    if (transactionId) {
-      await this.waitForTransactionCompletion(transactionId);
-    }
-
     return response.body;
   }
 
@@ -257,12 +251,6 @@ export class TestAPIHTTP {
         reference: options.reference || 'Test transfer',
       })
       .expect(201);
-
-    // Wait for transaction to complete (saga is async)
-    const transactionId = response.body.debitTransactionId || response.body.transactionId;
-    if (transactionId) {
-      await this.waitForTransactionCompletion(transactionId);
-    }
 
     return response.body;
   }
@@ -289,42 +277,7 @@ export class TestAPIHTTP {
       })
       .expect(201);
 
-    // Wait for transaction to complete (saga is async)
-    const transactionId = response.body.transactionId;
-    await this.waitForTransactionCompletion(transactionId);
-
     return response.body;
-  }
-
-  /**
-   * Wait for a transaction to be completed or failed
-   */
-  private async waitForTransactionCompletion(transactionId: string, maxWait: number = 10000): Promise<void> {
-    const start = Date.now();
-    let lastStatus = 'unknown';
-    
-    while (Date.now() - start < maxWait) {
-      try {
-        const response = await request(this.server)
-          .get(`/api/v1/transactions/${transactionId}`);
-        
-        if (response.status === 200) {
-          const status = response.body.status;
-          lastStatus = status;
-          
-          if (status === 'completed' || status === 'failed' || status === 'compensated') {
-            return;
-          }
-        }
-      } catch (error) {
-        // Transaction not found yet or other error, continue waiting
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    console.warn(`⚠️  Transaction ${transactionId} did not complete within ${maxWait}ms (last status: ${lastStatus})`);
-    // Don't throw, just log warning and continue - saga might still be processing
   }
 
   /**
