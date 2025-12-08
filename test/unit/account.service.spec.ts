@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
+import { CommandBus } from '@nestjs/cqrs';
 import { AccountService } from '../../src/modules/account/account.service';
 import { Account, AccountStatus } from '../../src/modules/account/account.entity';
 import { CurrencyService } from '../../src/modules/currency/currency.service';
@@ -44,6 +45,12 @@ describe('AccountService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: CommandBus,
+          useValue: {
+            execute: jest.fn(),
           },
         },
       ],

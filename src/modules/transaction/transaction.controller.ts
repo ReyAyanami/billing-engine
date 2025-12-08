@@ -23,6 +23,8 @@ import { TransactionResult, TransferResult } from '../../common/types';
 import { PaymentCommand } from './commands/payment.command';
 import { RefundCommand } from './commands/refund.command';
 import { v4 as uuidv4 } from 'uuid';
+import { InvalidOperationException, CurrencyMismatchException, InsufficientBalanceException } from '../../common/exceptions/billing.exception';
+import Decimal from 'decimal.js';
 
 @ApiTags('transactions')
 @Controller('api/v1/transactions')
@@ -181,6 +183,27 @@ export class TransactionController {
     const transactionId = uuidv4();
     const correlationId = uuidv4();
     const idempotencyKey = dto.idempotencyKey || uuidv4();
+
+    // Upfront validation: Check accounts exist and are valid
+    const customerAccount = await this.transactionService.findAccountById(dto.customerAccountId);
+    const merchantAccount = await this.transactionService.findAccountById(dto.merchantAccountId);
+
+    // Validate not same account
+    if (dto.customerAccountId === dto.merchantAccountId) {
+      throw new InvalidOperationException('Customer and merchant accounts must be different');
+    }
+
+    // Validate currency match
+    if (customerAccount.currency !== dto.currency || merchantAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException([customerAccount.currency, merchantAccount.currency, dto.currency]);
+    }
+
+    // Validate sufficient balance
+    const customerBalance = new Decimal(customerAccount.balance);
+    const paymentAmount = new Decimal(dto.amount);
+    if (customerBalance.lessThan(paymentAmount)) {
+      throw new InsufficientBalanceException(dto.customerAccountId, customerBalance.toString(), paymentAmount.toString());
+    }
 
     const command = new PaymentCommand(
       transactionId,

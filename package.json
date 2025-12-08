@@ -84,6 +84,9 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(uuid)/)"
+    ],
     "collectCoverageFrom": [
       "src/**/*.(t|j)s",
       "!src/**/*.spec.ts",
@@ -92,7 +95,8 @@
     "coverageDirectory": "coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^src/(.*)$": "<rootDir>/src/$1"
+      "^src/(.*)$": "<rootDir>/src/$1",
+      "^uuid$": "<rootDir>/node_modules/uuid/dist/index.js"
     },
     "testPathIgnorePatterns": [
       "/node_modules/",

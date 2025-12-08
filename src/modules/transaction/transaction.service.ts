@@ -214,6 +214,26 @@ export class TransactionService {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
     }
 
+    // Upfront validation: Check accounts exist and are valid
+    const sourceAccount = await this.accountService.findById(dto.sourceAccountId);
+    const destinationAccount = await this.accountService.findById(dto.destinationAccountId);
+
+    // Validate accounts are active
+    this.accountService.validateAccountActive(sourceAccount);
+    this.accountService.validateAccountActive(destinationAccount);
+
+    // Validate currency match
+    if (sourceAccount.currency !== dto.currency || destinationAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException([sourceAccount.currency, destinationAccount.currency, dto.currency]);
+    }
+
+    // Validate sufficient balance
+    const sourceBalance = new Decimal(sourceAccount.balance);
+    const transferAmount = new Decimal(dto.amount);
+    if (sourceBalance.lessThan(transferAmount)) {
+      throw new InsufficientBalanceException(dto.sourceAccountId, sourceBalance.toString(), transferAmount.toString());
+    }
+
     // Generate transaction ID
     const transactionId = uuidv4();
 
@@ -359,6 +379,13 @@ export class TransactionService {
     }
 
     return transaction;
+  }
+
+  /**
+   * Find account by ID (helper for controller validation)
+   */
+  async findAccountById(accountId: string): Promise<Account> {
+    return await this.accountService.findById(accountId);
   }
 
   /**

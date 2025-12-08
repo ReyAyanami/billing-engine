@@ -176,9 +176,12 @@ export class AccountAggregate extends AggregateRoot {
       );
     }
 
-    if (this.minBalance && newBalance.lessThan(this.minBalance)) {
+    // For accounts with minBalance set, check against that
+    // For accounts without minBalance set, prevent negative balances by default
+    const effectiveMinBalance = this.minBalance || new Decimal(0);
+    if (newBalance.lessThan(effectiveMinBalance)) {
       throw new Error(
-        `New balance ${newBalance} would be below min balance ${this.minBalance}`,
+        `Insufficient balance: current ${previousBalance}, attempting to ${params.changeType} ${changeAmount}, would result in ${newBalance}`,
       );
     }
 
