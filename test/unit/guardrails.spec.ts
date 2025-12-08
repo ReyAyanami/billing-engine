@@ -62,7 +62,7 @@ describe('Guardrails: Test-Only Modules', () => {
   });
 
   describe('Documentation', () => {
-    it('should have clear warnings in module comments', async () => {
+    it('should have clear warnings in module comments', () => {
       // Verify that source files have proper documentation
 
       // Check InMemoryEventStore has warnings

@@ -18,18 +18,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     
-    // ===== STRICT MODE (Migration Phase 1) =====
-    // Enabling strict mode incrementally - contains all flags below
-    "strict": true,
-    // Individual strict flags (redundant with strict: true, but explicit for documentation):
-    "strictNullChecks": true,           // Already enabled
-    "noImplicitAny": true,              // Already enabled
-    "strictBindCallApply": true,        // Already enabled
-    "strictFunctionTypes": true,        // NEW - Stricter function type checking
-    "strictPropertyInitialization": true, // NEW - Class properties must be initialized
-    "noImplicitThis": true,             // NEW - 'this' must have explicit type
-    "alwaysStrict": true,               // NEW - Emit 'use strict'
-    "useUnknownInCatchVariables": true, // NEW - Catch variables are 'unknown'
+    // ===== STRICT MODE =====
+    "strict": true, // Enables: strictNullChecks, noImplicitAny, strictBindCallApply, strictFunctionTypes, strictPropertyInitialization, noImplicitThis, alwaysStrict, useUnknownInCatchVariables
     
     // ===== ADDITIONAL SAFETY FLAGS =====
     "noFallthroughCasesInSwitch": true, // Prevent fallthrough in switch
