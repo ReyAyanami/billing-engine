@@ -1,7 +1,0 @@
-Add these lines to your .env file:
-
-# Kafka Configuration (Event Sourcing & Async Processing)
-KAFKA_BROKERS=localhost:9092,localhost:9093,localhost:9094
-KAFKA_CLIENT_ID=billing-engine
-KAFKA_GROUP_ID=billing-api-consumers
-
