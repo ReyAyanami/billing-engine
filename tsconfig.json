@@ -31,14 +31,14 @@
     "alwaysStrict": true,               // NEW - Emit 'use strict'
     "useUnknownInCatchVariables": true, // NEW - Catch variables are 'unknown'
     
-    // ===== ADDITIONAL SAFETY FLAGS (Phase 1 - Gradual) =====
-    "noFallthroughCasesInSwitch": true, // Already enabled
-    "noImplicitReturns": true,          // NEW - All code paths must return
-    "noImplicitOverride": true          // NEW - Require 'override' keyword
-    // Commented out for gradual migration - will enable in later phases:
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noUncheckedIndexedAccess": true,
-    // "noPropertyAccessFromIndexSignature": true
+    // ===== ADDITIONAL SAFETY FLAGS =====
+    "noFallthroughCasesInSwitch": true, // Prevent fallthrough in switch
+    "noImplicitReturns": true,          // All code paths must return
+    "noImplicitOverride": true          // Require 'override' keyword
+    // TODO: Enable in next phase after fixing remaining issues:
+    // "noUnusedLocals": true,             // Flag unused local variables
+    // "noUnusedParameters": true,         // Flag unused parameters
+    // "noUncheckedIndexedAccess": true,   // Array/object access returns T | undefined
+    // "noPropertyAccessFromIndexSignature": true // Require bracket notation for index signatures
   }
 }
