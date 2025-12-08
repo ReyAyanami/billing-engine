@@ -37,7 +37,9 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
         amount: command.amount,
         currency: command.currency,
         idempotencyKey: command.idempotencyKey,
-        paymentMetadata: command.paymentMetadata,
+        paymentMetadata: command.paymentMetadata as
+          | Record<string, string | number | boolean>
+          | undefined,
         correlationId: command.correlationId,
         causationId: command.commandId,
         metadata: {

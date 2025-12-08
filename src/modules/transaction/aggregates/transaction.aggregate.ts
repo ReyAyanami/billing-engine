@@ -376,13 +376,7 @@ export class TransactionAggregate extends AggregateRoot {
     amount: string;
     currency: string;
     idempotencyKey: string;
-    paymentMetadata?: {
-      orderId?: string;
-      invoiceId?: string;
-      description?: string;
-      merchantReference?: string;
-      [key: string]: any;
-    };
+    paymentMetadata?: Record<string, string | number | boolean>;
     correlationId: string;
     causationId?: string;
     metadata?: Record<string, string | number | boolean | undefined>;
