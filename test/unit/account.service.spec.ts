@@ -85,7 +85,7 @@ describe('AccountService', () => {
       };
 
       const mockAccount: Partial<Account> = {
-        id: 'account-123',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         ownerId: createAccountDto.ownerId,
         ownerType: createAccountDto.ownerType,
         currency: createAccountDto.currency,
@@ -130,7 +130,7 @@ describe('AccountService', () => {
   describe('findById', () => {
     it('should return an account by id', async () => {
       const mockAccount: Partial<Account> = {
-        id: 'account-123',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         ownerId: 'user-123',
         ownerType: 'user',
         currency: 'USD',
@@ -142,11 +142,13 @@ describe('AccountService', () => {
         .spyOn(accountRepository, 'findOne')
         .mockResolvedValue(mockAccount as Account);
 
-      const result = await service.findById(toAccountId('account-123'));
+      const result = await service.findById(
+        toAccountId('123e4567-e89b-12d3-a456-426614174000'),
+      );
 
       expect(result).toEqual(mockAccount);
       expect(accountRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 'account-123' },
+        where: { id: '123e4567-e89b-12d3-a456-426614174000' },
         relations: ['currencyDetails'],
       });
     });
@@ -155,7 +157,7 @@ describe('AccountService', () => {
       jest.spyOn(accountRepository, 'findOne').mockResolvedValue(null);
 
       await expect(
-        service.findById(toAccountId('nonexistent')),
+        service.findById(toAccountId('999e9999-e99b-99d9-a999-999999999999')),
       ).rejects.toThrow(AccountNotFoundException);
     });
   });
@@ -163,7 +165,7 @@ describe('AccountService', () => {
   describe('updateStatus', () => {
     it('should update account status from active to suspended', async () => {
       const mockAccount: Partial<Account> = {
-        id: 'account-123',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         status: AccountStatus.ACTIVE,
       };
 
@@ -177,7 +179,7 @@ describe('AccountService', () => {
       jest.spyOn(auditService, 'log').mockResolvedValue(undefined as any);
 
       const result = await service.updateStatus(
-        toAccountId('account-123'),
+        toAccountId('123e4567-e89b-12d3-a456-426614174000'),
         AccountStatus.SUSPENDED,
         mockContext,
       );
@@ -188,7 +190,7 @@ describe('AccountService', () => {
 
     it('should throw error for invalid status transition', async () => {
       const mockAccount: Partial<Account> = {
-        id: 'account-123',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         status: AccountStatus.CLOSED,
       };
 
@@ -198,7 +200,7 @@ describe('AccountService', () => {
 
       await expect(
         service.updateStatus(
-          toAccountId('account-123'),
+          toAccountId('123e4567-e89b-12d3-a456-426614174000'),
           AccountStatus.ACTIVE,
           mockContext,
         ),
@@ -209,7 +211,7 @@ describe('AccountService', () => {
   describe('getBalance', () => {
     it('should return account balance', async () => {
       const mockAccount: Partial<Account> = {
-        id: 'account-123',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         balance: '250.50',
         currency: 'USD',
         status: AccountStatus.ACTIVE,
@@ -219,7 +221,9 @@ describe('AccountService', () => {
         .spyOn(accountRepository, 'findOne')
         .mockResolvedValue(mockAccount as Account);
 
-      const result = await service.getBalance(toAccountId('account-123'));
+      const result = await service.getBalance(
+        toAccountId('123e4567-e89b-12d3-a456-426614174000'),
+      );
 
       expect(result).toEqual({
         balance: '250.50',
