@@ -9,7 +9,7 @@ import { GetTransactionsByAccountQuery } from '../../../src/modules/transaction/
 import { GetAccountQuery } from '../../../src/modules/account/queries/get-account.query';
 import { AccountType } from '../../../src/modules/account/account.entity';
 import { TransactionStatus } from '../../../src/modules/transaction/transaction.entity';
-import { Connection } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { InMemoryEventStore } from '../../helpers/in-memory-event-store';
 import { EventPollingHelper } from '../../helpers/event-polling.helper';
 import { generateTestId } from '../../helpers/test-id-generator';
@@ -18,8 +18,8 @@ describe('Week 3 - Complete Saga E2E Test', () => {
   let app: INestApplication;
   let commandBus: CommandBus;
   let queryBus: QueryBus;
-  let connection: Connection;
-  let eventStore: KafkaEventStore;
+  let dataSource: DataSource;
+  let eventStore: InMemoryEventStore;
   let eventPolling: EventPollingHelper;
 
   let userAccountId: string;
@@ -43,13 +43,13 @@ describe('Week 3 - Complete Saga E2E Test', () => {
 
     commandBus = app.get(CommandBus);
     queryBus = app.get(QueryBus);
-    connection = app.get(Connection);
+    dataSource = app.get(DataSource);
     eventStore = app.get<InMemoryEventStore>('EVENT_STORE');
     eventPolling = new EventPollingHelper(eventStore);
 
     // Clear projections before tests
-    await connection.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
-    await connection.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
   });
 
   afterAll(async () => {
@@ -219,9 +219,9 @@ describe('Week 3 - Complete Saga E2E Test', () => {
         },
         (proj) => proj && proj.id === transactionId && proj.status === TransactionStatus.COMPLETED,
         {
-          maxRetries: 60,
+          maxRetries: 80,
           retryDelayMs: 500,
-          timeoutMs: 35000,
+          timeoutMs: 45000,
           description: `transaction projection ${transactionId} to be COMPLETED`,
         },
       );

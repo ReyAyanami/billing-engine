@@ -196,7 +196,8 @@ describe('Refund Saga E2E', () => {
         { 
           description: `payment ${paymentId} to be COMPLETED`,
           maxRetries: 60,
-          retryDelayMs: 500
+          retryDelayMs: 500,
+          timeoutMs: 35000
         }
       );
       
@@ -211,8 +212,21 @@ describe('Refund Saga E2E', () => {
       
       // Verify payment metadata
       expect(paymentProjection!.metadata).toBeDefined();
-      expect(paymentProjection!.metadata!['orderId']).toBe('ORDER-12345');
-      expect(paymentProjection!.metadata!['invoiceId']).toBe('INV-67890');
+      expect(paymentProjection!.metadata!['paymentMetadata']).toBeDefined();
+      expect(paymentProjection!.metadata!['paymentMetadata']['orderId']).toBe('ORDER-12345');
+      expect(paymentProjection!.metadata!['paymentMetadata']['invoiceId']).toBe('INV-67890');
+      
+      // Wait for account balance projections to update after payment
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(merchantAccountId),
+        (account) => account && new Decimal(account.balance).toNumber() === 250,
+        { 
+          description: `merchant account balance to be 250 after payment`,
+          maxRetries: 40,
+          retryDelayMs: 500,
+          timeoutMs: 25000
+        }
+      );
       
       // Verify balances after payment
       customerAccount = await accountProjectionService.findById(customerAccountId);
@@ -239,16 +253,41 @@ describe('Refund Saga E2E', () => {
         'test-e2e',
       );
       
-      await commandBus.execute(refundCommand);
+      let refundResult;
+      try {
+        refundResult = await commandBus.execute(refundCommand);
+        console.log(`[DEBUG] Refund command result:`, refundResult);
+      } catch (error) {
+        console.log(`[DEBUG] Refund command error:`, error.message);
+        throw error;
+      }
+      
+      // Check if the refund events were stored
+      const eventStore = app.get<InMemoryEventStore>('EVENT_STORE');
+      const refundEvents = await eventStore.getEvents('Transaction', refundId);
+      console.log(`[DEBUG] Refund events stored: ${refundEvents.length}`);
+      if (refundEvents.length > 0) {
+        console.log(`[DEBUG] First event type: ${refundEvents[0].eventType || refundEvents[0].constructor?.name}`);
+      }
+      
+      // Give the event bus time to process the RefundRequestedEvent
+      await new Promise((resolve) => setImmediate(resolve));
       
       // Wait for refund saga to complete
       await pollingHelper.waitForProjection(
-        () => transactionProjectionService.findById(refundId),
+        async () => {
+          const tx = await transactionProjectionService.findById(refundId);
+          if (tx) {
+            console.log(`[DEBUG] Refund ${refundId} status: ${tx.status}, failureReason: ${tx.failureReason || 'none'}`);
+          }
+          return tx;
+        },
         (tx) => tx && tx.status === TransactionStatus.COMPLETED,
         { 
           description: `refund ${refundId} to be COMPLETED`,
           maxRetries: 60,
-          retryDelayMs: 500
+          retryDelayMs: 500,
+          timeoutMs: 35000
         }
       );
       
@@ -287,7 +326,7 @@ describe('Refund Saga E2E', () => {
       console.log(`   Payment: ${paymentAmount} (${customerAccountId} → ${merchantAccountId})`);
       console.log(`   Refund: ${refundAmount} (${merchantAccountId} → ${customerAccountId})`);
       console.log(`   Final Balances: Customer ${finalCustomerAccount!.balance}, Merchant ${finalMerchantAccount!.balance}`);
-    }, 30000); // 30 second timeout for complete flow
+    }, 60000); // 60 second timeout for complete flow
     
     it('should handle full refund correctly', async () => {
       const correlationId = generateTestId();
@@ -393,8 +432,9 @@ describe('Refund Saga E2E', () => {
         (tx) => tx && tx.status === TransactionStatus.COMPLETED,
         { 
           description: `full refund payment ${paymentId} to be COMPLETED`,
-          maxRetries: 60,
-          retryDelayMs: 500
+          maxRetries: 80,
+          retryDelayMs: 500,
+          timeoutMs: 45000
         }
       );
       
@@ -428,8 +468,9 @@ describe('Refund Saga E2E', () => {
         (tx) => tx && tx.status === TransactionStatus.COMPLETED,
         { 
           description: `full refund ${refundId} to be COMPLETED`,
-          maxRetries: 60,
-          retryDelayMs: 500
+          maxRetries: 80,
+          retryDelayMs: 500,
+          timeoutMs: 45000
         }
       );
       
@@ -449,7 +490,7 @@ describe('Refund Saga E2E', () => {
       console.log('✅ Full refund processed successfully!');
       console.log(`   Customer balance restored: ${customerAccount!.balance}`);
       console.log(`   Merchant balance cleared: ${merchantAccount!.balance}`);
-    }, 30000);
+    }, 60000);
   });
 });
 

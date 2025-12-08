@@ -128,7 +128,7 @@ describe('🔌 Kafka Integration Test', () => {
 
       expect(reconstructedAggregate.getId()).toBe(accountId);
       expect(reconstructedAggregate.getOwnerId()).toBe('kafka-test-user');
-      expect(reconstructedAggregate.getBalance().toString()).toBe('0.00');
+      expect(reconstructedAggregate.getBalance().toFixed(2)).toBe('0.00');
       expect(reconstructedAggregate.getVersion()).toBe(1);
 
       console.log('\n╔═══════════════════════════════════════════════════════════════╗');

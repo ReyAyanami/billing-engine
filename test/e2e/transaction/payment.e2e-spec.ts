@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { CommandBus, QueryBus, EventBus } from '@nestjs/cqrs';
-import { Connection } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { AppTestModule } from '../../app-test.module';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
 import { TopupCommand } from '../../../src/modules/transaction/commands/topup.command';
@@ -20,7 +20,7 @@ describe('Payment Saga E2E Test', () => {
   let app: INestApplication;
   let commandBus: CommandBus;
   let queryBus: QueryBus;
-  let connection: Connection;
+  let dataSource: DataSource;
   let eventPolling: EventPollingHelper;
 
   let customerAccountId: string;
@@ -43,15 +43,15 @@ describe('Payment Saga E2E Test', () => {
 
     commandBus = app.get(CommandBus);
     queryBus = app.get(QueryBus);
-    connection = app.get(Connection);
+    dataSource = app.get(DataSource);
     const eventStore = app.get<InMemoryEventStore>('EVENT_STORE');
     eventPolling = new EventPollingHelper(eventStore);
 
     // Clear tables before tests
-    await connection.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
-    await connection.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
-    await connection.manager.query('TRUNCATE TABLE accounts RESTART IDENTITY CASCADE;');
-    await connection.manager.query('TRUNCATE TABLE transactions RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE accounts RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE transactions RESTART IDENTITY CASCADE;');
   });
 
   afterAll(async () => {
