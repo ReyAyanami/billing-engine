@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { CommandBus, EventBus } from '@nestjs/cqrs';
 import { DataSource } from 'typeorm';
-import { AppModule } from '../../../src/app.module';
+import { AppTestModule } from '../../app-test.module';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
 import { AccountType } from '../../../src/modules/account/account.entity';
 import { InMemoryEventStore } from '../../helpers/in-memory-event-store';
@@ -21,7 +21,7 @@ describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppTestModule],
     })
     .overrideProvider('EVENT_STORE')
     .useFactory({

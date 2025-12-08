@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../../../src/app.module';
+import { AppTestModule } from '../../app-test.module';
 import { CommandBus, EventBus } from '@nestjs/cqrs';
 import { DataSource } from 'typeorm';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
@@ -37,7 +37,7 @@ describe('Refund Saga E2E', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppTestModule],
     })
     .overrideProvider('EVENT_STORE')
     .useFactory({

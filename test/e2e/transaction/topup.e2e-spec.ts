@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../../../src/app.module';
+import { AppTestModule } from '../../app-test.module';
 import { CommandBus, QueryBus, EventBus } from '@nestjs/cqrs';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
 import { TopupCommand } from '../../../src/modules/transaction/commands/topup.command';
@@ -29,7 +29,7 @@ describe('Week 3 - Complete Saga E2E Test', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppTestModule],
     })
     .overrideProvider('EVENT_STORE')
     .useFactory({

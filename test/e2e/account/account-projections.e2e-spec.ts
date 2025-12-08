@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { CommandBus, QueryBus, EventBus } from '@nestjs/cqrs';
 import { DataSource } from 'typeorm';
-import { AppModule } from '../../../src/app.module';
+import { AppTestModule } from '../../app-test.module';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
 import { GetAccountQuery } from '../../../src/modules/account/queries/get-account.query';
 import { GetAccountsByOwnerQuery } from '../../../src/modules/account/queries/get-accounts-by-owner.query';
@@ -23,7 +23,7 @@ describe('Week 2 - Projections E2E Test', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppTestModule],
     })
     .overrideProvider('EVENT_STORE')
     .useFactory({
