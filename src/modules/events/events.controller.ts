@@ -1,7 +1,18 @@
-import { Controller, Sse, Query, MessageEvent } from '@nestjs/common';
+import { Controller, Sse, Query } from '@nestjs/common';
 import { Observable, filter, map } from 'rxjs';
 import { EventBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { DomainEvent } from '../../cqrs/base/domain-event';
+
+interface MessageEvent {
+  data: {
+    type: string;
+    timestamp: string;
+    payload: unknown;
+    accountId?: string;
+    transactionId?: string;
+  };
+}
 
 /**
  * SSE Controller for real-time event streaming
@@ -30,22 +41,27 @@ export class EventsController {
     return new Observable((observer) => {
       const subscription = this.eventBus
         .pipe(
-          filter((event: any) => {
+          filter((event: unknown) => {
             // Filter events related to this account
+            if (!(event instanceof DomainEvent)) return false;
+            const eventData = event.toJSON();
             return (
-              event.accountId === accountId ||
-              event.sourceAccountId === accountId ||
-              event.destinationAccountId === accountId
+              eventData.accountId === accountId ||
+              eventData.sourceAccountId === accountId ||
+              eventData.destinationAccountId === accountId
             );
           }),
-          map((event: any) => ({
-            data: {
-              type: event.constructor.name,
-              accountId,
-              timestamp: new Date().toISOString(),
-              payload: event,
-            },
-          })),
+          map((event: unknown) => {
+            const domainEvent = event as DomainEvent;
+            return {
+              data: {
+                type: domainEvent.getEventType(),
+                accountId,
+                timestamp: new Date().toISOString(),
+                payload: domainEvent.toJSON(),
+              },
+            };
+          }),
         )
         .subscribe((data) => observer.next(data));
 
@@ -68,21 +84,22 @@ export class EventsController {
     return new Observable((observer) => {
       const subscription = this.eventBus
         .pipe(
-          filter((event: any) => {
+          filter((event: unknown) => {
             // Filter events related to this transaction
-            return (
-              event.transactionId === transactionId ||
-              event.aggregateId === transactionId
-            );
+            if (!(event instanceof DomainEvent)) return false;
+            return event.aggregateId === transactionId;
           }),
-          map((event: any) => ({
-            data: {
-              type: event.constructor.name,
-              transactionId,
-              timestamp: new Date().toISOString(),
-              payload: event,
-            },
-          })),
+          map((event: unknown) => {
+            const domainEvent = event as DomainEvent;
+            return {
+              data: {
+                type: domainEvent.getEventType(),
+                transactionId,
+                timestamp: new Date().toISOString(),
+                payload: domainEvent.toJSON(),
+              },
+            };
+          }),
         )
         .subscribe((data) => observer.next(data));
 
@@ -99,13 +116,16 @@ export class EventsController {
     return new Observable((observer) => {
       const subscription = this.eventBus
         .pipe(
-          map((event: any) => ({
-            data: {
-              type: event.constructor.name,
-              timestamp: new Date().toISOString(),
-              payload: event,
-            },
-          })),
+          map((event: unknown) => {
+            const domainEvent = event as DomainEvent;
+            return {
+              data: {
+                type: domainEvent.getEventType(),
+                timestamp: new Date().toISOString(),
+                payload: domainEvent.toJSON(),
+              },
+            };
+          }),
         )
         .subscribe((data) => observer.next(data));
 

@@ -32,10 +32,7 @@ export class PaymentRequestedProjectionHandler implements IEventHandler<PaymentR
         aggregateVersion: event.aggregateVersion,
         lastEventId: event.eventId,
         lastEventTimestamp: event.timestamp,
-        metadata: {
-          ...event.metadata,
-          paymentMetadata: event.paymentMetadata,
-        },
+        metadata: event.metadata,
       });
     } catch (error: unknown) {
       this.logger.error(

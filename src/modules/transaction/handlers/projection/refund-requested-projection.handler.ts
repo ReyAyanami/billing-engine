@@ -32,11 +32,7 @@ export class RefundRequestedProjectionHandler implements IEventHandler<RefundReq
         aggregateVersion: event.aggregateVersion,
         lastEventId: event.eventId,
         lastEventTimestamp: event.timestamp,
-        metadata: {
-          ...event.metadata,
-          originalPaymentId: event.originalPaymentId,
-          refundMetadata: event.refundMetadata,
-        },
+        metadata: event.metadata,
       });
     } catch (error: unknown) {
       this.logger.error(
