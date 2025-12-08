@@ -29,18 +29,14 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
 
   async handle(event: TransferRequestedEvent): Promise<void> {
     this.logger.log(
-      `📨 SAGA: Handling TransferRequestedEvent: ${event.aggregateId}`,
+      `SAGA: Transfer initiated [txId=${event.aggregateId}, src=${event.sourceAccountId}, ` +
+      `dst=${event.destinationAccountId}, amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
     );
-    this.logger.log(`   Source Account: ${event.sourceAccountId}`);
-    this.logger.log(`   Destination Account: ${event.destinationAccountId}`);
-    this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
 
     let sourceNewBalance: string | undefined;
 
     try {
       // Step 1: DEBIT the source account
-      this.logger.log(`   ⚙️  Step 1: Debiting source account...`);
-
       const debitCommand = new UpdateBalanceCommand(
         event.sourceAccountId,
         event.amount,
@@ -52,11 +48,8 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
       );
 
       sourceNewBalance = await this.commandBus.execute(debitCommand);
-      this.logger.log(`   ✅ Source account debited: ${sourceNewBalance}`);
 
       // Step 2: CREDIT the destination account
-      this.logger.log(`   ⚙️  Step 2: Crediting destination account...`);
-
       const creditCommand = new UpdateBalanceCommand(
         event.destinationAccountId,
         event.amount,
@@ -69,14 +62,8 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
 
       const destinationNewBalance =
         await this.commandBus.execute(creditCommand);
-      this.logger.log(
-        `   ✅ Destination account credited: ${destinationNewBalance}`,
-      );
 
       // Step 3: Complete the transaction
-      this.logger.log(`   ⚙️  Step 3: Completing transaction...`);
-
-      // At this point, sourceNewBalance is guaranteed to be defined
       if (!sourceNewBalance) {
         throw new Error('Source balance update failed');
       }
@@ -90,19 +77,20 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
       );
 
       await this.commandBus.execute(completeCommand);
-      this.logger.log(`   ✅ Transaction completed: ${event.aggregateId}`);
 
-      this.logger.log(`✅ SAGA: Transfer completed successfully!`);
+      this.logger.log(
+        `SAGA: Transfer completed [txId=${event.aggregateId}, srcBal=${sourceNewBalance}, dstBal=${destinationNewBalance}]`,
+      );
     } catch (error) {
       // Step 4 (on failure): Compensate and fail the transaction
-      this.logger.error(`   ❌ SAGA: Transfer failed: ${error.message}`);
+      const failureStep = sourceNewBalance ? 'credit_destination' : 'debit_source';
+      this.logger.error(
+        `SAGA: Transfer failed [txId=${event.aggregateId}, corr=${event.correlationId}, step=${failureStep}]`,
+        error.stack,
+      );
 
       // Check if we need compensation (source was debited)
       if (sourceNewBalance) {
-        this.logger.log(
-          `   ⚙️  Step 4a: Compensating - crediting source account back...`,
-        );
-
         try {
           // COMPENSATION: Credit back the source account
           const compensateUpdateCommand = new UpdateBalanceCommand(
@@ -116,7 +104,6 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
           );
 
           await this.commandBus.execute(compensateUpdateCommand);
-          this.logger.log(`   ✅ Source account compensated (credited back)`);
 
           // Mark transaction as compensated
           const compensateCommand = new CompensateTransactionCommand(
@@ -136,14 +123,13 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
           );
 
           await this.commandBus.execute(compensateCommand);
-          this.logger.log(`   ✅ Transaction marked as COMPENSATED`);
-          this.logger.log(
-            `✅ SAGA: Transfer compensated successfully (rolled back)`,
+          this.logger.warn(
+            `SAGA: Transfer compensated [txId=${event.aggregateId}, corr=${event.correlationId}]`,
           );
         } catch (compensationError) {
           this.logger.error(
-            `   ❌ SAGA: CRITICAL - Compensation failed! Manual intervention needed.`,
-            compensationError,
+            `SAGA: COMPENSATION FAILED - MANUAL INTERVENTION REQUIRED [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+            compensationError.stack,
           );
           // Still try to mark as failed
           try {
@@ -157,16 +143,13 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
             await this.commandBus.execute(failCommand);
           } catch (failError) {
             this.logger.error(
-              `   ❌ SAGA: Failed to mark as failed`,
-              failError,
+              `SAGA: Failed to mark as failed [txId=${event.aggregateId}]`,
+              failError.stack,
             );
           }
         }
       } else {
         // No compensation needed, just fail
-        this.logger.log(
-          `   ⚙️  Step 4b: No compensation needed (source not yet debited)`,
-        );
         try {
           const failCommand = new FailTransactionCommand(
             event.aggregateId,
@@ -177,11 +160,10 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
           );
 
           await this.commandBus.execute(failCommand);
-          this.logger.log(`   ✅ Transaction marked as failed`);
         } catch (failError) {
           this.logger.error(
-            `   ❌ SAGA: Failed to mark transaction as failed`,
-            failError,
+            `SAGA: Failed to mark transaction as failed [txId=${event.aggregateId}]`,
+            failError.stack,
           );
         }
       }

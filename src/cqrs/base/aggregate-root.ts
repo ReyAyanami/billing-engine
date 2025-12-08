@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { DomainEvent } from './domain-event';
 
 /**
@@ -6,6 +7,7 @@ import { DomainEvent } from './domain-event';
  * They encapsulate business logic and emit events to record state changes.
  */
 export abstract class AggregateRoot {
+  private static readonly logger = new Logger(AggregateRoot.name);
   /** Unique identifier for this aggregate */
   protected aggregateId: string;
 
@@ -36,8 +38,9 @@ export abstract class AggregateRoot {
         typeof event.getEventType === 'function'
           ? event.getEventType()
           : event.eventType || 'Unknown';
-      console.warn(
-        `No handler found for event ${eventType} on aggregate ${this.getAggregateType()}`,
+      AggregateRoot.logger.warn(
+        `No handler found [eventType=${eventType}, aggregateType=${this.getAggregateType()}, ` +
+        `aggregateId=${this.aggregateId}]`,
       );
     }
 
@@ -66,7 +69,10 @@ export abstract class AggregateRoot {
       // Plain object from event store
       eventType = event.eventType;
     } else {
-      console.error('Unable to determine event type from event:', event);
+      AggregateRoot.logger.error(
+        `Unable to determine event type [aggregateId=${this.aggregateId}]`,
+        JSON.stringify(event),
+      );
       return undefined;
     }
 

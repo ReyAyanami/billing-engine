@@ -23,11 +23,8 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
     customerAccountId: string;
   }> {
     this.logger.log(
-      `[RefundHandler] Executing RefundCommand: ${command.refundId}`,
-    );
-    this.logger.log(`   Original Payment: ${command.originalPaymentId}`);
-    this.logger.log(
-      `   Refund Amount: ${command.refundAmount} ${command.currency}`,
+      `[RefundHandler] Executing [refundId=${command.refundId}, paymentId=${command.originalPaymentId}, ` +
+      `amt=${command.refundAmount} ${command.currency}, corr=${command.correlationId}]`,
     );
 
     try {
@@ -86,7 +83,7 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
       refund.commit();
 
       this.logger.log(
-        `✅ [RefundHandler] Refund requested: ${command.refundId}`,
+        `[RefundHandler] Completed [refundId=${command.refundId}]`,
       );
 
       return {
@@ -95,7 +92,10 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
         customerAccountId,
       };
     } catch (error) {
-      this.logger.error(`❌ [RefundHandler] Failed to request refund`, error);
+      this.logger.error(
+        `[RefundHandler] Failed [refundId=${command.refundId}, corr=${command.correlationId}]`,
+        error.stack,
+      );
       throw error;
     }
   }

@@ -17,11 +17,6 @@ export class PaymentRequestedProjectionHandler implements IEventHandler<PaymentR
   ) {}
 
   async handle(event: PaymentRequestedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] PaymentRequested: ${event.aggregateId}`);
-    this.logger.log(`   Customer: ${event.customerAccountId}`);
-    this.logger.log(`   Merchant: ${event.merchantAccountId}`);
-    this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
-
     try {
       await this.projectionService.createTransactionProjection({
         id: event.aggregateId,
@@ -42,14 +37,10 @@ export class PaymentRequestedProjectionHandler implements IEventHandler<PaymentR
           paymentMetadata: event.paymentMetadata,
         },
       });
-
-      this.logger.log(
-        `✅ [Projection] Payment projection created: ${event.aggregateId}`,
-      );
     } catch (error) {
       this.logger.error(
-        `❌ [Projection] Failed to create payment projection`,
-        error,
+        `[Projection] Failed to create payment projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+        error.stack,
       );
     }
   }

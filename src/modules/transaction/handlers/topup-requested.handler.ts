@@ -24,16 +24,12 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
 
   async handle(event: TopupRequestedEvent): Promise<void> {
     this.logger.log(
-      `📨 SAGA: Handling TopupRequestedEvent: ${event.aggregateId}`,
+      `SAGA: Topup initiated [txId=${event.aggregateId}, accountId=${event.accountId}, ` +
+      `amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
     );
-    this.logger.log(`   Account: ${event.accountId}`);
-    this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
-    this.logger.log(`   Source: ${event.sourceAccountId}`);
 
     try {
       // Step 1: Update account balance
-      this.logger.log(`   ⚙️  Step 1: Updating account balance...`);
-
       const updateBalanceCommand = new UpdateBalanceCommand(
         event.accountId,
         event.amount,
@@ -45,11 +41,8 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
       );
 
       const newBalance = await this.commandBus.execute(updateBalanceCommand);
-      this.logger.log(`   ✅ Account balance updated: ${newBalance}`);
 
       // Step 2: Complete the transaction
-      this.logger.log(`   ⚙️  Step 2: Completing transaction...`);
-
       const completeCommand = new CompleteTopupCommand(
         event.aggregateId,
         newBalance,
@@ -58,13 +51,16 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
       );
 
       await this.commandBus.execute(completeCommand);
-      this.logger.log(`   ✅ Transaction completed: ${event.aggregateId}`);
 
-      this.logger.log(`✅ SAGA: Topup completed successfully!`);
+      this.logger.log(
+        `SAGA: Topup completed [txId=${event.aggregateId}, balance=${newBalance}]`,
+      );
     } catch (error) {
       // Step 3 (on failure): Fail the transaction
-      this.logger.error(`   ❌ SAGA: Topup failed: ${error.message}`);
-      this.logger.log(`   ⚙️  Step 3: Marking transaction as failed...`);
+      this.logger.error(
+        `SAGA: Topup failed [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+        error.stack,
+      );
 
       try {
         const failCommand = new FailTransactionCommand(
@@ -76,13 +72,11 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
         );
 
         await this.commandBus.execute(failCommand);
-        this.logger.log(`   ✅ Transaction marked as failed`);
       } catch (failError) {
         this.logger.error(
-          `   ❌ SAGA: Failed to mark transaction as failed`,
-          failError,
+          `SAGA: Failed to mark transaction as failed [txId=${event.aggregateId}]`,
+          failError.stack,
         );
-        // This is critical - we should alert/retry
       }
     }
   }

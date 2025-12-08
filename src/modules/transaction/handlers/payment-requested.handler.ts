@@ -28,22 +28,14 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
 
   async handle(event: PaymentRequestedEvent): Promise<void> {
     this.logger.log(
-      `📨 SAGA: Handling PaymentRequestedEvent: ${event.aggregateId}`,
+      `SAGA: Payment initiated [txId=${event.aggregateId}, customer=${event.customerAccountId}, ` +
+      `merchant=${event.merchantAccountId}, amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
     );
-    this.logger.log(`   Customer: ${event.customerAccountId}`);
-    this.logger.log(`   Merchant: ${event.merchantAccountId}`);
-    this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
-
-    if (event.paymentMetadata?.orderId) {
-      this.logger.log(`   Order ID: ${event.paymentMetadata.orderId}`);
-    }
 
     let customerNewBalance: string | undefined;
 
     try {
       // Step 1: DEBIT the customer account
-      this.logger.log(`   ⚙️  Step 1: Debiting customer account...`);
-
       const debitCommand = new UpdateBalanceCommand(
         event.customerAccountId,
         event.amount,
@@ -55,11 +47,8 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
       );
 
       customerNewBalance = await this.commandBus.execute(debitCommand);
-      this.logger.log(`   ✅ Customer account debited: ${customerNewBalance}`);
 
       // Step 2: CREDIT the merchant account
-      this.logger.log(`   ⚙️  Step 2: Crediting merchant account...`);
-
       const creditCommand = new UpdateBalanceCommand(
         event.merchantAccountId,
         event.amount,
@@ -71,12 +60,8 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
       );
 
       const merchantNewBalance = await this.commandBus.execute(creditCommand);
-      this.logger.log(`   ✅ Merchant account credited: ${merchantNewBalance}`);
 
       // Step 3: Complete the payment
-      this.logger.log(`   ⚙️  Step 3: Completing payment...`);
-
-      // At this point, customerNewBalance is guaranteed to be defined
       if (!customerNewBalance) {
         throw new Error('Customer balance update failed');
       }
@@ -90,19 +75,20 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
       );
 
       await this.commandBus.execute(completeCommand);
-      this.logger.log(`   ✅ Payment completed: ${event.aggregateId}`);
 
-      this.logger.log(`✅ SAGA: Payment completed successfully!`);
+      this.logger.log(
+        `SAGA: Payment completed [txId=${event.aggregateId}, customerBal=${customerNewBalance}, merchantBal=${merchantNewBalance}]`,
+      );
     } catch (error) {
       // Step 4 (on failure): Compensate and fail the payment
-      this.logger.error(`   ❌ SAGA: Payment failed: ${error.message}`);
+      const failureStep = customerNewBalance ? 'credit_merchant' : 'debit_customer';
+      this.logger.error(
+        `SAGA: Payment failed [txId=${event.aggregateId}, corr=${event.correlationId}, step=${failureStep}]`,
+        error.stack,
+      );
 
       // Check if we need compensation (customer was debited)
       if (customerNewBalance) {
-        this.logger.log(
-          `   ⚙️  Step 4a: Compensating - crediting customer account back...`,
-        );
-
         try {
           // COMPENSATION: Credit back the customer account
           const compensateUpdateCommand = new UpdateBalanceCommand(
@@ -116,7 +102,6 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
           );
 
           await this.commandBus.execute(compensateUpdateCommand);
-          this.logger.log(`   ✅ Customer account compensated (credited back)`);
 
           // Mark transaction as compensated
           const compensateCommand = new CompensateTransactionCommand(
@@ -136,14 +121,13 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
           );
 
           await this.commandBus.execute(compensateCommand);
-          this.logger.log(`   ✅ Payment marked as COMPENSATED`);
-          this.logger.log(
-            `✅ SAGA: Payment compensated successfully (rolled back)`,
+          this.logger.warn(
+            `SAGA: Payment compensated [txId=${event.aggregateId}, corr=${event.correlationId}]`,
           );
         } catch (compensationError) {
           this.logger.error(
-            `   ❌ SAGA: CRITICAL - Compensation failed! Manual intervention needed.`,
-            compensationError,
+            `SAGA: COMPENSATION FAILED - MANUAL INTERVENTION REQUIRED [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+            compensationError.stack,
           );
           // Still try to mark as failed
           try {
@@ -157,16 +141,13 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
             await this.commandBus.execute(failCommand);
           } catch (failError) {
             this.logger.error(
-              `   ❌ SAGA: Failed to mark as failed`,
-              failError,
+              `SAGA: Failed to mark as failed [txId=${event.aggregateId}]`,
+              failError.stack,
             );
           }
         }
       } else {
         // No compensation needed, just fail
-        this.logger.log(
-          `   ⚙️  Step 4b: No compensation needed (customer not yet debited)`,
-        );
         try {
           const failCommand = new FailTransactionCommand(
             event.aggregateId,
@@ -177,11 +158,10 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
           );
 
           await this.commandBus.execute(failCommand);
-          this.logger.log(`   ✅ Payment marked as failed`);
         } catch (failError) {
           this.logger.error(
-            `   ❌ SAGA: Failed to mark payment as failed`,
-            failError,
+            `SAGA: Failed to mark payment as failed [txId=${event.aggregateId}]`,
+            failError.stack,
           );
         }
       }

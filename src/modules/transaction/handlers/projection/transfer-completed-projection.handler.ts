@@ -15,8 +15,6 @@ export class TransferCompletedProjectionHandler implements IEventHandler<Transfe
   ) {}
 
   async handle(event: TransferCompletedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] TransferCompleted: ${event.aggregateId}`);
-
     try {
       await this.projectionService.updateTransactionCompleted(
         event.aggregateId,
@@ -27,14 +25,10 @@ export class TransferCompletedProjectionHandler implements IEventHandler<Transfe
         event.eventId,
         event.timestamp,
       );
-
-      this.logger.log(
-        `✅ [Projection] Transaction projection updated: ${event.aggregateId}`,
-      );
     } catch (error) {
       this.logger.error(
-        `❌ [Projection] Failed to update transaction projection`,
-        error,
+        `[Projection] Failed to update transfer projection [txId=${event.aggregateId}]`,
+        error.stack,
       );
     }
   }

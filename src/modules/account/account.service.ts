@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
 import { CommandBus } from '@nestjs/cqrs';
@@ -17,6 +17,8 @@ import { OperationContext } from '../../common/types';
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
+
   constructor(
     @InjectRepository(Account)
     private readonly accountRepository: Repository<Account>,
@@ -67,7 +69,11 @@ export class AccountService {
     } catch (error) {
       // If CQRS fails, log but don't fail the request
       // (Hybrid architecture: HTTP works even if CQRS fails)
-      console.error('CQRS command failed (non-fatal):', error);
+      this.logger.warn(
+        `CQRS command failed (non-fatal) [accountId=${savedAccount.id}, ` +
+        `ownerId=${savedAccount.ownerId}, correlationId=${context.correlationId}]`,
+        error.stack,
+      );
     }
 
     // Audit log

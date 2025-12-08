@@ -17,8 +17,6 @@ export class TopupRequestedProjectionHandler implements IEventHandler<TopupReque
   ) {}
 
   async handle(event: TopupRequestedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] TopupRequested: ${event.aggregateId}`);
-
     try {
       await this.projectionService.createTransactionProjection({
         id: event.aggregateId,
@@ -36,14 +34,10 @@ export class TopupRequestedProjectionHandler implements IEventHandler<TopupReque
         lastEventTimestamp: event.timestamp,
         metadata: event.metadata,
       });
-
-      this.logger.log(
-        `✅ [Projection] Transaction projection created: ${event.aggregateId}`,
-      );
     } catch (error) {
       this.logger.error(
-        `❌ [Projection] Failed to create transaction projection`,
-        error,
+        `[Projection] Failed to create topup projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+        error.stack,
       );
       // Don't throw - projection failures shouldn't break the saga
     }

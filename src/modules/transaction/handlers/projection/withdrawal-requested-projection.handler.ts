@@ -19,10 +19,6 @@ export class WithdrawalRequestedProjectionHandler implements IEventHandler<Withd
   ) {}
 
   async handle(event: WithdrawalRequestedEvent): Promise<void> {
-    this.logger.log(
-      `📊 [Projection] WithdrawalRequested: ${event.aggregateId}`,
-    );
-
     try {
       await this.projectionService.createTransactionProjection({
         id: event.aggregateId,
@@ -40,14 +36,10 @@ export class WithdrawalRequestedProjectionHandler implements IEventHandler<Withd
         lastEventTimestamp: event.timestamp,
         metadata: event.metadata,
       });
-
-      this.logger.log(
-        `✅ [Projection] Transaction projection created: ${event.aggregateId}`,
-      );
     } catch (error) {
       this.logger.error(
-        `❌ [Projection] Failed to create transaction projection`,
-        error,
+        `[Projection] Failed to create withdrawal projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+        error.stack,
       );
       // Don't throw - projection failures shouldn't break the saga
     }

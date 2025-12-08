@@ -1,10 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { CurrencyService } from './modules/currency/currency.service';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   // Global validation pipe
@@ -46,8 +47,8 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`Billing Engine API running on port ${port}`);
-  console.log(
+  logger.log(`Billing Engine API running on port ${port}`);
+  logger.log(
     `Swagger documentation available at http://localhost:${port}/api/docs`,
   );
 }

@@ -17,12 +17,6 @@ export class RefundRequestedProjectionHandler implements IEventHandler<RefundReq
   ) {}
 
   async handle(event: RefundRequestedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] RefundRequested: ${event.aggregateId}`);
-    this.logger.log(`   Original Payment: ${event.originalPaymentId}`);
-    this.logger.log(`   Merchant: ${event.merchantAccountId}`);
-    this.logger.log(`   Customer: ${event.customerAccountId}`);
-    this.logger.log(`   Amount: ${event.refundAmount} ${event.currency}`);
-
     try {
       await this.projectionService.createTransactionProjection({
         id: event.aggregateId,
@@ -44,14 +38,10 @@ export class RefundRequestedProjectionHandler implements IEventHandler<RefundReq
           refundMetadata: event.refundMetadata,
         },
       });
-
-      this.logger.log(
-        `✅ [Projection] Refund projection created: ${event.aggregateId}`,
-      );
     } catch (error) {
       this.logger.error(
-        `❌ [Projection] Failed to create refund projection`,
-        error,
+        `[Projection] Failed to create refund projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+        error.stack,
       );
     }
   }

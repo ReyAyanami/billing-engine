@@ -17,10 +17,6 @@ export class RefundCompletedProjectionHandler implements IEventHandler<RefundCom
   ) {}
 
   async handle(event: RefundCompletedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] RefundCompleted: ${event.aggregateId}`);
-    this.logger.log(`   Merchant new balance: ${event.merchantNewBalance}`);
-    this.logger.log(`   Customer new balance: ${event.customerNewBalance}`);
-
     try {
       await this.projectionService.updateTransactionCompleted(
         event.aggregateId,
@@ -31,14 +27,10 @@ export class RefundCompletedProjectionHandler implements IEventHandler<RefundCom
         event.eventId,
         event.timestamp,
       );
-
-      this.logger.log(
-        `✅ [Projection] Refund projection updated to COMPLETED: ${event.aggregateId}`,
-      );
     } catch (error) {
       this.logger.error(
-        `❌ [Projection] Failed to update refund projection`,
-        error,
+        `[Projection] Failed to update refund projection [txId=${event.aggregateId}]`,
+        error.stack,
       );
     }
   }

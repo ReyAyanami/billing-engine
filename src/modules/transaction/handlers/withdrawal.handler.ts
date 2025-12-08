@@ -18,9 +18,9 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
   ) {}
 
   async execute(command: WithdrawalCommand): Promise<string> {
-    this.logger.log(`Processing withdrawal: ${command.transactionId}`);
     this.logger.log(
-      `  Account: ${command.accountId}, Amount: ${command.amount}, Destination: ${command.destinationAccountId}`,
+      `[WithdrawalHandler] Processing [txId=${command.transactionId}, accountId=${command.accountId}, ` +
+      `amt=${command.amount}, corr=${command.correlationId}]`,
     );
 
     try {
@@ -28,7 +28,6 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
       const transaction = new TransactionAggregate();
 
       // Execute the withdrawal request
-      this.logger.log(`  Creating WithdrawalRequestedEvent...`);
       transaction.requestWithdrawal({
         transactionId: command.transactionId,
         accountId: command.accountId,
@@ -44,18 +43,8 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
         },
       });
 
-      // Get uncommitted events
+      // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
-      this.logger.log(
-        `Generated ${events.length} event(s) for transaction ${command.transactionId}`,
-      );
-      events.forEach((e) => {
-        const eventType = e.getEventType();
-        this.logger.log(`  - Event: ${eventType}`);
-      });
-
-      // Save events to the event store
-      this.logger.log(`  Saving events to event store...`);
       await this.eventStore.append(
         'Transaction',
         command.transactionId,
@@ -63,24 +52,22 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
       );
 
       // Publish events to the event bus for async processing (saga handlers)
-      this.logger.log(`  Publishing ${events.length} event(s) to EventBus...`);
       events.forEach((event) => {
         this.eventBus.publish(event);
       });
-      this.logger.log(`  Events published to EventBus`);
 
       // Mark events as committed
       transaction.commit();
 
       this.logger.log(
-        `✅ Withdrawal transaction requested: ${command.transactionId}`,
+        `[WithdrawalHandler] Completed [txId=${command.transactionId}]`,
       );
 
       return command.transactionId;
     } catch (error) {
       this.logger.error(
-        `❌ Failed to process withdrawal ${command.transactionId}`,
-        error,
+        `[WithdrawalHandler] Failed [txId=${command.transactionId}, corr=${command.correlationId}]`,
+        error.stack,
       );
       throw error;
     }
