@@ -1,7 +1,7 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, QueryDeepPartialEntity } from 'typeorm';
 import { TransferRequestedEvent } from '../events/transfer-requested.event';
 import {
   Transaction,
@@ -52,7 +52,7 @@ export class TransferRequestedEntityHandler implements IEventHandler<TransferReq
           idempotencyKey: event.idempotencyKey,
           reference: event.metadata?.reference || 'Transfer',
           metadata: event.metadata || {},
-        } as any)
+        } as QueryDeepPartialEntity<Transaction>)
         .execute();
 
       this.logger.log(`✅ Transaction entity created: ${event.aggregateId}`);

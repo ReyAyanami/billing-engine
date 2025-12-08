@@ -1,7 +1,7 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, QueryDeepPartialEntity } from 'typeorm';
 import { WithdrawalRequestedEvent } from '../events/withdrawal-requested.event';
 import {
   Transaction,
@@ -52,7 +52,7 @@ export class WithdrawalRequestedEntityHandler implements IEventHandler<Withdrawa
           idempotencyKey: event.idempotencyKey,
           reference: event.metadata?.reference || 'Withdrawal',
           metadata: event.metadata || {},
-        } as any)
+        } as QueryDeepPartialEntity<Transaction>)
         .execute();
 
       this.logger.log(`✅ Transaction entity created: ${event.aggregateId}`);

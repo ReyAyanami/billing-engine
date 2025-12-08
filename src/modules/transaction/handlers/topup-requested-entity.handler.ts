@@ -1,7 +1,7 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, QueryDeepPartialEntity } from 'typeorm';
 import { TopupRequestedEvent } from '../events/topup-requested.event';
 import {
   Transaction,
@@ -58,7 +58,7 @@ export class TopupRequestedEntityHandler implements IEventHandler<TopupRequested
           idempotencyKey: event.idempotencyKey,
           reference: event.metadata?.reference || 'Topup',
           metadata: event.metadata || {},
-        } as any)
+        } as QueryDeepPartialEntity<Transaction>)
         .execute();
 
       this.logger.log(`✅ Transaction entity created: ${event.aggregateId}`);
