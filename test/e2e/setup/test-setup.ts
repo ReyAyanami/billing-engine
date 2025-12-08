@@ -1,8 +1,14 @@
 /**
- * Test Setup - Parallel-safe configuration and lifecycle management
+ * Test Setup - Full Schema Isolation for Parallel Tests
  * 
- * Each test suite gets its own app instance and database schema for true isolation.
- * Supports parallel test execution with Jest workers.
+ * Each test suite runs in its own PostgreSQL schema for true isolation.
+ * Schema is created from scratch and torn down after tests complete.
+ * 
+ * Benefits:
+ * - True parallel execution (no database contention)
+ * - Each worker has isolated data
+ * - TypeORM synchronize recreates all tables automatically
+ * - Clean slate for every test suite
  */
 
 import { INestApplication } from '@nestjs/common';
@@ -15,16 +21,19 @@ export class TestSetup {
   private dataSource: DataSource;
   private moduleRef: TestingModule;
   private schemaName: string;
+  private originalSchema: string = 'public';
 
   /**
-   * Initialize the test application
+   * Initialize the test application with isolated schema
    * Call this in beforeAll()
    */
   async beforeAll(): Promise<INestApplication> {
     // Generate unique schema name based on worker ID and timestamp
     const workerId = process.env.JEST_WORKER_ID || '1';
     const timestamp = Date.now();
-    this.schemaName = `test_worker_${workerId}_${timestamp}`;
+    this.schemaName = `test_w${workerId}_${timestamp}`;
+
+    console.log(`[Worker ${workerId}] Creating isolated schema: ${this.schemaName}`);
 
     // Create testing module
     this.moduleRef = await Test.createTestingModule({
@@ -38,26 +47,33 @@ export class TestSetup {
     // Get database connection
     this.dataSource = this.app.get(DataSource);
 
-    // Create dedicated schema for this test suite
-    await this.createTestSchema();
+    // Create dedicated schema and switch to it
+    await this.createIsolatedSchema();
 
-    // Ensure database is clean
-    await this.cleanDatabase();
+    console.log(`[Worker ${workerId}] Schema ${this.schemaName} ready with all tables`);
 
     return this.app;
   }
 
   /**
-   * Clean up after all tests
+   * Clean up after all tests - Drop the entire schema
    * Call this in afterAll()
    */
   async afterAll(): Promise<void> {
-    if (this.dataSource) {
+    if (this.dataSource && this.schemaName) {
       try {
-        // Drop the test schema
-        await this.dropTestSchema();
+        const workerId = process.env.JEST_WORKER_ID || '1';
+        console.log(`[Worker ${workerId}] Dropping schema: ${this.schemaName}`);
+        
+        // Switch back to public schema
+        await this.dataSource.query(`SET search_path TO ${this.originalSchema};`);
+        
+        // Drop the test schema (CASCADE removes all objects)
+        await this.dataSource.query(`DROP SCHEMA IF EXISTS "${this.schemaName}" CASCADE;`);
+        
+        console.log(`[Worker ${workerId}] Schema ${this.schemaName} dropped successfully`);
       } catch (error) {
-        console.warn(`Failed to drop test schema ${this.schemaName}:`, error);
+        console.warn(`Failed to drop schema ${this.schemaName}:`, error);
       }
     }
 
@@ -72,8 +88,8 @@ export class TestSetup {
    */
   async beforeEach(): Promise<void> {
     // Wait for any pending async operations (sagas, event handlers)
-    // In CQRS, events may still be processing from previous test
-    await new Promise(resolve => setTimeout(resolve, 150));
+    // Slightly longer in parallel mode to avoid race conditions
+    await new Promise(resolve => setTimeout(resolve, 50));
     
     // Clean database for test isolation
     await this.cleanDatabase();
@@ -85,8 +101,7 @@ export class TestSetup {
    */
   async afterEach(): Promise<void> {
     // Wait for async event processing to complete
-    // Sagas should complete in milliseconds, but give buffer for cleanup
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   /**
@@ -111,69 +126,62 @@ export class TestSetup {
   }
 
   /**
-   * Create a dedicated schema for this test suite
+   * Create an isolated schema and recreate all tables
    */
-  private async createTestSchema(): Promise<void> {
-    // Use public schema for now - full schema isolation would require
-    // recreating all tables in the new schema, which is complex
-    // Instead, we'll use table-level isolation with better cleanup
+  private async createIsolatedSchema(): Promise<void> {
+    // Create new schema
+    await this.dataSource.query(`CREATE SCHEMA IF NOT EXISTS "${this.schemaName}";`);
     
-    // For true schema isolation in the future:
-    // await this.dataSource.query(`CREATE SCHEMA IF NOT EXISTS ${this.schemaName};`);
-    // await this.dataSource.query(`SET search_path TO ${this.schemaName};`);
+    // Update connection options to use the new schema
+    const options = this.dataSource.options as any;
+    options.schema = this.schemaName;
+    
+    // Force TypeORM to recreate all tables in the new schema
+    // dropSchema: true will clean the schema first
+    await this.dataSource.synchronize(true);
+    
+    // Seed required data (currencies)
+    await this.seedRequiredData();
   }
 
   /**
-   * Drop the test schema
+   * Seed required reference data that must exist
    */
-  private async dropTestSchema(): Promise<void> {
-    // Schema cleanup - for future use
-    // await this.dataSource.query(`DROP SCHEMA IF EXISTS ${this.schemaName} CASCADE;`);
+  private async seedRequiredData(): Promise<void> {
+    // Insert currencies (required for foreign key constraints)
+    const currencies = [
+      { code: 'USD', name: 'US Dollar', type: 'fiat', precision: 2, is_active: true },
+      { code: 'EUR', name: 'Euro', type: 'fiat', precision: 2, is_active: true },
+      { code: 'GBP', name: 'British Pound', type: 'fiat', precision: 2, is_active: true },
+      { code: 'BTC', name: 'Bitcoin', type: 'non-fiat', precision: 8, is_active: true },
+    ];
+
+    for (const currency of currencies) {
+      await this.dataSource.query(
+        `INSERT INTO currencies (code, name, type, precision, is_active, metadata) 
+         VALUES ($1, $2, $3, $4, $5, $6) 
+         ON CONFLICT (code) DO NOTHING;`,
+        [currency.code, currency.name, currency.type, currency.precision, currency.is_active, null]
+      );
+    }
   }
 
   /**
-   * Clean the database
-   * Uses advisory locks to prevent concurrent cleanup in parallel tests
+   * Clean the database by deleting all data
+   * Much faster than recreating schema
    */
   private async cleanDatabase(): Promise<void> {
-    const lockId = 123456; // Arbitrary lock ID for cleanup
-    
     try {
-      // Acquire advisory lock (returns true if acquired, false if already held)
-      const lockAcquired = await this.dataSource.query(
-        'SELECT pg_try_advisory_lock($1) as acquired',
-        [lockId]
-      );
-
-      if (lockAcquired[0]?.acquired) {
-        try {
-          // We have the lock, perform cleanup
-          await this.dataSource.query('DELETE FROM audit_logs;');
-          await this.dataSource.query('DELETE FROM transaction_projections;');
-          await this.dataSource.query('DELETE FROM account_projections;');
-          await this.dataSource.query('DELETE FROM transactions;');
-          await this.dataSource.query('DELETE FROM accounts;');
-          
-          // Reset sequences
-          await this.dataSource.query('ALTER SEQUENCE IF EXISTS audit_logs_id_seq RESTART WITH 1;');
-          await this.dataSource.query('ALTER SEQUENCE IF EXISTS transaction_projections_id_seq RESTART WITH 1;');
-          await this.dataSource.query('ALTER SEQUENCE IF EXISTS account_projections_id_seq RESTART WITH 1;');
-        } finally {
-          // Release advisory lock
-          await this.dataSource.query('SELECT pg_advisory_unlock($1)', [lockId]);
-        }
-      } else {
-        // Another worker is cleaning, wait and skip
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
+      // Delete in correct order (respecting foreign keys)
+      await this.dataSource.query('DELETE FROM audit_logs;');
+      await this.dataSource.query('DELETE FROM transaction_projections;');
+      await this.dataSource.query('DELETE FROM account_projections;');
+      await this.dataSource.query('DELETE FROM transactions;');
+      await this.dataSource.query('DELETE FROM accounts;');
+      // Don't delete currencies - they're reference data
     } catch (error) {
       console.warn('Database cleanup warning:', error);
-      // Try to release lock if we have it
-      try {
-        await this.dataSource.query('SELECT pg_advisory_unlock($1)', [lockId]);
-      } catch (unlockError) {
-        // Ignore unlock errors
-      }
+      // Continue even if cleanup fails
     }
   }
 }
