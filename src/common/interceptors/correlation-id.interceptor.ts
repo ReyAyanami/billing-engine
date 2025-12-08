@@ -10,7 +10,7 @@ import { Request, Response } from 'express';
 
 @Injectable()
 export class CorrelationIdInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
 
@@ -19,7 +19,8 @@ export class CorrelationIdInterceptor implements NestInterceptor {
       (request.headers['x-correlation-id'] as string) || uuidv4();
 
     // Add to request for later use
-    (request as any).correlationId = correlationId;
+    (request as Request & { correlationId: string }).correlationId =
+      correlationId;
 
     // Add to response headers
     response.setHeader('X-Correlation-ID', correlationId);

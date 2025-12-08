@@ -1,15 +1,6 @@
 import { Command } from '../../../cqrs/base/command';
+import { RefundMetadata } from '../../../common/types/metadata.types';
 import { v4 as uuidv4 } from 'uuid';
-
-/**
- * Refund metadata interface
- */
-export interface RefundMetadata {
-  reason?: string;
-  refundType?: 'full' | 'partial';
-  notes?: string;
-  [key: string]: any;
-}
 
 /**
  * Parameters for RefundCommand

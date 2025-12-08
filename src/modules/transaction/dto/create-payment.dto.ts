@@ -8,6 +8,7 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
+import type { PaymentMetadata } from '../../../common/types/metadata.types';
 
 /**
  * DTO for creating a payment transaction.
@@ -67,11 +68,5 @@ export class CreatePaymentDto {
   })
   @IsObject()
   @IsOptional()
-  paymentMetadata?: {
-    orderId?: string;
-    invoiceId?: string;
-    description?: string;
-    merchantReference?: string;
-    [key: string]: any;
-  };
+  paymentMetadata?: PaymentMetadata;
 }

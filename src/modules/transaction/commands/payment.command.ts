@@ -1,16 +1,6 @@
 import { Command } from '../../../cqrs/base/command';
+import { PaymentMetadata } from '../../../common/types/metadata.types';
 import { v4 as uuidv4 } from 'uuid';
-
-/**
- * Payment metadata interface
- */
-export interface PaymentMetadata {
-  orderId?: string;
-  invoiceId?: string;
-  description?: string;
-  merchantReference?: string;
-  [key: string]: any;
-}
 
 /**
  * Parameters for PaymentCommand

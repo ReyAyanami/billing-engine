@@ -1,5 +1,7 @@
 import { AggregateRoot } from '../../../cqrs/base/aggregate-root';
 import { DeserializedEvent } from '../../../cqrs/base/deserialized-event.interface';
+import { JsonObject } from '../../../common/types/json.types';
+import { RefundMetadata } from '../../../common/types/metadata.types';
 import { TopupRequestedEvent } from '../events/topup-requested.event';
 import { TopupCompletedEvent } from '../events/topup-completed.event';
 import { WithdrawalRequestedEvent } from '../events/withdrawal-requested.event';
@@ -489,12 +491,7 @@ export class TransactionAggregate extends AggregateRoot {
     refundAmount: string;
     currency: string;
     idempotencyKey: string;
-    refundMetadata?: {
-      reason?: string;
-      refundType?: 'full' | 'partial';
-      notes?: string;
-      [key: string]: any;
-    };
+    refundMetadata?: RefundMetadata;
     correlationId: string;
     causationId?: string;
     metadata?: Record<string, string | number | boolean | undefined>;
@@ -822,7 +819,7 @@ export class TransactionAggregate extends AggregateRoot {
   /**
    * Returns a snapshot of the current state
    */
-  toSnapshot(): Record<string, any> {
+  toSnapshot(): JsonObject {
     return {
       aggregateId: this.aggregateId,
       version: this.version,
@@ -830,18 +827,18 @@ export class TransactionAggregate extends AggregateRoot {
       status: this.status,
       amount: this.amount,
       currency: this.currency,
-      accountId: this.accountId,
-      sourceAccountId: this.sourceAccountId,
-      destinationAccountId: this.destinationAccountId,
+      accountId: this.accountId ?? null,
+      sourceAccountId: this.sourceAccountId ?? null,
+      destinationAccountId: this.destinationAccountId ?? null,
       idempotencyKey: this.idempotencyKey,
-      newBalance: this.newBalance,
-      sourceNewBalance: this.sourceNewBalance,
-      destinationNewBalance: this.destinationNewBalance,
-      failureReason: this.failureReason,
-      failureCode: this.failureCode,
-      requestedAt: this.requestedAt,
-      completedAt: this.completedAt,
-      failedAt: this.failedAt,
+      newBalance: this.newBalance ?? null,
+      sourceNewBalance: this.sourceNewBalance ?? null,
+      destinationNewBalance: this.destinationNewBalance ?? null,
+      failureReason: this.failureReason ?? null,
+      failureCode: this.failureCode ?? null,
+      requestedAt: this.requestedAt.toISOString(),
+      completedAt: this.completedAt?.toISOString() ?? null,
+      failedAt: this.failedAt?.toISOString() ?? null,
     };
   }
 }

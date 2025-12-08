@@ -8,6 +8,7 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
+import type { RefundMetadata } from '../../../common/types/metadata.types';
 
 /**
  * DTO for creating a refund transaction.
@@ -59,10 +60,5 @@ export class CreateRefundDto {
   })
   @IsObject()
   @IsOptional()
-  refundMetadata?: {
-    reason?: string;
-    refundType?: 'full' | 'partial';
-    notes?: string;
-    [key: string]: any;
-  };
+  refundMetadata?: RefundMetadata;
 }

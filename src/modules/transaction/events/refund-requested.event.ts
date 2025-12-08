@@ -1,5 +1,8 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
-import { EventMetadata } from '../../../common/types/metadata.types';
+import {
+  EventMetadata,
+  RefundMetadata,
+} from '../../../common/types/metadata.types';
 import { JsonObject } from '../../../common/types/json.types';
 
 /**
@@ -23,7 +26,7 @@ export class RefundRequestedEvent extends DomainEvent {
       causationId?: string;
       metadata?: EventMetadata;
     },
-    public readonly refundMetadata?: Record<string, string | number | boolean>,
+    public readonly refundMetadata?: RefundMetadata,
   ) {
     super({
       ...props,
@@ -43,7 +46,7 @@ export class RefundRequestedEvent extends DomainEvent {
       refundAmount: this.refundAmount ?? null,
       currency: this.currency ?? null,
       idempotencyKey: this.idempotencyKey ?? null,
-      refundMetadata: this.refundMetadata ?? null,
+      refundMetadata: (this.refundMetadata as JsonObject) ?? null,
     };
   }
 }

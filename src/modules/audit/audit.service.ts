@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog } from './audit-log.entity';
 import { OperationContext } from '../../common/types';
+import { JsonObject } from '../../common/types/json.types';
 
 @Injectable()
 export class AuditService {
@@ -15,7 +16,7 @@ export class AuditService {
     entityType: string,
     entityId: string,
     operation: string,
-    changes: Record<string, any>,
+    changes: JsonObject,
     context: OperationContext,
   ): Promise<AuditLog> {
     const auditLog = this.auditLogRepository.create({

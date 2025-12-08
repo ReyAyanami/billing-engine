@@ -1,4 +1,5 @@
 import { AggregateRoot } from '../../../cqrs/base/aggregate-root';
+import { JsonObject } from '../../../common/types/json.types';
 import { AccountCreatedEvent } from '../events/account-created.event';
 import { BalanceChangedEvent } from '../events/balance-changed.event';
 import { AccountStatusChangedEvent } from '../events/account-status-changed.event';
@@ -397,7 +398,7 @@ export class AccountAggregate extends AggregateRoot {
    * Returns a snapshot of the current state
    * Useful for debugging and projections
    */
-  toSnapshot(): Record<string, any> {
+  toSnapshot(): JsonObject {
     return {
       aggregateId: this.aggregateId,
       version: this.version,
@@ -407,10 +408,10 @@ export class AccountAggregate extends AggregateRoot {
       currency: this.currency,
       status: this.status,
       balance: this.balance.toString(),
-      maxBalance: this.maxBalance?.toString(),
-      minBalance: this.minBalance?.toString(),
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
+      maxBalance: this.maxBalance?.toString() ?? null,
+      minBalance: this.minBalance?.toString() ?? null,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
     };
   }
 }
