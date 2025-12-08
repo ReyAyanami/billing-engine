@@ -195,6 +195,15 @@ export class TransactionController {
     const correlationId = uuidv4();
     const idempotencyKey = dto.idempotencyKey || uuidv4();
 
+    // Check idempotency first
+    const existing = await this.transactionService.findByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      return {
+        transactionId: existing.id,
+        status: existing.status,
+      };
+    }
+
     // Upfront validation: Check accounts exist and are valid
     const customerAccount = await this.transactionService.findAccountById(dto.customerAccountId);
     const merchantAccount = await this.transactionService.findAccountById(dto.merchantAccountId);

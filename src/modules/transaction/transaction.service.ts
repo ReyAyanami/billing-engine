@@ -389,6 +389,15 @@ export class TransactionService {
   }
 
   /**
+   * Find transaction by idempotency key (helper for controller)
+   */
+  async findByIdempotencyKey(idempotencyKey: string): Promise<Transaction | null> {
+    return await this.transactionRepository.findOne({
+      where: { idempotencyKey },
+    });
+  }
+
+  /**
    * List transactions with optional filters
    */
   async findAll(filters: {

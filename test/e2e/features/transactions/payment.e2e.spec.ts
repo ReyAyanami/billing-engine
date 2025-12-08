@@ -146,7 +146,7 @@ describe('Feature: Payment', () => {
       const merchant = await testApi.createAccount({ currency: 'USD' });
       const fakeCustomerId = '00000000-0000-0000-0000-000000000000';
 
-      // WHEN/THEN: Payment from fake customer should fail
+      // WHEN/THEN: Payment from fake customer should fail with 404
       await testApi.expectError(
         'post',
         '/api/v1/transactions/payment',
@@ -157,7 +157,7 @@ describe('Feature: Payment', () => {
           amount: '50.00',
           currency: 'USD',
         },
-        400,
+        404, // Account not found
       );
     });
 
@@ -167,7 +167,7 @@ describe('Feature: Payment', () => {
       await testApi.topup(customer.id, '100.00', 'USD');
       const fakeMerchantId = '00000000-0000-0000-0000-000000000000';
 
-      // WHEN/THEN: Payment to fake merchant should fail
+      // WHEN/THEN: Payment to fake merchant should fail with 404
       await testApi.expectError(
         'post',
         '/api/v1/transactions/payment',
@@ -178,7 +178,7 @@ describe('Feature: Payment', () => {
           amount: '50.00',
           currency: 'USD',
         },
-        400,
+        404, // Account not found
       );
     });
 
