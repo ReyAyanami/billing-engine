@@ -30,17 +30,17 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
 
     try {
       // Step 1: Update account balance
-      const updateBalanceCommand = new UpdateBalanceCommand(
-        event.accountId,
-        event.amount,
-        'CREDIT', // Topup is always a credit
-        `Topup from transaction ${event.aggregateId}`,
-        event.aggregateId,
-        event.correlationId,
-        event.metadata?.actorId,
-      );
+      const updateBalanceCommand = new UpdateBalanceCommand({
+        accountId: event.accountId,
+        changeAmount: event.amount,
+        changeType: 'CREDIT', // Topup is always a credit
+        reason: `Topup from transaction ${event.aggregateId}`,
+        transactionId: event.aggregateId,
+        correlationId: event.correlationId,
+        actorId: event.metadata?.actorId,
+      });
 
-      const newBalance = await this.commandBus.execute(updateBalanceCommand);
+      const newBalance = await this.commandBus.execute<UpdateBalanceCommand, string>(updateBalanceCommand);
 
       // Step 2: Complete the transaction
       const completeCommand = new CompleteTopupCommand(
@@ -57,25 +57,30 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
       );
     } catch (error) {
       // Step 3 (on failure): Fail the transaction
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      const errorCode = (error as any)?.code as string | undefined;
+      
       this.logger.error(
         `SAGA: Topup failed [txId=${event.aggregateId}, corr=${event.correlationId}]`,
-        error.stack,
+        errorStack,
       );
 
       try {
         const failCommand = new FailTransactionCommand(
           event.aggregateId,
-          error.message,
-          error.code || 'TOPUP_FAILED',
+          errorMessage,
+          errorCode || 'TOPUP_FAILED',
           event.correlationId,
           event.metadata?.actorId,
         );
 
         await this.commandBus.execute(failCommand);
       } catch (failError) {
+        const failErrorStack = failError instanceof Error ? failError.stack : undefined;
         this.logger.error(
           `SAGA: Failed to mark transaction as failed [txId=${event.aggregateId}]`,
-          failError.stack,
+          failErrorStack,
         );
       }
     }

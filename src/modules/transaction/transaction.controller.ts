@@ -21,7 +21,6 @@ import { TransactionService } from './transaction.service';
 import { TopupDto } from './dto/topup.dto';
 import { WithdrawalDto } from './dto/withdrawal.dto';
 import { TransferDto } from './dto/transfer.dto';
-import { RefundDto } from './dto/refund.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
 import { DuplicateTransactionException } from '../../common/exceptions/billing.exception';
@@ -178,16 +177,16 @@ export class TransactionController {
       throw new DuplicateTransactionException(idempotencyKey, existing.id);
     }
 
-    const command = new RefundCommand(
+    const command = new RefundCommand({
       refundId,
-      dto.originalPaymentId,
-      dto.refundAmount,
-      dto.currency,
+      originalPaymentId: dto.originalPaymentId,
+      refundAmount: dto.refundAmount,
+      currency: dto.currency,
       idempotencyKey,
-      dto.refundMetadata,
+      refundMetadata: dto.refundMetadata,
       correlationId,
-      'api', // actorId
-    );
+      actorId: 'api',
+    });
 
     await this.commandBus.execute(command);
 
@@ -330,17 +329,17 @@ export class TransactionController {
       );
     }
 
-    const command = new PaymentCommand(
+    const command = new PaymentCommand({
       transactionId,
-      dto.customerAccountId,
-      dto.merchantAccountId,
-      dto.amount,
-      dto.currency,
+      customerAccountId: dto.customerAccountId,
+      merchantAccountId: dto.merchantAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
       idempotencyKey,
-      dto.paymentMetadata,
+      paymentMetadata: dto.paymentMetadata,
       correlationId,
-      'api', // actorId
-    );
+      actorId: 'api',
+    });
 
     await this.commandBus.execute(command);
 

@@ -47,7 +47,7 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
         actorId: event.metadata?.actorId,
       });
 
-      sourceNewBalance = await this.commandBus.execute(debitCommand);
+      sourceNewBalance = await this.commandBus.execute<UpdateBalanceCommand, string>(debitCommand);
 
       // Step 2: CREDIT the destination account
       const creditCommand = new UpdateBalanceCommand({
@@ -61,7 +61,7 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
       });
 
       const destinationNewBalance =
-        await this.commandBus.execute(creditCommand);
+        await this.commandBus.execute<UpdateBalanceCommand, string>(creditCommand);
 
       // Step 3: Complete the transaction
       if (!sourceNewBalance) {
