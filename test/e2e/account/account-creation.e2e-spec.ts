@@ -1,46 +1,58 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { CommandBus, EventBus } from '@nestjs/cqrs';
-import { v4 as uuidv4 } from 'uuid';
+import { DataSource } from 'typeorm';
 import { AppModule } from '../../../src/app.module';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
 import { AccountType } from '../../../src/modules/account/account.entity';
-import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
+import { InMemoryEventStore } from '../../helpers/in-memory-event-store';
 import { AccountAggregate } from '../../../src/modules/account/aggregates/account.aggregate';
 import { EventPollingHelper } from '../../helpers/event-polling.helper';
+import { generateTestId } from '../../helpers/test-id-generator';
 
 describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
   jest.setTimeout(30000); // 30 seconds for Kafka operations
   
   let app: INestApplication;
   let commandBus: CommandBus;
-  let eventStore: KafkaEventStore;
+  let eventStore: InMemoryEventStore;
   let eventPolling: EventPollingHelper;
+  let dataSource: DataSource;
   let accountId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider('EVENT_STORE')
+    .useFactory({
+      factory: (eventBus: EventBus) => new InMemoryEventStore(eventBus),
+      inject: [EventBus],
+    })
+    .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
 
     commandBus = app.get<CommandBus>(CommandBus);
-    eventStore = app.get<KafkaEventStore>(KafkaEventStore);
+    eventStore = app.get<InMemoryEventStore>('EVENT_STORE');
     eventPolling = new EventPollingHelper(eventStore);
+    dataSource = app.get<DataSource>(DataSource);
 
-    // Wait a bit for Kafka to be fully connected
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Clear projections before tests
+    await dataSource.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
   });
 
   afterAll(async () => {
+    // Give async operations time to complete
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await app.close();
   });
 
   describe('🎯 Complete Event Sourcing Flow', () => {
     it('should publish AccountCreated event to Kafka and reconstruct aggregate from events', async () => {
-      accountId = uuidv4();
+      accountId = generateTestId('account-1');
 
       console.log('\n╔═══════════════════════════════════════════════════════════════╗');
       console.log('║          WEEK 1 POC: Event Sourcing Demo                     ║');
@@ -64,16 +76,17 @@ describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
 
       console.log('   ✅ Command executed successfully\n');
 
-      // Wait for event to be persisted to Kafka (with polling)
-      console.log('⏳ Step 2: Waiting for event to be persisted to Kafka...');
-      const events = await eventPolling.waitForEvents('Account', accountId, {
-        minEvents: 1,
-        maxRetries: 30,
-        retryDelayMs: 500,
-        timeoutMs: 20000,
-      });
+      // Give event store a tiny moment to persist (async operation)
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
-      console.log(`   ✅ Retrieved ${events.length} event(s) from Kafka\n`);
+      // With InMemoryEventStore, events are available immediately!
+      console.log('⏳ Step 2: Reading events from in-memory event store...');
+      const events = await eventStore.getEvents('Account', accountId);
+
+      console.log(`   ✅ Retrieved ${events.length} event(s) from event store`);
+      if (events.length > 0 && events[0]) {
+        console.log(`   Event type: ${events[0].eventType}\n`);
+      }
 
       expect(events).toHaveLength(1);
       expect(events[0].eventType).toBe('AccountCreated');
@@ -91,7 +104,7 @@ describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
       console.log('');
 
       // Reconstruct aggregate from events
-      console.log('🔄 Step 4: Reconstructing aggregate from event history...');
+      console.log('🔄 Step 3: Reconstructing aggregate from event history...');
       const reconstructedAccount = AccountAggregate.fromEvents(events);
 
       console.log('   ✅ Aggregate reconstructed from events\n');

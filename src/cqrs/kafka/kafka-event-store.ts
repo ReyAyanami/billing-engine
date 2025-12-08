@@ -37,10 +37,14 @@ export class KafkaEventStore implements IEventStore {
 
       const messages = events.map((event) => {
         const eventJson = event.toJSON();
+        const serializedEvent = JSON.stringify(eventJson);
+
+        // Validate message size before sending
+        this.validateMessageSize(serializedEvent, event, aggregateId);
 
         return {
           key: aggregateId, // Ensures ordering per aggregate
-          value: JSON.stringify(eventJson),
+          value: serializedEvent,
           headers: {
             eventType: Buffer.from(event.getEventType()),
             eventVersion: Buffer.from('1'), // Schema version
@@ -70,6 +74,54 @@ export class KafkaEventStore implements IEventStore {
   }
 
   /**
+   * Validates the size of a message before sending to Kafka.
+   * Prevents oversized messages that will be rejected by the broker.
+   * 
+   * Kafka default limits:
+   * - message.max.bytes (broker): 1MB default, 100MB configured
+   * - max.request.size (producer): 1MB default, 10MB recommended
+   */
+  private validateMessageSize(
+    serializedEvent: string,
+    event: DomainEvent,
+    aggregateId: string,
+  ): void {
+    const sizeInBytes = Buffer.byteLength(serializedEvent, 'utf8');
+    const sizeInMB = sizeInBytes / (1024 * 1024);
+    
+    // Hard limit: Reject messages larger than 10MB
+    // This is 10x smaller than broker limit to leave room for batching and headers
+    const MAX_MESSAGE_SIZE_MB = 10;
+    const MAX_MESSAGE_SIZE_BYTES = MAX_MESSAGE_SIZE_MB * 1024 * 1024;
+    
+    // Warning threshold: Log warning for messages larger than 1MB
+    const WARNING_THRESHOLD_MB = 1;
+    const WARNING_THRESHOLD_BYTES = WARNING_THRESHOLD_MB * 1024 * 1024;
+
+    if (sizeInBytes > MAX_MESSAGE_SIZE_BYTES) {
+      const error = new Error(
+        `Event message size (${sizeInMB.toFixed(2)} MB) exceeds maximum allowed size (${MAX_MESSAGE_SIZE_MB} MB). ` +
+        `Event type: ${event.getEventType()}, Aggregate ID: ${aggregateId}, Event ID: ${event.eventId}. ` +
+        `This usually indicates a bug where too much data is being included in the event (e.g., large metadata objects, circular references). ` +
+        `Review the event data and reduce its size.`
+      );
+      this.logger.error(error.message);
+      throw error;
+    }
+
+    if (sizeInBytes > WARNING_THRESHOLD_BYTES) {
+      this.logger.warn(
+        `⚠️ Large event detected (${sizeInMB.toFixed(2)} MB): ${event.getEventType()} for aggregate ${aggregateId}. ` +
+        `Event ID: ${event.eventId}. Consider reducing event size to improve performance.`
+      );
+      
+      // Log a sample of the event data to help with debugging (first 500 chars)
+      const eventSample = serializedEvent.substring(0, 500);
+      this.logger.debug(`Event data sample: ${eventSample}...`);
+    }
+  }
+
+  /**
    * Retrieves all events for a specific aggregate by consuming from Kafka.
    * This is used for aggregate reconstruction (event replay).
    *
@@ -88,14 +140,24 @@ export class KafkaEventStore implements IEventStore {
     const consumerGroupId = `${aggregateId}-loader-${Date.now()}`;
 
     try {
+      this.logger.log(`Retrieving events for ${aggregateType}/${aggregateId} from topic ${topic}`);
+      
       const consumer = await this.kafkaService.createConsumer(consumerGroupId);
       const events: DomainEvent[] = [];
 
-      await consumer.subscribe({ topic, fromBeginning: true });
+      await consumer.subscribe({ topics: [topic], fromBeginning: true });
+      this.logger.log(`Consumer subscribed to topic ${topic}`);
 
       // Set a timeout to stop consuming after collecting all relevant events
       return new Promise((resolve, reject) => {
+        let messageCount = 0;
+        let consumerStarted = false;
+        
         const timeout = setTimeout(() => {
+          this.logger.log(
+            `Timeout reached for ${aggregateId}. Consumer started: ${consumerStarted}, ` +
+            `Messages processed: ${messageCount}, Events found: ${events.length}`
+          );
           consumer
             .disconnect()
             .then(() => {
@@ -105,15 +167,23 @@ export class KafkaEventStore implements IEventStore {
               resolve(events);
             })
             .catch(reject);
-        }, 5000); // 5 second timeout
+        }, 15000); // 15 second timeout (increased for test stability)
 
         consumer
           .run({
-            eachMessage: async ({ message }) => {
+            eachMessage: async ({ topic: msgTopic, partition, message }) => {
+              consumerStarted = true;
+              messageCount++;
+              
               try {
+                const messageKey = message.key?.toString();
+                
                 // Only process messages for this specific aggregate
-                if (message.key?.toString() === aggregateId) {
+                if (messageKey === aggregateId) {
                   const eventData = JSON.parse(message.value!.toString());
+                  this.logger.debug(
+                    `Found event for ${aggregateId}: ${eventData.eventType} (version ${eventData.aggregateVersion})`
+                  );
 
                   // Apply version filter if specified
                   if (!fromVersion || eventData.aggregateVersion >= fromVersion) {
@@ -123,13 +193,14 @@ export class KafkaEventStore implements IEventStore {
                   }
                 }
               } catch (error) {
-                this.logger.error('Error processing message', error);
+                this.logger.error('Error processing message in getEvents', error);
               }
             },
           })
           .catch((error) => {
             clearTimeout(timeout);
-            consumer.disconnect();
+            this.logger.error(`Consumer error for aggregate ${aggregateId}:`, error);
+            consumer.disconnect().catch(() => {});
             reject(error);
           });
       });

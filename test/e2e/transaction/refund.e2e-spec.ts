@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../../src/app.module';
-import { v4 as uuidv4 } from 'uuid';
-import { CommandBus } from '@nestjs/cqrs';
+import { CommandBus, EventBus } from '@nestjs/cqrs';
+import { DataSource } from 'typeorm';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
 import { PaymentCommand } from '../../../src/modules/transaction/commands/payment.command';
 import { RefundCommand } from '../../../src/modules/transaction/commands/refund.command';
@@ -11,6 +11,9 @@ import { TransactionProjectionService } from '../../../src/modules/transaction/p
 import { AccountType } from '../../../src/modules/account/account.entity';
 import { TransactionStatus, TransactionType } from '../../../src/modules/transaction/transaction.entity';
 import Decimal from 'decimal.js';
+import { InMemoryEventStore } from '../../helpers/in-memory-event-store';
+import { EventPollingHelper } from '../../helpers/event-polling.helper';
+import { generateTestId } from '../../helpers/test-id-generator';
 
 /**
  * E2E Test Suite for Refund Saga
@@ -29,11 +32,19 @@ describe('Refund Saga E2E', () => {
   let commandBus: CommandBus;
   let accountProjectionService: AccountProjectionService;
   let transactionProjectionService: TransactionProjectionService;
+  let pollingHelper: EventPollingHelper;
+  let dataSource: DataSource;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider('EVENT_STORE')
+    .useFactory({
+      factory: (eventBus: EventBus) => new InMemoryEventStore(eventBus),
+      inject: [EventBus],
+    })
+    .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
@@ -41,18 +52,27 @@ describe('Refund Saga E2E', () => {
     commandBus = app.get<CommandBus>(CommandBus);
     accountProjectionService = app.get<AccountProjectionService>(AccountProjectionService);
     transactionProjectionService = app.get<TransactionProjectionService>(TransactionProjectionService);
+    const eventStore = app.get<InMemoryEventStore>('EVENT_STORE');
+    pollingHelper = new EventPollingHelper(eventStore);
+    dataSource = app.get<DataSource>(DataSource);
+
+    // Clear projections before tests
+    await dataSource.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
   });
 
   afterAll(async () => {
+    // Give async operations time to complete
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await app.close();
   });
 
   describe('Complete Refund Flow', () => {
     it('should process payment and then refund successfully', async () => {
-      const correlationId = uuidv4();
+      const correlationId = generateTestId();
       
       // Step 1: Create customer account with funds
-      const customerAccountId = uuidv4();
+      const customerAccountId = generateTestId();
       const createCustomerCommand = new CreateAccountCommand(
         customerAccountId,
         'customer-user-1',
@@ -67,11 +87,15 @@ describe('Refund Saga E2E', () => {
       
       await commandBus.execute(createCustomerCommand);
       
-      // Wait for projection to be created
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Wait for account projection to be created
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(customerAccountId),
+        (account) => account !== null,
+        { description: `customer account ${customerAccountId} to be created` }
+      );
       
       // Step 2: Create merchant account
-      const merchantAccountId = uuidv4();
+      const merchantAccountId = generateTestId();
       const createMerchantCommand = new CreateAccountCommand(
         merchantAccountId,
         'merchant-1',
@@ -86,11 +110,15 @@ describe('Refund Saga E2E', () => {
       
       await commandBus.execute(createMerchantCommand);
       
-      // Wait for projection
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Wait for account projection to be created
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(merchantAccountId),
+        (account) => account !== null,
+        { description: `merchant account ${merchantAccountId} to be created` }
+      );
       
       // Step 3: Create EXTERNAL account for funding customer
-      const externalAccountId = uuidv4();
+      const externalAccountId = generateTestId();
       const createExternalCommand = new CreateAccountCommand(
         externalAccountId,
         'external-funding',
@@ -104,7 +132,13 @@ describe('Refund Saga E2E', () => {
       );
       
       await commandBus.execute(createExternalCommand);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      // Wait for external account projection
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(externalAccountId),
+        (account) => account !== null,
+        { description: `external account ${externalAccountId} to be created` }
+      );
       
       // Step 4: Fund customer account with a topup (using old service method for simplicity)
       // In a real scenario, we'd use TopupCommand, but for this test we'll manually update balance
@@ -121,7 +155,13 @@ describe('Refund Saga E2E', () => {
       );
       
       await commandBus.execute(fundCommand);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      // Wait for balance to be updated
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(customerAccountId),
+        (account) => account && new Decimal(account.balance).toNumber() === 1000,
+        { description: `customer account ${customerAccountId} balance to be 1000` }
+      );
       
       // Verify customer has funds
       let customerAccount = await accountProjectionService.findById(customerAccountId);
@@ -129,7 +169,7 @@ describe('Refund Saga E2E', () => {
       expect(new Decimal(customerAccount!.balance).toNumber()).toBe(1000);
       
       // Step 5: Process a payment (customer → merchant)
-      const paymentId = uuidv4();
+      const paymentId = generateTestId();
       const paymentAmount = '250.00';
       const paymentCommand = new PaymentCommand(
         paymentId,
@@ -137,7 +177,7 @@ describe('Refund Saga E2E', () => {
         merchantAccountId,
         paymentAmount,
         'USD',
-        uuidv4(), // idempotencyKey
+        generateTestId(), // idempotencyKey
         {
           orderId: 'ORDER-12345',
           invoiceId: 'INV-67890',
@@ -149,8 +189,16 @@ describe('Refund Saga E2E', () => {
       
       await commandBus.execute(paymentCommand);
       
-      // Wait for saga to complete
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Wait for payment saga to complete
+      await pollingHelper.waitForProjection(
+        () => transactionProjectionService.findById(paymentId),
+        (tx) => tx && tx.status === TransactionStatus.COMPLETED,
+        { 
+          description: `payment ${paymentId} to be COMPLETED`,
+          maxRetries: 60,
+          retryDelayMs: 500
+        }
+      );
       
       // Verify payment completed
       const paymentProjection = await transactionProjectionService.findById(paymentId);
@@ -174,14 +222,14 @@ describe('Refund Saga E2E', () => {
       expect(new Decimal(merchantAccount!.balance).toNumber()).toBe(250); // 0 + 250
       
       // Step 6: Process a refund (merchant → customer)
-      const refundId = uuidv4();
+      const refundId = generateTestId();
       const refundAmount = '100.00'; // Partial refund
       const refundCommand = new RefundCommand(
         refundId,
         paymentId, // Link to original payment
         refundAmount,
         'USD',
-        uuidv4(), // idempotencyKey
+        generateTestId(), // idempotencyKey
         {
           reason: 'Customer returned product',
           refundType: 'partial',
@@ -193,8 +241,16 @@ describe('Refund Saga E2E', () => {
       
       await commandBus.execute(refundCommand);
       
-      // Wait for saga to complete
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Wait for refund saga to complete
+      await pollingHelper.waitForProjection(
+        () => transactionProjectionService.findById(refundId),
+        (tx) => tx && tx.status === TransactionStatus.COMPLETED,
+        { 
+          description: `refund ${refundId} to be COMPLETED`,
+          maxRetries: 60,
+          retryDelayMs: 500
+        }
+      );
       
       // Step 7: Verify refund completed
       const refundProjection = await transactionProjectionService.findById(refundId);
@@ -234,12 +290,12 @@ describe('Refund Saga E2E', () => {
     }, 30000); // 30 second timeout for complete flow
     
     it('should handle full refund correctly', async () => {
-      const correlationId = uuidv4();
+      const correlationId = generateTestId();
       
       // Create accounts
-      const customerAccountId = uuidv4();
-      const merchantAccountId = uuidv4();
-      const externalAccountId = uuidv4();
+      const customerAccountId = generateTestId();
+      const merchantAccountId = generateTestId();
+      const externalAccountId = generateTestId();
       
       await commandBus.execute(new CreateAccountCommand(
         customerAccountId,
@@ -277,7 +333,22 @@ describe('Refund Saga E2E', () => {
         'test-e2e',
       ));
       
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Wait for all accounts to be created
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(customerAccountId),
+        (account) => account !== null,
+        { description: 'customer account to be created' }
+      );
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(merchantAccountId),
+        (account) => account !== null,
+        { description: 'merchant account to be created' }
+      );
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(externalAccountId),
+        (account) => account !== null,
+        { description: 'external account to be created' }
+      );
       
       // Fund customer
       const { UpdateBalanceCommand } = require('../../../src/modules/account/commands/update-balance.command');
@@ -291,10 +362,15 @@ describe('Refund Saga E2E', () => {
         'test-e2e',
       ));
       
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Wait for balance update
+      await pollingHelper.waitForProjection(
+        () => accountProjectionService.findById(customerAccountId),
+        (account) => account && new Decimal(account.balance).toNumber() === 500,
+        { description: `customer balance to be 500` }
+      );
       
       // Process payment
-      const paymentId = uuidv4();
+      const paymentId = generateTestId();
       const paymentAmount = '500.00';
       await commandBus.execute(new PaymentCommand(
         paymentId,
@@ -302,7 +378,7 @@ describe('Refund Saga E2E', () => {
         merchantAccountId,
         paymentAmount,
         'USD',
-        uuidv4(),
+        generateTestId(),
         {
           orderId: 'ORDER-FULL-REFUND',
           description: 'Order to be fully refunded',
@@ -311,7 +387,16 @@ describe('Refund Saga E2E', () => {
         'test-e2e',
       ));
       
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Wait for payment to complete
+      await pollingHelper.waitForProjection(
+        () => transactionProjectionService.findById(paymentId),
+        (tx) => tx && tx.status === TransactionStatus.COMPLETED,
+        { 
+          description: `full refund payment ${paymentId} to be COMPLETED`,
+          maxRetries: 60,
+          retryDelayMs: 500
+        }
+      );
       
       // Verify payment
       let customerAccount = await accountProjectionService.findById(customerAccountId);
@@ -321,13 +406,13 @@ describe('Refund Saga E2E', () => {
       expect(new Decimal(merchantAccount!.balance).toNumber()).toBe(500); // 0 + 500
       
       // Process full refund
-      const refundId = uuidv4();
+      const refundId = generateTestId();
       await commandBus.execute(new RefundCommand(
         refundId,
         paymentId,
         paymentAmount, // Full amount
         'USD',
-        uuidv4(),
+        generateTestId(),
         {
           reason: 'Order cancelled',
           refundType: 'full',
@@ -337,7 +422,16 @@ describe('Refund Saga E2E', () => {
         'test-e2e',
       ));
       
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Wait for full refund to complete
+      await pollingHelper.waitForProjection(
+        () => transactionProjectionService.findById(refundId),
+        (tx) => tx && tx.status === TransactionStatus.COMPLETED,
+        { 
+          description: `full refund ${refundId} to be COMPLETED`,
+          maxRetries: 60,
+          retryDelayMs: 500
+        }
+      );
       
       // Verify full refund
       const refundProjection = await transactionProjectionService.findById(refundId);

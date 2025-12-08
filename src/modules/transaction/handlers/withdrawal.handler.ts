@@ -19,12 +19,14 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
 
   async execute(command: WithdrawalCommand): Promise<string> {
     this.logger.log(`Processing withdrawal: ${command.transactionId}`);
+    this.logger.log(`  Account: ${command.accountId}, Amount: ${command.amount}, Destination: ${command.destinationAccountId}`);
 
     try {
       // Create new transaction aggregate
       const transaction = new TransactionAggregate();
 
       // Execute the withdrawal request
+      this.logger.log(`  Creating WithdrawalRequestedEvent...`);
       transaction.requestWithdrawal({
         transactionId: command.transactionId,
         accountId: command.accountId,
@@ -43,14 +45,22 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
       // Get uncommitted events
       const events = transaction.getUncommittedEvents();
       this.logger.log(`Generated ${events.length} event(s) for transaction ${command.transactionId}`);
+      events.forEach(e => {
+        const eventType = e.getEventType();
+        this.logger.log(`  - Event: ${eventType}`);
+      });
 
-      // Save events to the event store (Kafka)
+      // Save events to the event store
+      this.logger.log(`  Saving events to event store...`);
       await this.eventStore.append('Transaction', command.transactionId, events);
 
-      // Publish events to the event bus for async processing
+      // Publish events to the event bus for async processing (saga handlers)
+      this.logger.log(`  Publishing ${events.length} event(s) to EventBus...`);
       events.forEach((event) => {
         this.eventBus.publish(event);
       });
+      this.logger.log(`  Events published to EventBus`);
+
 
       // Mark events as committed
       transaction.commit();

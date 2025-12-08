@@ -1,15 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { v4 as uuidv4 } from 'uuid';
+import { CommandBus, QueryBus, EventBus } from '@nestjs/cqrs';
+import { DataSource } from 'typeorm';
 import { AppModule } from '../../../src/app.module';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
 import { GetAccountQuery } from '../../../src/modules/account/queries/get-account.query';
 import { GetAccountsByOwnerQuery } from '../../../src/modules/account/queries/get-accounts-by-owner.query';
 import { AccountType } from '../../../src/modules/account/account.entity';
 import { AccountAggregate } from '../../../src/modules/account/aggregates/account.aggregate';
-import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
+import { InMemoryEventStore } from '../../helpers/in-memory-event-store';
 import { EventPollingHelper } from '../../helpers/event-polling.helper';
+import { generateTestId, getTestRunId } from '../../helpers/test-id-generator';
 
 describe('Week 2 - Projections E2E Test', () => {
   jest.setTimeout(30000); // 30 seconds for Kafka operations
@@ -17,36 +18,47 @@ describe('Week 2 - Projections E2E Test', () => {
   let app: INestApplication;
   let commandBus: CommandBus;
   let queryBus: QueryBus;
-  let eventStore: KafkaEventStore;
+  let eventStore: InMemoryEventStore;
   let eventPolling: EventPollingHelper;
+  let dataSource: DataSource;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider('EVENT_STORE')
+    .useFactory({
+      factory: (eventBus: EventBus) => new InMemoryEventStore(eventBus),
+      inject: [EventBus],
+    })
+    .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
 
     commandBus = app.get<CommandBus>(CommandBus);
     queryBus = app.get<QueryBus>(QueryBus);
-    eventStore = app.get<KafkaEventStore>(KafkaEventStore);
+    eventStore = app.get<InMemoryEventStore>('EVENT_STORE');
     eventPolling = new EventPollingHelper(eventStore);
+    dataSource = app.get<DataSource>(DataSource);
 
-    // Wait for Kafka to be ready
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Clear projections before tests
+    await dataSource.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
+    await dataSource.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
   });
 
   afterAll(async () => {
+    // Give async operations time to complete
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await app.close();
   });
 
   describe('🎯 Complete CQRS Flow with Projections', () => {
     let accountId: string;
-    const ownerId = 'test-user-' + Date.now();
+    const ownerId = `test-owner-${getTestRunId()}`;
 
     it('should create account (command) and project to read model (query)', async () => {
-      accountId = uuidv4();
+      accountId = generateTestId('account-1');
 
       console.log('\n╔═══════════════════════════════════════════════════════════════╗');
       console.log('║        WEEK 2 TEST: CQRS with Projections                     ║');

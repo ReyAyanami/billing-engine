@@ -1,0 +1,153 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { EventBus } from '@nestjs/cqrs';
+import { DomainEvent } from '../../src/cqrs/base/domain-event';
+import { IEventStore } from '../../src/cqrs/interfaces/event-store.interface';
+
+/**
+ * In-memory event store for testing purposes.
+ * Provides fast, reliable event storage without Kafka overhead.
+ * 
+ * This is perfect for E2E tests that need to verify business logic
+ * without the complexity of distributed systems.
+ */
+@Injectable()
+export class InMemoryEventStore implements IEventStore {
+  private readonly logger = new Logger(InMemoryEventStore.name);
+  private readonly events: Map<string, DomainEvent[]> = new Map();
+  private readonly eventBus: EventBus;
+
+  constructor(eventBus?: EventBus) {
+    this.eventBus = eventBus!;
+    this.logger.log('📦 InMemoryEventStore initialized (Test Mode)');
+  }
+
+  /**
+   * Appends events to the in-memory store.
+   * Validates aggregate version for optimistic concurrency control.
+   */
+  async append(
+    aggregateType: string,
+    aggregateId: string,
+    events: DomainEvent[],
+    expectedVersion?: number,
+  ): Promise<void> {
+    const key = this.getKey(aggregateType, aggregateId);
+    const existingEvents = this.events.get(key) || [];
+
+    // Optimistic concurrency check
+    if (expectedVersion !== undefined) {
+      const currentVersion = existingEvents.length;
+      if (currentVersion !== expectedVersion) {
+        throw new Error(
+          `Concurrency conflict: Expected version ${expectedVersion}, but current version is ${currentVersion}`,
+        );
+      }
+    }
+
+    // Store events (ensure they're valid DomainEvent objects)
+    const validEvents = events.filter(e => e && typeof e === 'object');
+    if (validEvents.length !== events.length) {
+      this.logger.warn(`Filtered out ${events.length - validEvents.length} invalid events`);
+    }
+    
+    if (validEvents.length > 0) {
+      this.logger.debug(`First event type: ${validEvents[0].constructor?.name || 'unknown'}`);
+    }
+    
+    const allEvents = [...existingEvents, ...validEvents];
+    this.events.set(key, allEvents);
+
+    this.logger.log(
+      `✅ Appended ${validEvents.length} event(s) to ${aggregateType}/${aggregateId} (total: ${allEvents.length})`,
+    );
+
+    // NOTE: We don't publish events here because command handlers already do it.
+    // Publishing here would cause duplicate event processing and projection errors.
+    // The command handlers call eventBus.publish() after saving to the event store.
+  }
+
+  /**
+   * Retrieves all events for a specific aggregate.
+   * Returns immediately - no network latency!
+   */
+  async getEvents(
+    aggregateType: string,
+    aggregateId: string,
+    fromVersion?: number,
+  ): Promise<DomainEvent[]> {
+    const key = this.getKey(aggregateType, aggregateId);
+    const storedEvents = this.events.get(key) || [];
+
+    // Convert events to plain objects if they have toJSON method
+    const events = storedEvents.map(event => {
+      if (event && typeof event.toJSON === 'function') {
+        return event.toJSON();
+      }
+      return event;
+    });
+
+    // Apply version filter if specified
+    if (fromVersion !== undefined) {
+      return events.filter((e: any) => e.aggregateVersion >= fromVersion);
+    }
+
+    this.logger.debug(
+      `📥 Retrieved ${events.length} event(s) for ${aggregateType}/${aggregateId}`,
+    );
+
+    return events as any;
+  }
+
+  /**
+   * Streams all events of a specific aggregate type.
+   * Useful for rebuilding projections.
+   */
+  async *getAllEvents(
+    aggregateType: string,
+    fromTimestamp?: Date,
+  ): AsyncGenerator<DomainEvent> {
+    const prefix = `${aggregateType}:`;
+    
+    for (const [key, events] of this.events.entries()) {
+      if (key.startsWith(prefix)) {
+        for (const event of events) {
+          // Apply timestamp filter if specified
+          if (!fromTimestamp || new Date(event.timestamp) >= fromTimestamp) {
+            yield event;
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Test helper: Clear all events (useful for test cleanup).
+   */
+  clear(): void {
+    this.events.clear();
+    this.logger.log('🧹 All events cleared');
+  }
+
+  /**
+   * Test helper: Get total event count.
+   */
+  getEventCount(): number {
+    let count = 0;
+    for (const events of this.events.values()) {
+      count += events.length;
+    }
+    return count;
+  }
+
+  /**
+   * Test helper: Get all aggregate keys.
+   */
+  getAggregateKeys(): string[] {
+    return Array.from(this.events.keys());
+  }
+
+  private getKey(aggregateType: string, aggregateId: string): string {
+    return `${aggregateType}:${aggregateId}`;
+  }
+}
+

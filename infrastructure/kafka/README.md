@@ -250,7 +250,84 @@ docker network prune -f
 docker system prune -a --volumes -f
 ```
 
+## ⚙️ Configuration
+
+### Message Size Limits
+
+The cluster is configured with the following message size limits:
+
+```yaml
+# Per-message limit (broker accepts up to 10MB per message)
+KAFKA_MESSAGE_MAX_BYTES: 10485760  # 10 MB
+
+# Replica fetch limit (for replication between brokers)
+KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760  # 10 MB
+
+# Socket buffer limit (allows batching multiple messages)
+KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600  # 100 MB
+```
+
+**Why these limits?**
+- **10 MB per message**: Generous enough for legitimate use cases while preventing abuse
+- **100 MB socket buffer**: Allows batching of multiple messages in a single request
+- **Application validation**: Events > 10MB are rejected at application layer with clear errors
+- **Warning threshold**: Events > 1MB trigger warnings for investigation
+
+### Producer Configuration
+
+The application validates message sizes before sending to Kafka:
+```typescript
+// Application-level validation in KafkaEventStore
+- Hard limit: 10 MB per message
+- Warning threshold: 1 MB per message
+- Automatic rejection with detailed error messages
+```
+
+### Topic Configuration
+
+Topics are created with:
+```bash
+--config retention.ms=-1  # Infinite retention (event sourcing)
+--config compression.type=lz4  # Fast compression
+--config cleanup.policy=compact,delete  # Keep latest + time-based cleanup
+```
+
 ## 🚨 Troubleshooting
+
+### Issue: Message size exceeded
+
+```
+Error: Event message size (15.23 MB) exceeds maximum allowed size (10 MB)
+```
+
+**Cause**: Trying to send an event larger than 10 MB
+
+**Solution**:
+1. Review the event data - what's making it so large?
+2. Common causes:
+   - Large metadata objects
+   - Circular references
+   - Arrays with thousands of items
+   - Embedded full entities instead of IDs
+3. Refactor event to only include essential data
+4. Use references (IDs) instead of embedding full objects
+
+**See**: `docs/KAFKA_MESSAGE_SIZE_FIX.md` for detailed guidance
+
+### Issue: Large event warnings
+
+```
+⚠️ Large event detected (2.34 MB): TransactionCreated for aggregate abc-123
+```
+
+**Cause**: Event is > 1 MB but < 10 MB (allowed but not optimal)
+
+**Action**:
+1. Investigate why the event is so large
+2. Consider refactoring to reduce size
+3. Monitor for performance impact
+
+**Best Practice**: Most events should be < 100 KB
 
 ### Issue: Kafka won't start
 

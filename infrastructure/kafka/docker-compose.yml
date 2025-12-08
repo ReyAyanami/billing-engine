@@ -41,6 +41,14 @@ services:
       KAFKA_NUM_PARTITIONS: 10
       KAFKA_LOG_RETENTION_MS: -1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      # Message size limits
+      # Maximum message size the broker will accept (default: 1MB)
+      # Set to 10MB to accommodate larger events while preventing abuse
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      # Maximum size of a request (batch of messages)
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      # Socket receive buffer for network requests
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
     ports:
       - "9092:9092"
     volumes:
@@ -71,6 +79,10 @@ services:
       KAFKA_MIN_INSYNC_REPLICAS: 2
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      # Message size limits
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
     ports:
       - "9093:9093"
     volumes:
@@ -101,6 +113,10 @@ services:
       KAFKA_MIN_INSYNC_REPLICAS: 2
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      # Message size limits
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
     ports:
       - "9094:9094"
     volumes:

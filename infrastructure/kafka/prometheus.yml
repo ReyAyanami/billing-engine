@@ -7,17 +7,20 @@ global:
 
 scrape_configs:
   # Kafka Brokers (JMX Metrics)
-  - job_name: 'kafka-brokers'
-    static_configs:
-      - targets:
-          - 'kafka-1:9092'
-          - 'kafka-2:9093'
-          - 'kafka-3:9094'
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        regex: '([^:]+).*'
-        replacement: '${1}'
+  # NOTE: Disabled - Kafka ports 9092-9094 are Kafka protocol, not HTTP
+  # To monitor Kafka, you need to set up JMX Exporter
+  # See: https://github.com/prometheus/jmx_exporter
+  # - job_name: 'kafka-brokers'
+  #   static_configs:
+  #     - targets:
+  #         - 'kafka-1:9092'
+  #         - 'kafka-2:9093'
+  #         - 'kafka-3:9094'
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: instance
+  #       regex: '([^:]+).*'
+  #       replacement: '${1}'
 
   # Schema Registry
   - job_name: 'schema-registry'

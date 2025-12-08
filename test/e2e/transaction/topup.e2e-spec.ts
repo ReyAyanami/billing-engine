@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../../src/app.module';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { CommandBus, QueryBus, EventBus } from '@nestjs/cqrs';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
 import { TopupCommand } from '../../../src/modules/transaction/commands/topup.command';
 import { GetTransactionQuery } from '../../../src/modules/transaction/queries/get-transaction.query';
@@ -9,10 +9,10 @@ import { GetTransactionsByAccountQuery } from '../../../src/modules/transaction/
 import { GetAccountQuery } from '../../../src/modules/account/queries/get-account.query';
 import { AccountType } from '../../../src/modules/account/account.entity';
 import { TransactionStatus } from '../../../src/modules/transaction/transaction.entity';
-import { v4 as uuidv4 } from 'uuid';
 import { Connection } from 'typeorm';
-import { KafkaEventStore } from '../../../src/cqrs/kafka/kafka-event-store';
+import { InMemoryEventStore } from '../../helpers/in-memory-event-store';
 import { EventPollingHelper } from '../../helpers/event-polling.helper';
+import { generateTestId } from '../../helpers/test-id-generator';
 
 describe('Week 3 - Complete Saga E2E Test', () => {
   jest.setTimeout(60000); // 60 seconds timeout for async saga operations
@@ -31,7 +31,13 @@ describe('Week 3 - Complete Saga E2E Test', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider('EVENT_STORE')
+    .useFactory({
+      factory: (eventBus: EventBus) => new InMemoryEventStore(eventBus),
+      inject: [EventBus],
+    })
+    .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
@@ -39,25 +45,24 @@ describe('Week 3 - Complete Saga E2E Test', () => {
     commandBus = app.get(CommandBus);
     queryBus = app.get(QueryBus);
     connection = app.get(Connection);
-    eventStore = app.get(KafkaEventStore);
+    eventStore = app.get<InMemoryEventStore>('EVENT_STORE');
     eventPolling = new EventPollingHelper(eventStore);
 
     // Clear projections before tests
     await connection.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
     await connection.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
-    
-    // Wait for Kafka to be ready
-    await new Promise((resolve) => setTimeout(resolve, 2000));
   });
 
   afterAll(async () => {
+    // Give async operations time to complete
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await app.close();
   });
 
   describe('🎯 Complete CQRS Topup Saga Flow', () => {
     it('should create user account', async () => {
-      userAccountId = uuidv4();
-      correlationId = uuidv4();
+      userAccountId = generateTestId('user-account');
+      correlationId = generateTestId('correlation');
 
       console.log('\n╔═══════════════════════════════════════════════════════════════╗');
       console.log('║      WEEK 3 COMPLETE SAGA TEST: Topup with CQRS              ║');
@@ -104,7 +109,7 @@ describe('Week 3 - Complete Saga E2E Test', () => {
     });
 
     it('should create system account', async () => {
-      systemAccountId = uuidv4();
+      systemAccountId = generateTestId('system-account');
 
       console.log('\n📝 Step 2: Create system account for topup source...');
       console.log(`     Account ID: ${systemAccountId}`);
@@ -169,8 +174,8 @@ describe('Week 3 - Complete Saga E2E Test', () => {
     });
 
     it('should execute topup saga and update projections', async () => {
-      transactionId = uuidv4();
-      const idempotencyKey = uuidv4();
+      transactionId = generateTestId('topup-transaction');
+      const idempotencyKey = generateTestId('idempotency-key');
 
       console.log('\n📝 Step 3: Execute Topup Command...');
       console.log(`     Transaction ID: ${transactionId}`);

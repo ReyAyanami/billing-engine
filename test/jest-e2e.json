@@ -4,20 +4,18 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
-  },
-  "moduleNameMapper": {
-    "^uuid$": "uuid"
-  },
-  "transformIgnorePatterns": [
-    "node_modules/(?!(uuid)/)"
-  ],
-  "globals": {
-    "ts-jest": {
+    "^.+\\.(t|j)s$": ["ts-jest", {
       "tsconfig": {
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true
       }
-    }
-  }
+    }]
+  },
+  "moduleNameMapper": {
+    "^uuid$": "uuid",
+    "^src/(.*)$": "<rootDir>/../src/$1"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(uuid)/)"
+  ]
 }

@@ -36,7 +36,22 @@ export class TransactionProjectionService {
     lastEventTimestamp: Date;
     metadata?: Record<string, any>;
   }): Promise<TransactionProjection> {
-    const projection = this.projectionRepository.create(data);
+    const projection = this.projectionRepository.create({
+      id: data.id,
+      type: data.type,
+      status: data.status,
+      amount: data.amount,
+      currency: data.currency,
+      sourceAccountId: data.sourceAccountId,
+      destinationAccountId: data.destinationAccountId,
+      idempotencyKey: data.idempotencyKey,
+      correlationId: data.correlationId,
+      requestedAt: data.requestedAt,
+      aggregateVersion: data.aggregateVersion,
+      lastEventId: data.lastEventId,
+      lastEventTimestamp: data.lastEventTimestamp,
+      metadata: data.metadata,
+    });
     return this.projectionRepository.save(projection);
   }
 

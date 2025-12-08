@@ -1,16 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { CommandBus, QueryBus, EventBus } from '@nestjs/cqrs';
 import { Connection } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import { AppModule } from '../../../src/app.module';
 import { CreateAccountCommand } from '../../../src/modules/account/commands/create-account.command';
+import { TopupCommand } from '../../../src/modules/transaction/commands/topup.command';
 import { AccountType } from '../../../src/modules/account/account.entity';
 import { GetAccountQuery } from '../../../src/modules/account/queries/get-account.query';
 import { PaymentCommand } from '../../../src/modules/transaction/commands/payment.command';
 import { GetTransactionQuery } from '../../../src/modules/transaction/queries/get-transaction.query';
 import { TransactionStatus } from '../../../src/modules/transaction/transaction.entity';
 import { EventPollingHelper } from '../../helpers/event-polling.helper';
+import { InMemoryEventStore } from '../../helpers/in-memory-event-store';
+import { generateTestId } from '../../helpers/test-id-generator';
 import Decimal from 'decimal.js';
 
 describe('Payment Saga E2E Test', () => {
@@ -29,7 +31,13 @@ describe('Payment Saga E2E Test', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider('EVENT_STORE')
+    .useFactory({
+      factory: (eventBus: EventBus) => new InMemoryEventStore(eventBus),
+      inject: [EventBus],
+    })
+    .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
@@ -37,26 +45,26 @@ describe('Payment Saga E2E Test', () => {
     commandBus = app.get(CommandBus);
     queryBus = app.get(QueryBus);
     connection = app.get(Connection);
-    eventPolling = new EventPollingHelper(app);
+    const eventStore = app.get<InMemoryEventStore>('EVENT_STORE');
+    eventPolling = new EventPollingHelper(eventStore);
 
     // Clear tables before tests
     await connection.manager.query('TRUNCATE TABLE transaction_projections RESTART IDENTITY CASCADE;');
     await connection.manager.query('TRUNCATE TABLE account_projections RESTART IDENTITY CASCADE;');
     await connection.manager.query('TRUNCATE TABLE accounts RESTART IDENTITY CASCADE;');
     await connection.manager.query('TRUNCATE TABLE transactions RESTART IDENTITY CASCADE;');
-
-    // Wait for Kafka to be ready
-    await new Promise((resolve) => setTimeout(resolve, 5000));
   });
 
   afterAll(async () => {
+    // Give async operations time to complete
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await app.close();
   });
 
   describe('🏦 Setup: Create Test Accounts', () => {
     it('should create customer account', async () => {
-      customerAccountId = uuidv4();
-      correlationId = uuidv4();
+      customerAccountId = generateTestId('customer-account');
+      correlationId = generateTestId('correlation');
 
       console.log('\n╔═══════════════════════════════════════════════════════════════╗');
       console.log('║        PAYMENT SAGA E2E TEST                                  ║');
@@ -77,19 +85,71 @@ describe('Payment Saga E2E Test', () => {
       console.log('     ✅ Customer account created');
 
       // Wait for projection
-      await eventPolling.waitForProjection('AccountProjection', customerAccountId);
+      await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(customerAccountId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.id === customerAccountId,
+        { description: 'customer account projection', maxRetries: 30 },
+      );
 
-      // Fund customer account
+      // Fund customer account via topup
       console.log('💰 Funding customer account with $1000...');
-      await connection.manager.query(
-        `UPDATE account_projections SET balance = '1000.00' WHERE id = $1`,
-        [customerAccountId],
+      const topupSourceId = generateTestId('topup-source');
+      await commandBus.execute(new CreateAccountCommand(
+        topupSourceId,
+        'topup-source',
+        'System',
+        AccountType.EXTERNAL,
+        'USD',
+        undefined,
+        undefined,
+        correlationId,
+      ));
+
+      await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(topupSourceId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.id === topupSourceId,
+        { description: 'topup source projection', maxRetries: 30 },
+      );
+
+      const topupId = generateTestId('topup');
+      await commandBus.execute(new TopupCommand(
+        topupId,
+        customerAccountId,
+        '1000.00',
+        'USD',
+        topupSourceId,
+        generateTestId('topup-idempotency'),
+        correlationId,
+      ));
+
+      await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(customerAccountId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.balance === '1000.00',
+        { description: 'customer account funded', maxRetries: 60 },
       );
       console.log('     ✅ Customer account funded');
     });
 
     it('should create merchant account', async () => {
-      merchantAccountId = uuidv4();
+      merchantAccountId = generateTestId('merchant-account');
 
       console.log('\n📝 Step 2: Create Merchant Account...');
       const createMerchantAccountCommand = new CreateAccountCommand(
@@ -106,7 +166,17 @@ describe('Payment Saga E2E Test', () => {
       console.log('     ✅ Merchant account created');
 
       // Wait for projection
-      await eventPolling.waitForProjection('AccountProjection', merchantAccountId);
+      await eventPolling.waitForProjection(
+        async () => {
+          try {
+            return await queryBus.execute(new GetAccountQuery(merchantAccountId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.id === merchantAccountId,
+        { description: 'merchant account projection', maxRetries: 30 },
+      );
     });
   });
 
@@ -114,9 +184,9 @@ describe('Payment Saga E2E Test', () => {
     let paymentTransactionId: string;
 
     it('should execute payment successfully', async () => {
-      paymentTransactionId = uuidv4();
+      paymentTransactionId = generateTestId('payment-transaction');
       const paymentAmount = '99.99';
-      const idempotencyKey = uuidv4();
+      const idempotencyKey = generateTestId('idempotency-key');
 
       console.log('\n📝 Step 3: Execute PaymentCommand...');
       console.log(`   Customer: ${customerAccountId}`);
@@ -146,11 +216,20 @@ describe('Payment Saga E2E Test', () => {
       // Wait for saga to complete
       console.log('\n⏳ Step 4: Waiting for payment saga to complete...');
       const transactionProjection = await eventPolling.waitForProjection(
-        'TransactionProjection',
-        paymentTransactionId,
-        TransactionStatus.COMPLETED,
-        'payment transaction projection',
-        45000,
+        async () => {
+          try {
+            return await queryBus.execute(new GetTransactionQuery(paymentTransactionId));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.status === TransactionStatus.COMPLETED,
+        {
+          description: 'payment transaction projection',
+          maxRetries: 90,
+          retryDelayMs: 500,
+          timeoutMs: 45000,
+        },
       );
 
       expect(transactionProjection).toBeDefined();
@@ -223,9 +302,9 @@ describe('Payment Saga E2E Test', () => {
 
   describe('💳 Payment Flow - With Idempotency', () => {
     it('should reject duplicate payment with same idempotency key', async () => {
-      const paymentTransactionId1 = uuidv4();
-      const paymentTransactionId2 = uuidv4(); // Different transaction ID
-      const idempotencyKey = uuidv4(); // Same idempotency key
+      const paymentTransactionId1 = generateTestId('payment-1');
+      const paymentTransactionId2 = generateTestId('payment-2'); // Different transaction ID
+      const idempotencyKey = generateTestId('same-idempotency-key'); // Same idempotency key
       const paymentAmount = '50.00';
 
       console.log('\n📝 Step 9: Test idempotency...');
@@ -248,11 +327,20 @@ describe('Payment Saga E2E Test', () => {
 
       // Wait for completion
       await eventPolling.waitForProjection(
-        'TransactionProjection',
-        paymentTransactionId1,
-        TransactionStatus.COMPLETED,
-        'first payment',
-        45000,
+        async () => {
+          try {
+            return await queryBus.execute(new GetTransactionQuery(paymentTransactionId1));
+          } catch (error) {
+            return null;
+          }
+        },
+        (proj) => proj && proj.status === TransactionStatus.COMPLETED,
+        {
+          description: 'first payment',
+          maxRetries: 90,
+          retryDelayMs: 500,
+          timeoutMs: 45000,
+        },
       );
       console.log('     ✅ First payment completed');
 

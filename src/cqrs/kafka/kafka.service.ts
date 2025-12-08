@@ -37,6 +37,10 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     this.kafka = new Kafka(kafkaConfig);
 
     // Create producer with idempotence enabled for exactly-once semantics
+    // Note: Message size limits are enforced at:
+    // 1. Application layer: KafkaEventStore.validateMessageSize() (10 MB limit)
+    // 2. Broker level: KAFKA_MESSAGE_MAX_BYTES (10 MB limit)
+    // 3. Socket level: KAFKA_SOCKET_REQUEST_MAX_BYTES (100 MB for batching)
     this.producer = this.kafka.producer({
       allowAutoTopicCreation: false,
       idempotent: true,
