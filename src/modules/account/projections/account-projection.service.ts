@@ -6,6 +6,7 @@ import { AccountCreatedEvent } from '../events/account-created.event';
 import { BalanceChangedEvent } from '../events/balance-changed.event';
 import { AccountStatusChangedEvent } from '../events/account-status-changed.event';
 import { AccountLimitsChangedEvent } from '../events/account-limits-changed.event';
+import { AccountId, OwnerId } from '../../../common/types/branded.types';
 
 /**
  * Service for managing account read model projections.
@@ -168,14 +169,14 @@ export class AccountProjectionService {
   /**
    * Finds a projection by account ID (for queries)
    */
-  async findById(accountId: string): Promise<AccountProjection | null> {
+  async findById(accountId: AccountId): Promise<AccountProjection | null> {
     return this.projectionRepository.findOne({ where: { id: accountId } });
   }
 
   /**
    * Finds all projections by owner ID
    */
-  async findByOwnerId(ownerId: string): Promise<AccountProjection[]> {
+  async findByOwnerId(ownerId: OwnerId): Promise<AccountProjection[]> {
     return this.projectionRepository.find({ where: { ownerId } });
   }
 

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TransactionProjection } from './transaction-projection.entity';
 import { TransactionType, TransactionStatus } from '../transaction.entity';
+import { TransactionId, AccountId } from '../../../common/types/branded.types';
 
 /**
  * Service for managing transaction projections (read model).
@@ -158,14 +159,14 @@ export class TransactionProjectionService {
   /**
    * Find transaction by ID
    */
-  async findById(id: string): Promise<TransactionProjection | null> {
+  async findById(id: TransactionId): Promise<TransactionProjection | null> {
     return this.projectionRepository.findOne({ where: { id } });
   }
 
   /**
    * Find transactions by account (source or destination)
    */
-  async findByAccount(accountId: string): Promise<TransactionProjection[]> {
+  async findByAccount(accountId: AccountId): Promise<TransactionProjection[]> {
     return this.projectionRepository
       .createQueryBuilder('t')
       .where(
