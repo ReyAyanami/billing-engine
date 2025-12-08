@@ -16,7 +16,7 @@ export class WithdrawalDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  idempotencyKey: string;
+  idempotencyKey!: string;
 
   @ApiProperty({
     description: 'Source account ID (user account to withdraw from)',
@@ -25,7 +25,7 @@ export class WithdrawalDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  sourceAccountId: string;
+  sourceAccountId!: string;
 
   @ApiProperty({
     description:
@@ -35,7 +35,7 @@ export class WithdrawalDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  destinationAccountId: string;
+  destinationAccountId!: string;
 
   @ApiProperty({
     description: 'Amount to withdraw (positive decimal number as string)',
@@ -44,7 +44,7 @@ export class WithdrawalDto {
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => String(value))
-  amount: string;
+  amount!: string;
 
   @ApiProperty({
     description: 'Currency code (must match account currency)',
@@ -52,7 +52,7 @@ export class WithdrawalDto {
   })
   @IsString()
   @IsNotEmpty()
-  currency: string;
+  currency!: string;
 
   @ApiProperty({
     description: 'Optional reference or description for the transaction',

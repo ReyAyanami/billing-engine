@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a transaction fails.
@@ -14,7 +15,7 @@ export class TransactionFailedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -23,14 +24,14 @@ export class TransactionFailedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'TransactionFailed';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      reason: this.reason,
-      errorCode: this.errorCode,
+      reason: this.reason ?? null,
+      errorCode: this.errorCode ?? null,
       failedAt: this.failedAt.toISOString(),
     };
   }

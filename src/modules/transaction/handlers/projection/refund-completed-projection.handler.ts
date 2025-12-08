@@ -26,10 +26,10 @@ export class RefundCompletedProjectionHandler implements IEventHandler<RefundCom
         event.eventId,
         event.timestamp,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[Projection] Failed to update refund projection [txId=${event.aggregateId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }

@@ -37,10 +37,10 @@ export class PaymentRequestedProjectionHandler implements IEventHandler<PaymentR
           paymentMetadata: event.paymentMetadata,
         },
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[Projection] Failed to create payment projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }

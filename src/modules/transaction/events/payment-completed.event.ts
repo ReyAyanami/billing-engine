@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a payment transaction is completed.
@@ -17,7 +18,7 @@ export class PaymentCompletedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -27,16 +28,16 @@ export class PaymentCompletedEvent extends DomainEvent {
     this.completedAt = completedAt;
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'PaymentCompleted';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
       transactionId: this.transactionId,
       customerNewBalance: this.customerNewBalance,
       merchantNewBalance: this.merchantNewBalance,
-      completedAt: this.completedAt,
+      completedAt: this.completedAt.toISOString(),
     };
   }
 }

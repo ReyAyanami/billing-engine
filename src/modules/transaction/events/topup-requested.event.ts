@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a topup transaction is requested.
@@ -16,7 +17,7 @@ export class TopupRequestedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -25,17 +26,17 @@ export class TopupRequestedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'TopupRequested';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      accountId: this.accountId,
-      amount: this.amount,
-      currency: this.currency,
-      sourceAccountId: this.sourceAccountId,
-      idempotencyKey: this.idempotencyKey,
+      accountId: this.accountId ?? null,
+      amount: this.amount ?? null,
+      currency: this.currency ?? null,
+      sourceAccountId: this.sourceAccountId ?? null,
+      idempotencyKey: this.idempotencyKey ?? null,
     };
   }
 }

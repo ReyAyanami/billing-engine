@@ -91,10 +91,10 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
         merchantAccountId,
         customerAccountId,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[RefundHandler] Failed [refundId=${command.refundId}, corr=${command.correlationId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error;
     }

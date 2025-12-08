@@ -86,7 +86,7 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
       this.logger.log(
         `SAGA: Refund completed [txId=${event.aggregateId}, merchantBal=${merchantNewBalance}, customerBal=${customerNewBalance}]`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       // Step 4 (on failure): Compensate and fail the refund
       const failureStep = merchantNewBalance
         ? 'credit_customer'
@@ -94,7 +94,7 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      const errorCode = error?.code as string | undefined;
+      const errorCode = (error as { code?: string })?.code ?? undefined;
 
       this.logger.error(
         `SAGA: Refund failed [txId=${event.aggregateId}, corr=${event.correlationId}, step=${failureStep}]`,
@@ -172,7 +172,7 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
           const failCommand = new FailTransactionCommand(
             event.aggregateId,
             errorMessage,
-            errorCode || 'REFUND_FAILED',
+            errorCode ?? 'REFUND_FAILED',
             event.correlationId,
             event.metadata?.actorId,
           );

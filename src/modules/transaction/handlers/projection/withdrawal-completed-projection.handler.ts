@@ -27,10 +27,10 @@ export class WithdrawalCompletedProjectionHandler implements IEventHandler<Withd
         event.eventId,
         event.timestamp,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[Projection] Failed to update withdrawal projection [txId=${event.aggregateId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }

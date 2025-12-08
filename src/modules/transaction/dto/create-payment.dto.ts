@@ -20,7 +20,7 @@ export class CreatePaymentDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  customerAccountId: string;
+  customerAccountId!: string;
 
   @ApiProperty({
     description: 'Merchant account ID (will be credited)',
@@ -28,7 +28,7 @@ export class CreatePaymentDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  merchantAccountId: string;
+  merchantAccountId!: string;
 
   @ApiProperty({
     description: 'Payment amount (must be positive)',
@@ -36,7 +36,7 @@ export class CreatePaymentDto {
   })
   @IsString()
   @IsNotEmpty()
-  amount: string;
+  amount!: string;
 
   @ApiProperty({
     description: 'Currency code (ISO 4217)',
@@ -46,7 +46,7 @@ export class CreatePaymentDto {
   @MinLength(3)
   @MaxLength(3)
   @IsNotEmpty()
-  currency: string;
+  currency!: string;
 
   @ApiPropertyOptional({
     description: 'Idempotency key (auto-generated if not provided)',

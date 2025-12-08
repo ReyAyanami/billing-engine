@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a withdrawal transaction is requested.
@@ -15,7 +16,7 @@ export class WithdrawalRequestedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -24,17 +25,17 @@ export class WithdrawalRequestedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'WithdrawalRequested';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      accountId: this.accountId,
-      amount: this.amount,
-      currency: this.currency,
-      destinationAccountId: this.destinationAccountId,
-      idempotencyKey: this.idempotencyKey,
+      accountId: this.accountId ?? null,
+      amount: this.amount ?? null,
+      currency: this.currency ?? null,
+      destinationAccountId: this.destinationAccountId ?? null,
+      idempotencyKey: this.idempotencyKey ?? null,
     };
   }
 }

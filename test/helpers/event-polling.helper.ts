@@ -57,10 +57,12 @@ export class EventPollingHelper {
           `⏳ [EventPolling] Retry ${retries + 1}/${maxRetries}: ` +
             `Found ${events?.length || 0}/${minEvents} events, waiting ${retryDelayMs}ms...`,
         );
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         console.log(
           `⏳ [EventPolling] Retry ${retries + 1}/${maxRetries}: ` +
-            `Error retrieving events (${error.message}), waiting ${retryDelayMs}ms...`,
+            `Error retrieving events (${errorMessage}), waiting ${retryDelayMs}ms...`,
         );
       }
 
@@ -122,10 +124,12 @@ export class EventPollingHelper {
           `⏳ [ProjectionPolling] Retry ${retries + 1}/${maxRetries}: ` +
             `${description} not ready, waiting ${retryDelayMs}ms...`,
         );
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         console.log(
           `⏳ [ProjectionPolling] Retry ${retries + 1}/${maxRetries}: ` +
-            `Error (${error.message}), waiting ${retryDelayMs}ms...`,
+            `Error (${errorMessage}), waiting ${retryDelayMs}ms...`,
         );
       }
 

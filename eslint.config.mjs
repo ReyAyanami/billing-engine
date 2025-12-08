@@ -26,8 +26,8 @@ export default tseslint.config(
   },
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-floating-promises': 'warn',
+      // ===== TYPE SAFETY (Phase 1: Warnings, will become errors in Phase 2) =====
+      '@typescript-eslint/no-explicit-any': 'warn', // Changed from 'off' - will be 'error' in Phase 2
       '@typescript-eslint/no-unsafe-argument': 'warn',
       '@typescript-eslint/no-unsafe-assignment': 'warn',
       '@typescript-eslint/no-unsafe-member-access': 'warn',
@@ -35,10 +35,19 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'warn',
       '@typescript-eslint/no-redundant-type-constituents': 'warn',
       '@typescript-eslint/restrict-template-expressions': 'warn',
+      
+      // ===== ASYNC & PROMISE SAFETY =====
+      '@typescript-eslint/no-floating-promises': 'error', // Changed from 'warn'
       '@typescript-eslint/require-await': 'warn',
       '@typescript-eslint/prefer-promise-reject-errors': 'warn',
+      
+      // ===== EXPLICIT RETURN TYPES (Phase 1: Off, will enable in Phase 2) =====
+      // '@typescript-eslint/explicit-function-return-type': 'off',
+      // '@typescript-eslint/explicit-module-boundary-types': 'off',
+      
+      // ===== OTHER RULES =====
       '@typescript-eslint/unbound-method': 'off',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
 );

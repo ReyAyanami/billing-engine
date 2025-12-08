@@ -14,16 +14,16 @@ import Decimal from 'decimal.js';
  */
 export class AccountAggregate extends AggregateRoot {
   // Aggregate state (derived from events)
-  private ownerId: string;
-  private ownerType: string;
-  private accountType: AccountType;
-  private currency: string;
-  private status: AccountStatus;
+  private ownerId!: string;
+  private ownerType!: string;
+  private accountType!: AccountType;
+  private currency!: string;
+  private status!: AccountStatus;
   private balance: Decimal = new Decimal(0);
   private maxBalance?: Decimal;
   private minBalance?: Decimal;
-  private createdAt: Date;
-  private updatedAt: Date;
+  private createdAt!: Date;
+  private updatedAt!: Date;
 
   protected getAggregateType(): string {
     return 'Account';

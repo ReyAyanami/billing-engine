@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when an account's balance changes.
@@ -18,7 +19,7 @@ export class BalanceChangedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
     transactionId?: string,
   ) {
@@ -29,18 +30,18 @@ export class BalanceChangedEvent extends DomainEvent {
     this.transactionId = transactionId;
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'BalanceChanged';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      previousBalance: this.previousBalance,
-      newBalance: this.newBalance,
-      changeAmount: this.changeAmount,
-      changeType: this.changeType,
-      reason: this.reason,
-      transactionId: this.transactionId,
+      previousBalance: this.previousBalance ?? null,
+      newBalance: this.newBalance ?? null,
+      changeAmount: this.changeAmount ?? null,
+      changeType: this.changeType ?? null,
+      reason: this.reason ?? null,
+      transactionId: this.transactionId ?? null,
     };
   }
 }

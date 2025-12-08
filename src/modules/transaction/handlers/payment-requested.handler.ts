@@ -85,7 +85,7 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
       this.logger.log(
         `SAGA: Payment completed [txId=${event.aggregateId}, customerBal=${customerNewBalance}, merchantBal=${merchantNewBalance}]`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       // Step 4 (on failure): Compensate and fail the payment
       const failureStep = customerNewBalance
         ? 'credit_merchant'
@@ -93,7 +93,7 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      const errorCode = error?.code as string | undefined;
+      const errorCode = (error as { code?: string })?.code;
 
       this.logger.error(
         `SAGA: Payment failed [txId=${event.aggregateId}, corr=${event.correlationId}, step=${failureStep}]`,
@@ -171,7 +171,7 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
           const failCommand = new FailTransactionCommand(
             event.aggregateId,
             errorMessage,
-            errorCode || 'PAYMENT_FAILED',
+            errorCode ?? 'PAYMENT_FAILED',
             event.correlationId,
             event.metadata?.actorId,
           );

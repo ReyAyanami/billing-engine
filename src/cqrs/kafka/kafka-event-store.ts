@@ -23,7 +23,7 @@ export class KafkaEventStore implements IEventStore {
     aggregateId: string,
     events: DomainEvent[],
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    expectedVersion?: number,
+    _expectedVersion?: number,
   ): Promise<void> {
     if (events.length === 0) {
       return;
@@ -161,7 +161,7 @@ export class KafkaEventStore implements IEventStore {
             `Timeout reached for ${aggregateId}. Consumer started: ${consumerStarted}, ` +
               `Messages processed: ${messageCount}, Events found: ${events.length}`,
           );
-          consumer
+          void consumer
             .disconnect()
             .then(() => {
               this.logger.log(
@@ -172,7 +172,7 @@ export class KafkaEventStore implements IEventStore {
             .catch(reject);
         }, 15000); // 15 second timeout (increased for test stability)
 
-        consumer
+        void consumer
           .run({
             // eslint-disable-next-line @typescript-eslint/require-await
             eachMessage: async ({ message }) => {
@@ -251,7 +251,7 @@ export class KafkaEventStore implements IEventStore {
       const isRunning = true;
 
       // Start consuming in background
-      consumer.run({
+      void consumer.run({
         eachMessage: async ({ message }) => {
           try {
             const eventData = JSON.parse(message.value!.toString());

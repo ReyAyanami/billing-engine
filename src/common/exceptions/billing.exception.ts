@@ -1,11 +1,18 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
+/**
+ * Type for exception details - only serializable values allowed
+ */
+export type ExceptionDetails = Record<
+  string,
+  string | number | boolean | Date | null | undefined
+>;
+
 export class BillingException extends HttpException {
   constructor(
     public readonly code: string,
     message: string,
-
-    public readonly details?: any,
+    public readonly details?: ExceptionDetails,
     httpStatus: HttpStatus = HttpStatus.BAD_REQUEST,
   ) {
     super(
@@ -13,7 +20,6 @@ export class BillingException extends HttpException {
         error: {
           code,
           message,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           details,
           timestamp: new Date().toISOString(),
         },
@@ -61,7 +67,7 @@ export class InvalidCurrencyException extends BillingException {
 }
 
 export class InvalidOperationException extends BillingException {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: ExceptionDetails) {
     super('INVALID_OPERATION', message, details, HttpStatus.BAD_REQUEST);
   }
 }
@@ -111,7 +117,7 @@ export class CurrencyMismatchException extends BillingException {
 }
 
 export class RefundException extends BillingException {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: ExceptionDetails) {
     super('REFUND_ERROR', message, details, HttpStatus.BAD_REQUEST);
   }
 }

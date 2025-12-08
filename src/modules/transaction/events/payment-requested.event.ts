@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a payment transaction is requested.
@@ -18,7 +19,7 @@ export class PaymentRequestedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
     public readonly paymentMetadata?: {
       orderId?: string;
@@ -34,18 +35,18 @@ export class PaymentRequestedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'PaymentRequested';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      customerAccountId: this.customerAccountId,
-      merchantAccountId: this.merchantAccountId,
-      amount: this.amount,
-      currency: this.currency,
-      idempotencyKey: this.idempotencyKey,
-      paymentMetadata: this.paymentMetadata,
+      customerAccountId: this.customerAccountId ?? null,
+      merchantAccountId: this.merchantAccountId ?? null,
+      amount: this.amount ?? null,
+      currency: this.currency ?? null,
+      idempotencyKey: this.idempotencyKey ?? null,
+      paymentMetadata: this.paymentMetadata ?? null,
     };
   }
 }

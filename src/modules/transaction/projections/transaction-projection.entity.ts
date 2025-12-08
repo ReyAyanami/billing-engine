@@ -17,21 +17,21 @@ import { TransactionType, TransactionStatus } from '../transaction.entity';
 @Entity('transaction_projections')
 export class TransactionProjection {
   @PrimaryColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'enum', enum: TransactionType })
   @Index()
-  type: TransactionType;
+  type!: TransactionType;
 
   @Column({ type: 'enum', enum: TransactionStatus })
   @Index()
-  status: TransactionStatus;
+  status!: TransactionStatus;
 
   @Column({ type: 'numeric', precision: 20, scale: 2 })
-  amount: string;
+  amount!: string;
 
   @Column({ length: 3 })
-  currency: string;
+  currency!: string;
 
   @Column({ name: 'source_account_id', type: 'uuid', nullable: true })
   @Index()
@@ -43,7 +43,7 @@ export class TransactionProjection {
 
   @Column({ name: 'idempotency_key', length: 255, unique: true })
   @Index()
-  idempotencyKey: string;
+  idempotencyKey!: string;
 
   @Column({ name: 'correlation_id', type: 'uuid', nullable: true })
   @Index()
@@ -75,7 +75,7 @@ export class TransactionProjection {
 
   @CreateDateColumn({ name: 'requested_at' })
   @Index()
-  requestedAt: Date;
+  requestedAt!: Date;
 
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt?: Date;
@@ -95,10 +95,10 @@ export class TransactionProjection {
   }>;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @Column({ name: 'aggregate_version', type: 'int', default: 0 })
-  aggregateVersion: number;
+  aggregateVersion!: number;
 
   @Column({ name: 'last_event_id', type: 'uuid', nullable: true })
   lastEventId?: string;

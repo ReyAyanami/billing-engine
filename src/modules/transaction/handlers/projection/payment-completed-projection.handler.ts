@@ -26,10 +26,14 @@ export class PaymentCompletedProjectionHandler implements IEventHandler<PaymentC
         event.eventId,
         event.timestamp,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[Projection] Failed to update payment projection [txId=${event.aggregateId}]`,
-        error.stack,
+        error instanceof Error
+          ? error instanceof Error
+            ? error.stack
+            : String(error)
+          : String(error),
       );
     }
   }

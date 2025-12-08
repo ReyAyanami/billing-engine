@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a withdrawal transaction is completed successfully.
@@ -14,7 +15,7 @@ export class WithdrawalCompletedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -23,15 +24,15 @@ export class WithdrawalCompletedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'WithdrawalCompleted';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      accountId: this.accountId,
-      amount: this.amount,
-      newBalance: this.newBalance,
+      accountId: this.accountId ?? null,
+      amount: this.amount ?? null,
+      newBalance: this.newBalance ?? null,
       completedAt: this.completedAt.toISOString(),
     };
   }

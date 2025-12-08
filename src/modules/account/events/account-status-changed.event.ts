@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 import { AccountStatus } from '../account.entity';
 
 /**
@@ -15,7 +16,7 @@ export class AccountStatusChangedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -24,15 +25,15 @@ export class AccountStatusChangedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'AccountStatusChanged';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      previousStatus: this.previousStatus,
-      newStatus: this.newStatus,
-      reason: this.reason,
+      previousStatus: this.previousStatus ?? null,
+      newStatus: this.newStatus ?? null,
+      reason: this.reason ?? null,
     };
   }
 }

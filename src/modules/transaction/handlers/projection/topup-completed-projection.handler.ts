@@ -25,10 +25,10 @@ export class TopupCompletedProjectionHandler implements IEventHandler<TopupCompl
         event.eventId,
         event.timestamp,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[Projection] Failed to update topup projection [txId=${event.aggregateId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }

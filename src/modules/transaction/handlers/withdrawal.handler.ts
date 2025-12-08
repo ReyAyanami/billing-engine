@@ -64,10 +64,10 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
       );
 
       return command.transactionId;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[WithdrawalHandler] Failed [txId=${command.transactionId}, corr=${command.correlationId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error;
     }

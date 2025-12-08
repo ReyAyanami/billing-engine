@@ -53,7 +53,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         error: {
           code: 'INTERNAL_SERVER_ERROR',
           message:
-            process.env.NODE_ENV === 'development'
+            process.env['NODE_ENV'] === 'development'
               ? exception.message
               : 'An unexpected error occurred',
           timestamp: new Date().toISOString(),

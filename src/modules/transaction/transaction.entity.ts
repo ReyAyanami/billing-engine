@@ -37,42 +37,42 @@ export enum TransactionStatus {
 @Index(['parentTransactionId'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ name: 'idempotency_key', type: 'uuid', unique: true })
-  idempotencyKey: string;
+  idempotencyKey!: string;
 
   @Column({
     type: 'enum',
     enum: TransactionType,
   })
-  type: TransactionType;
+  type!: TransactionType;
 
   @Column({ name: 'source_account_id', type: 'uuid' })
-  sourceAccountId: string;
+  sourceAccountId!: string;
 
   @ManyToOne(() => Account, {
     onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'source_account_id' })
-  sourceAccount: Account;
+  sourceAccount!: Account;
 
   @Column({ name: 'destination_account_id', type: 'uuid' })
-  destinationAccountId: string;
+  destinationAccountId!: string;
 
   @ManyToOne(() => Account, {
     onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'destination_account_id' })
-  destinationAccount: Account;
+  destinationAccount!: Account;
 
   @Column({ type: 'decimal', precision: 20, scale: 8 })
-  amount: string;
+  amount!: string;
 
   @Column({ length: 10 })
-  currency: string;
+  currency!: string;
 
   @Column({
     name: 'source_balance_before',
@@ -80,7 +80,7 @@ export class Transaction {
     precision: 20,
     scale: 8,
   })
-  sourceBalanceBefore: string;
+  sourceBalanceBefore!: string;
 
   @Column({
     name: 'source_balance_after',
@@ -88,7 +88,7 @@ export class Transaction {
     precision: 20,
     scale: 8,
   })
-  sourceBalanceAfter: string;
+  sourceBalanceAfter!: string;
 
   @Column({
     name: 'destination_balance_before',
@@ -96,7 +96,7 @@ export class Transaction {
     precision: 20,
     scale: 8,
   })
-  destinationBalanceBefore: string;
+  destinationBalanceBefore!: string;
 
   @Column({
     name: 'destination_balance_after',
@@ -104,23 +104,23 @@ export class Transaction {
     precision: 20,
     scale: 8,
   })
-  destinationBalanceAfter: string;
+  destinationBalanceAfter!: string;
 
   @Column({
     type: 'enum',
     enum: TransactionStatus,
     default: TransactionStatus.PENDING,
   })
-  status: TransactionStatus;
+  status!: TransactionStatus;
 
   @Column({ length: 500, nullable: true })
-  reference: string;
+  reference!: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>;
+  metadata!: Record<string, any>;
 
   @Column({ name: 'parent_transaction_id', type: 'uuid', nullable: true })
-  parentTransactionId: string | null;
+  parentTransactionId!: string | null;
 
   @ManyToOne(() => Transaction, {
     nullable: true,
@@ -128,11 +128,11 @@ export class Transaction {
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'parent_transaction_id' })
-  parentTransaction: Transaction | null;
+  parentTransaction!: Transaction | null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
-  completedAt: Date | null;
+  completedAt!: Date | null;
 }

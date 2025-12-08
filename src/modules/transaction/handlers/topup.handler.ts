@@ -64,10 +64,10 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
       );
 
       return command.transactionId;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[TopupHandler] Failed [txId=${command.transactionId}, corr=${command.correlationId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error;
     }

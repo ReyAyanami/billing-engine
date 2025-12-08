@@ -23,25 +23,25 @@ import { AccountType, AccountStatus } from '../account.entity';
 @Index(['accountType'])
 export class AccountProjection {
   @PrimaryColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ name: 'owner_id', type: 'varchar', length: 255 })
-  ownerId: string;
+  ownerId!: string;
 
   @Column({ name: 'owner_type', type: 'varchar', length: 50 })
-  ownerType: string;
+  ownerType!: string;
 
   @Column({ name: 'account_type', type: 'enum', enum: AccountType })
-  accountType: AccountType;
+  accountType!: AccountType;
 
   @Column({ type: 'varchar', length: 3 })
-  currency: string;
+  currency!: string;
 
   @Column({ type: 'enum', enum: AccountStatus })
-  status: AccountStatus;
+  status!: AccountStatus;
 
   @Column({ type: 'decimal', precision: 20, scale: 2, default: 0 })
-  balance: string;
+  balance!: string;
 
   @Column({
     name: 'max_balance',
@@ -50,7 +50,7 @@ export class AccountProjection {
     scale: 2,
     nullable: true,
   })
-  maxBalance: string | null;
+  maxBalance!: string | null;
 
   @Column({
     name: 'min_balance',
@@ -59,23 +59,23 @@ export class AccountProjection {
     scale: 2,
     nullable: true,
   })
-  minBalance: string | null;
+  minBalance!: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   /**
    * Event sourcing metadata
    */
   @Column({ name: 'aggregate_version', type: 'int', default: 0 })
-  aggregateVersion: number;
+  aggregateVersion!: number;
 
   @Column({ name: 'last_event_id', type: 'uuid', nullable: true })
-  lastEventId: string | null;
+  lastEventId!: string | null;
 
   @Column({ name: 'last_event_timestamp', type: 'timestamp', nullable: true })
-  lastEventTimestamp: Date | null;
+  lastEventTimestamp!: Date | null;
 }

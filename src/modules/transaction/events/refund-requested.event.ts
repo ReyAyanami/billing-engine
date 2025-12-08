@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a refund transaction is requested.
@@ -19,7 +20,7 @@ export class RefundRequestedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
     public readonly refundMetadata?: {
       reason?: string;
@@ -34,19 +35,19 @@ export class RefundRequestedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'RefundRequested';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      originalPaymentId: this.originalPaymentId,
-      merchantAccountId: this.merchantAccountId,
-      customerAccountId: this.customerAccountId,
-      refundAmount: this.refundAmount,
-      currency: this.currency,
-      idempotencyKey: this.idempotencyKey,
-      refundMetadata: this.refundMetadata,
+      originalPaymentId: this.originalPaymentId ?? null,
+      merchantAccountId: this.merchantAccountId ?? null,
+      customerAccountId: this.customerAccountId ?? null,
+      refundAmount: this.refundAmount ?? null,
+      currency: this.currency ?? null,
+      idempotencyKey: this.idempotencyKey ?? null,
+      refundMetadata: this.refundMetadata ?? null,
     };
   }
 }

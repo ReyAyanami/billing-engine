@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a transfer transaction is requested.
@@ -16,7 +17,7 @@ export class TransferRequestedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -25,17 +26,17 @@ export class TransferRequestedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'TransferRequested';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      sourceAccountId: this.sourceAccountId,
-      destinationAccountId: this.destinationAccountId,
-      amount: this.amount,
-      currency: this.currency,
-      idempotencyKey: this.idempotencyKey,
+      sourceAccountId: this.sourceAccountId ?? null,
+      destinationAccountId: this.destinationAccountId ?? null,
+      amount: this.amount ?? null,
+      currency: this.currency ?? null,
+      idempotencyKey: this.idempotencyKey ?? null,
     };
   }
 }

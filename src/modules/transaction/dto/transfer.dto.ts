@@ -16,7 +16,7 @@ export class TransferDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  idempotencyKey: string;
+  idempotencyKey!: string;
 
   @ApiProperty({
     description: 'Source account ID (funds will be debited from this account)',
@@ -25,7 +25,7 @@ export class TransferDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  sourceAccountId: string;
+  sourceAccountId!: string;
 
   @ApiProperty({
     description:
@@ -35,7 +35,7 @@ export class TransferDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  destinationAccountId: string;
+  destinationAccountId!: string;
 
   @ApiProperty({
     description: 'Amount to transfer (positive decimal number as string)',
@@ -44,7 +44,7 @@ export class TransferDto {
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => String(value))
-  amount: string;
+  amount!: string;
 
   @ApiProperty({
     description: 'Currency code (must match both accounts)',
@@ -52,7 +52,7 @@ export class TransferDto {
   })
   @IsString()
   @IsNotEmpty()
-  currency: string;
+  currency!: string;
 
   @ApiProperty({
     description: 'Optional reference or description for the transfer',

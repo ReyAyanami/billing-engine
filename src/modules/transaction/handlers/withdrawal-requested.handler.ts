@@ -58,12 +58,12 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
       this.logger.log(
         `SAGA: Withdrawal completed [txId=${event.aggregateId}, balance=${newBalance}]`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       // Step 3 (on failure): Fail the transaction
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      const errorCode = error?.code as string | undefined;
+      const errorCode = (error as { code?: string })?.code ?? undefined;
 
       this.logger.error(
         `SAGA: Withdrawal failed [txId=${event.aggregateId}, corr=${event.correlationId}]`,
@@ -74,7 +74,7 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
         const failCommand = new FailTransactionCommand(
           event.aggregateId,
           errorMessage,
-          errorCode || 'WITHDRAWAL_FAILED',
+          errorCode ?? 'WITHDRAWAL_FAILED',
           event.correlationId,
           event.metadata?.actorId,
         );

@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a topup transaction is completed successfully.
@@ -15,7 +16,7 @@ export class TopupCompletedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -24,15 +25,15 @@ export class TopupCompletedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'TopupCompleted';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      accountId: this.accountId,
-      amount: this.amount,
-      newBalance: this.newBalance,
+      accountId: this.accountId ?? null,
+      amount: this.amount ?? null,
+      newBalance: this.newBalance ?? null,
       completedAt: this.completedAt.toISOString(),
     };
   }

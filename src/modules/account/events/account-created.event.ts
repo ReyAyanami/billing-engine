@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 import { AccountType, AccountStatus } from '../account.entity';
 
 /**
@@ -21,7 +22,7 @@ export class AccountCreatedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
     maxBalance?: string,
     minBalance?: string,
@@ -34,20 +35,20 @@ export class AccountCreatedEvent extends DomainEvent {
     this.minBalance = minBalance;
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'AccountCreated';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      ownerId: this.ownerId,
-      ownerType: this.ownerType,
-      accountType: this.accountType,
-      currency: this.currency,
-      status: this.status,
-      balance: this.balance,
-      maxBalance: this.maxBalance,
-      minBalance: this.minBalance,
+      ownerId: this.ownerId ?? null,
+      ownerType: this.ownerType ?? null,
+      accountType: this.accountType ?? null,
+      currency: this.currency ?? null,
+      status: this.status ?? null,
+      balance: this.balance ?? null,
+      maxBalance: this.maxBalance ?? null,
+      minBalance: this.minBalance ?? null,
     };
   }
 }

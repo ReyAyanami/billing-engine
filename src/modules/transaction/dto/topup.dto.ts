@@ -16,7 +16,7 @@ export class TopupDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  idempotencyKey: string;
+  idempotencyKey!: string;
 
   @ApiProperty({
     description:
@@ -26,7 +26,7 @@ export class TopupDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  sourceAccountId: string;
+  sourceAccountId!: string;
 
   @ApiProperty({
     description: 'Destination account ID (user account to top-up)',
@@ -35,7 +35,7 @@ export class TopupDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  destinationAccountId: string;
+  destinationAccountId!: string;
 
   @ApiProperty({
     description: 'Amount to add (positive decimal number as string)',
@@ -44,7 +44,7 @@ export class TopupDto {
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => String(value))
-  amount: string;
+  amount!: string;
 
   @ApiProperty({
     description: 'Currency code (must match account currency)',
@@ -52,7 +52,7 @@ export class TopupDto {
   })
   @IsString()
   @IsNotEmpty()
-  currency: string;
+  currency!: string;
 
   @ApiProperty({
     description: 'Optional reference or description for the transaction',

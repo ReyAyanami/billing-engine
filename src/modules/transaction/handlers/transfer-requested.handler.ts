@@ -86,7 +86,7 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
       this.logger.log(
         `SAGA: Transfer completed [txId=${event.aggregateId}, srcBal=${sourceNewBalance}, dstBal=${destinationNewBalance}]`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       // Step 4 (on failure): Compensate and fail the transaction
       const failureStep = sourceNewBalance
         ? 'credit_destination'
@@ -94,7 +94,7 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      const errorCode = error?.code as string | undefined;
+      const errorCode = (error as { code?: string })?.code ?? undefined;
 
       this.logger.error(
         `SAGA: Transfer failed [txId=${event.aggregateId}, corr=${event.correlationId}, step=${failureStep}]`,
@@ -172,7 +172,7 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
           const failCommand = new FailTransactionCommand(
             event.aggregateId,
             errorMessage,
-            errorCode || 'TRANSFER_FAILED',
+            errorCode ?? 'TRANSFER_FAILED',
             event.correlationId,
             event.metadata?.actorId,
           );

@@ -36,10 +36,10 @@ export class WithdrawalRequestedProjectionHandler implements IEventHandler<Withd
         lastEventTimestamp: event.timestamp,
         metadata: event.metadata,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[Projection] Failed to create withdrawal projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
       // Don't throw - projection failures shouldn't break the saga
     }

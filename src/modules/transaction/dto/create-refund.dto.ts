@@ -20,7 +20,7 @@ export class CreateRefundDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  originalPaymentId: string;
+  originalPaymentId!: string;
 
   @ApiProperty({
     description:
@@ -29,7 +29,7 @@ export class CreateRefundDto {
   })
   @IsString()
   @IsNotEmpty()
-  refundAmount: string;
+  refundAmount!: string;
 
   @ApiProperty({
     description: 'Currency code (ISO 4217)',
@@ -39,7 +39,7 @@ export class CreateRefundDto {
   @MinLength(3)
   @MaxLength(3)
   @IsNotEmpty()
-  currency: string;
+  currency!: string;
 
   @ApiPropertyOptional({
     description: 'Idempotency key (auto-generated if not provided)',

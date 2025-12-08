@@ -34,10 +34,10 @@ export class TopupRequestedProjectionHandler implements IEventHandler<TopupReque
         lastEventTimestamp: event.timestamp,
         metadata: event.metadata,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[Projection] Failed to create topup projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
       // Don't throw - projection failures shouldn't break the saga
     }

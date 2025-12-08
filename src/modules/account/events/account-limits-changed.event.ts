@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when an account's balance limits change.
@@ -17,7 +18,7 @@ export class AccountLimitsChangedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
     previousMaxBalance?: string,
     newMaxBalance?: string,
@@ -36,17 +37,17 @@ export class AccountLimitsChangedEvent extends DomainEvent {
     this.reason = reason;
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'AccountLimitsChanged';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      previousMaxBalance: this.previousMaxBalance,
-      newMaxBalance: this.newMaxBalance,
-      previousMinBalance: this.previousMinBalance,
-      newMinBalance: this.newMinBalance,
-      reason: this.reason,
+      previousMaxBalance: this.previousMaxBalance ?? null,
+      newMaxBalance: this.newMaxBalance ?? null,
+      previousMinBalance: this.previousMinBalance ?? null,
+      newMinBalance: this.newMinBalance ?? null,
+      reason: this.reason ?? null,
     };
   }
 }

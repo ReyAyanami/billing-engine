@@ -16,7 +16,7 @@ export class RefundDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  idempotencyKey: string;
+  idempotencyKey!: string;
 
   @ApiProperty({
     description: 'ID of the original transaction to refund',
@@ -25,7 +25,7 @@ export class RefundDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  originalTransactionId: string;
+  originalTransactionId!: string;
 
   @ApiProperty({
     description:

@@ -65,7 +65,10 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
       );
       return command.transactionId;
     } catch (error) {
-      this.logger.error(`❌ [PaymentHandler] Failed to request payment`, error);
+      this.logger.error(
+        `❌ [PaymentHandler] Failed to request payment`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }

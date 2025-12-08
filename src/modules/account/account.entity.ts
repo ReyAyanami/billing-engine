@@ -30,13 +30,13 @@ export enum AccountType {
 @Index(['createdAt'])
 export class Account {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ name: 'owner_id', length: 255 })
-  ownerId: string;
+  ownerId!: string;
 
   @Column({ name: 'owner_type', length: 50 })
-  ownerType: string;
+  ownerType!: string;
 
   @Column({
     name: 'account_type',
@@ -44,7 +44,7 @@ export class Account {
     enum: AccountType,
     default: AccountType.USER,
   })
-  accountType: AccountType;
+  accountType!: AccountType;
 
   @Column({
     name: 'account_subtype',
@@ -56,14 +56,14 @@ export class Account {
   accountSubtype?: string;
 
   @Column({ length: 10 })
-  currency: string;
+  currency!: string;
 
   @ManyToOne(() => Currency, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'currency', referencedColumnName: 'code' })
-  currencyDetails: Currency;
+  currencyDetails!: Currency;
 
   @Column({ type: 'decimal', precision: 20, scale: 8, default: 0 })
-  balance: string;
+  balance!: string;
 
   @Column({
     name: 'max_balance',
@@ -90,17 +90,17 @@ export class Account {
     enum: AccountStatus,
     default: AccountStatus.ACTIVE,
   })
-  status: AccountStatus;
+  status!: AccountStatus;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>;
+  metadata!: Record<string, any>;
 
   @VersionColumn()
-  version: number;
+  version!: number;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

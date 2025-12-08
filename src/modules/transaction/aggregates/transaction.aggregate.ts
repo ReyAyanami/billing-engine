@@ -41,17 +41,17 @@ export enum TransactionType {
  */
 export class TransactionAggregate extends AggregateRoot {
   // Aggregate state (derived from events)
-  private transactionType: TransactionType;
-  private status: TransactionStatus;
-  private amount: string;
-  private currency: string;
+  private transactionType!: TransactionType;
+  private status!: TransactionStatus;
+  private amount!: string;
+  private currency!: string;
   private accountId?: string; // For topup/withdrawal
   private sourceAccountId?: string;
   private destinationAccountId?: string;
-  private idempotencyKey: string;
+  private idempotencyKey!: string;
   private failureReason?: string;
   private failureCode?: string;
-  private requestedAt: Date;
+  private requestedAt!: Date;
   private completedAt?: Date;
   private failedAt?: Date;
 
@@ -60,9 +60,12 @@ export class TransactionAggregate extends AggregateRoot {
   private sourceNewBalance?: string;
   private destinationNewBalance?: string;
 
-  // Compensation tracking
+  // Compensation tracking (currently unused but kept for future saga rollbacks)
+
   private compensationReason?: string;
+
   private compensatedAt?: Date;
+
   private compensationActions?: Array<{
     accountId: string;
     action: 'CREDIT' | 'DEBIT';

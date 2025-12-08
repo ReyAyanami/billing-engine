@@ -17,7 +17,7 @@ export class CreateAccountDto {
   })
   @IsString()
   @IsNotEmpty()
-  ownerId: string;
+  ownerId!: string;
 
   @ApiProperty({
     description: 'Type of owner (e.g., user, organization, system)',
@@ -25,7 +25,7 @@ export class CreateAccountDto {
   })
   @IsString()
   @IsNotEmpty()
-  ownerType: string;
+  ownerType!: string;
 
   @ApiProperty({
     description: 'Account type - determines behavior and limitations',
@@ -54,7 +54,7 @@ export class CreateAccountDto {
   })
   @IsString()
   @IsNotEmpty()
-  currency: string;
+  currency!: string;
 
   @ApiProperty({
     description:

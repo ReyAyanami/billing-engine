@@ -41,7 +41,10 @@ export class TopupCompletedEntityHandler implements IEventHandler<TopupCompleted
 
       this.logger.log(`✅ Transaction entity completed: ${event.aggregateId}`);
     } catch (error) {
-      this.logger.error(`❌ Failed to complete Transaction entity`, error);
+      this.logger.error(
+        `❌ Failed to complete Transaction entity`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }

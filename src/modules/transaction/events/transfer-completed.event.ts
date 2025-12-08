@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a transfer transaction is completed successfully.
@@ -17,7 +18,7 @@ export class TransferCompletedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -26,17 +27,17 @@ export class TransferCompletedEvent extends DomainEvent {
     });
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'TransferCompleted';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      sourceAccountId: this.sourceAccountId,
-      destinationAccountId: this.destinationAccountId,
-      amount: this.amount,
-      sourceNewBalance: this.sourceNewBalance,
-      destinationNewBalance: this.destinationNewBalance,
+      sourceAccountId: this.sourceAccountId ?? null,
+      destinationAccountId: this.destinationAccountId ?? null,
+      amount: this.amount ?? null,
+      sourceNewBalance: this.sourceNewBalance ?? null,
+      destinationNewBalance: this.destinationNewBalance ?? null,
       completedAt: this.completedAt.toISOString(),
     };
   }

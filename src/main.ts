@@ -45,7 +45,7 @@ async function bootstrap() {
   const currencyService = app.get(CurrencyService);
   await currencyService.initializeDefaultCurrencies();
 
-  const port = process.env.PORT ?? 3000;
+  const port = process.env['PORT'] ?? 3000;
   await app.listen(port);
   logger.log(`Billing Engine API running on port ${port}`);
   logger.log(

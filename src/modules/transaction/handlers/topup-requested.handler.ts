@@ -58,12 +58,12 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
       this.logger.log(
         `SAGA: Topup completed [txId=${event.aggregateId}, balance=${newBalance}]`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       // Step 3 (on failure): Fail the transaction
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      const errorCode = error?.code as string | undefined;
+      const errorCode = (error as { code?: string })?.code ?? undefined;
 
       this.logger.error(
         `SAGA: Topup failed [txId=${event.aggregateId}, corr=${event.correlationId}]`,
@@ -74,7 +74,7 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
         const failCommand = new FailTransactionCommand(
           event.aggregateId,
           errorMessage,
-          errorCode || 'TOPUP_FAILED',
+          errorCode ?? 'TOPUP_FAILED',
           event.correlationId,
           event.metadata?.actorId,
         );

@@ -17,10 +17,10 @@ import { DataSource } from 'typeorm';
 import { AppTestModule } from '../../app-test.module';
 
 export class TestSetup {
-  private app: INestApplication;
-  private dataSource: DataSource;
-  private moduleRef: TestingModule;
-  private schemaName: string;
+  private app!: INestApplication;
+  private dataSource!: DataSource;
+  private moduleRef!: TestingModule;
+  private schemaName!: string;
   private originalSchema: string = 'public';
 
   /**

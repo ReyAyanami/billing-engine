@@ -3,5 +3,5 @@ import { AccountStatus } from '../account.entity';
 
 export class UpdateAccountStatusDto {
   @IsEnum(AccountStatus)
-  status: AccountStatus;
+  status!: AccountStatus;
 }

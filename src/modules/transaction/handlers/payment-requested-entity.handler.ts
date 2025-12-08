@@ -60,7 +60,10 @@ export class PaymentRequestedEntityHandler implements IEventHandler<PaymentReque
 
       this.logger.log(`✅ Transaction entity created: ${event.aggregateId}`);
     } catch (error) {
-      this.logger.error(`❌ Failed to create Transaction entity`, error);
+      this.logger.error(
+        `❌ Failed to create Transaction entity`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }

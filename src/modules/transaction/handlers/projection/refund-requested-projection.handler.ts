@@ -38,10 +38,10 @@ export class RefundRequestedProjectionHandler implements IEventHandler<RefundReq
           refundMetadata: event.refundMetadata,
         },
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[Projection] Failed to create refund projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }

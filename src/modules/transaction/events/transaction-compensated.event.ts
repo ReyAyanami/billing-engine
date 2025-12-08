@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
 
 /**
  * Domain event emitted when a transaction is compensated (rolled back).
@@ -24,7 +25,7 @@ export class TransactionCompensatedEvent extends DomainEvent {
       aggregateVersion: number;
       correlationId: string;
       causationId?: string;
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     },
   ) {
     super({
@@ -34,16 +35,16 @@ export class TransactionCompensatedEvent extends DomainEvent {
     this.compensatedAt = this.timestamp;
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'TransactionCompensated';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData() {
     return {
-      transactionId: this.transactionId,
-      reason: this.reason,
-      compensationActions: this.compensationActions,
-      compensatedAt: this.compensatedAt,
+      transactionId: this.transactionId ?? null,
+      reason: this.reason ?? null,
+      compensationActions: this.compensationActions ?? null,
+      compensatedAt: this.compensatedAt.toISOString(),
     };
   }
 }

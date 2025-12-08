@@ -64,10 +64,10 @@ export class TransferHandler implements ICommandHandler<TransferCommand> {
       );
 
       return command.transactionId;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[TransferHandler] Failed [txId=${command.transactionId}, corr=${command.correlationId}]`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error;
     }
