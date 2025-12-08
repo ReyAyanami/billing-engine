@@ -43,7 +43,7 @@ export class AccountAggregate extends AggregateRoot {
     minBalance?: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Account must not already exist
     if (this.aggregateId) {
@@ -153,7 +153,7 @@ export class AccountAggregate extends AggregateRoot {
     transactionId?: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Account must exist
     if (!this.aggregateId) {
@@ -229,7 +229,7 @@ export class AccountAggregate extends AggregateRoot {
     reason: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Account must exist
     if (!this.aggregateId) {
@@ -282,7 +282,7 @@ export class AccountAggregate extends AggregateRoot {
     reason?: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Account must exist
     if (!this.aggregateId) {

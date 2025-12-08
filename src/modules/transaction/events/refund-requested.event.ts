@@ -22,12 +22,7 @@ export class RefundRequestedEvent extends DomainEvent {
       causationId?: string;
       metadata?: EventMetadata;
     },
-    public readonly refundMetadata?: {
-      reason?: string;
-      refundType?: 'full' | 'partial';
-      notes?: string;
-      [key: string]: any;
-    },
+    public readonly refundMetadata?: Record<string, string | number | boolean>,
   ) {
     super({
       ...props,

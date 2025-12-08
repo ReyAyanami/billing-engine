@@ -20,5 +20,5 @@ export class Currency {
   isActive!: boolean;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata!: Record<string, any>;
+  metadata!: Record<string, unknown>;
 }

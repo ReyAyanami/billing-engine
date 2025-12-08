@@ -107,5 +107,5 @@ export class TransactionProjection {
   lastEventTimestamp?: Date;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }

@@ -70,5 +70,5 @@ export class TopupDto {
   })
   @IsObject()
   @IsOptional()
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }

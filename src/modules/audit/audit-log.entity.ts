@@ -31,7 +31,7 @@ export class AuditLog {
   actorType!: string;
 
   @Column({ type: 'jsonb' })
-  changes!: Record<string, any>;
+  changes!: Record<string, unknown>;
 
   @Column({ name: 'correlation_id', type: 'uuid' })
   correlationId!: string;

@@ -93,7 +93,7 @@ export class Account {
   status!: AccountStatus;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata!: Record<string, any>;
+  metadata!: Record<string, unknown>;
 
   @VersionColumn()
   version!: number;

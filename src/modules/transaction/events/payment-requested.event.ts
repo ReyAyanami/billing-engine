@@ -21,13 +21,7 @@ export class PaymentRequestedEvent extends DomainEvent {
       causationId?: string;
       metadata?: EventMetadata;
     },
-    public readonly paymentMetadata?: {
-      orderId?: string;
-      invoiceId?: string;
-      description?: string;
-      merchantReference?: string;
-      [key: string]: any;
-    },
+    public readonly paymentMetadata?: Record<string, string | number | boolean>,
   ) {
     super({
       ...props,

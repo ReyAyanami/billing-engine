@@ -89,7 +89,7 @@ export class TransactionAggregate extends AggregateRoot {
     idempotencyKey: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Transaction must not already exist
     if (this.aggregateId) {
@@ -142,7 +142,7 @@ export class TransactionAggregate extends AggregateRoot {
     newBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Transaction must exist and be pending
     this.validateCanComplete();
@@ -185,7 +185,7 @@ export class TransactionAggregate extends AggregateRoot {
     idempotencyKey: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     if (this.aggregateId) {
       throw new Error('Transaction already exists');
@@ -237,7 +237,7 @@ export class TransactionAggregate extends AggregateRoot {
     newBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     this.validateCanComplete();
 
@@ -279,7 +279,7 @@ export class TransactionAggregate extends AggregateRoot {
     idempotencyKey: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     if (this.aggregateId) {
       throw new Error('Transaction already exists');
@@ -340,7 +340,7 @@ export class TransactionAggregate extends AggregateRoot {
     destinationNewBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     this.validateCanComplete();
 
@@ -392,7 +392,7 @@ export class TransactionAggregate extends AggregateRoot {
     };
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     if (this.aggregateId) {
       throw new Error('Transaction already exists');
@@ -454,7 +454,7 @@ export class TransactionAggregate extends AggregateRoot {
     merchantNewBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     this.validateCanComplete();
 
@@ -504,7 +504,7 @@ export class TransactionAggregate extends AggregateRoot {
     };
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     if (this.aggregateId) {
       throw new Error('Transaction already exists');
@@ -567,7 +567,7 @@ export class TransactionAggregate extends AggregateRoot {
     customerNewBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     this.validateCanComplete();
 
@@ -606,7 +606,7 @@ export class TransactionAggregate extends AggregateRoot {
     errorCode: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Transaction must exist and be pending
     if (!this.aggregateId) {
@@ -657,7 +657,7 @@ export class TransactionAggregate extends AggregateRoot {
     }>;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Transaction must exist
     if (!this.aggregateId) {

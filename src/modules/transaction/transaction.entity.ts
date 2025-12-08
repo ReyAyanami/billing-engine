@@ -117,7 +117,7 @@ export class Transaction {
   reference!: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata!: Record<string, any>;
+  metadata!: Record<string, unknown>;
 
   @Column({ name: 'parent_transaction_id', type: 'uuid', nullable: true })
   parentTransactionId!: string | null;

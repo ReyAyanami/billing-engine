@@ -82,5 +82,5 @@ export class CreateAccountDto {
   })
   @IsObject()
   @IsOptional()
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }
