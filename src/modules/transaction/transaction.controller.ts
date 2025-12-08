@@ -36,8 +36,11 @@ export class TransactionController {
   ) {}
 
   @Post('topup')
-  @ApiOperation({ summary: 'Top-up account', description: 'Add funds to an account. Uses CQRS/Event Sourcing for reliable processing.' })
-  @ApiResponse({ status: 201, description: 'Top-up successful' })
+  @ApiOperation({ 
+    summary: 'Top-up account', 
+    description: 'Add funds to an account. Returns immediately with pending status. Poll GET /transactions/:id to check completion. Uses CQRS/Event Sourcing with eventual consistency.' 
+  })
+  @ApiResponse({ status: 201, description: 'Top-up initiated (status: pending). Check transaction status via GET /transactions/:id' })
   @ApiResponse({ status: 400, description: 'Invalid input or account inactive' })
   @ApiResponse({ status: 404, description: 'Account not found' })
   @ApiResponse({ status: 409, description: 'Duplicate transaction (idempotency key already used)' })
@@ -53,8 +56,11 @@ export class TransactionController {
   }
 
   @Post('withdraw')
-  @ApiOperation({ summary: 'Withdraw from account', description: 'Remove funds from an account. Uses CQRS/Event Sourcing for reliable processing.' })
-  @ApiResponse({ status: 201, description: 'Withdrawal successful' })
+  @ApiOperation({ 
+    summary: 'Withdraw from account', 
+    description: 'Remove funds from an account. Returns immediately with pending status. Poll GET /transactions/:id to check completion. Uses CQRS/Event Sourcing with eventual consistency.' 
+  })
+  @ApiResponse({ status: 201, description: 'Withdrawal initiated (status: pending). Check transaction status via GET /transactions/:id' })
   @ApiResponse({ status: 400, description: 'Insufficient balance or invalid input' })
   @ApiResponse({ status: 404, description: 'Account not found' })
   @ApiResponse({ status: 409, description: 'Duplicate transaction' })
@@ -72,8 +78,11 @@ export class TransactionController {
   }
 
   @Post('transfer')
-  @ApiOperation({ summary: 'Transfer between accounts', description: 'Atomically transfer funds between two accounts. Uses CQRS/Event Sourcing for reliable processing.' })
-  @ApiResponse({ status: 201, description: 'Transfer successful' })
+  @ApiOperation({ 
+    summary: 'Transfer between accounts', 
+    description: 'Transfer funds between two accounts. Returns immediately with pending status. Poll GET /transactions/:id to check completion. Uses CQRS/Event Sourcing with eventual consistency.' 
+  })
+  @ApiResponse({ status: 201, description: 'Transfer initiated (status: pending). Check transaction status via GET /transactions/:id' })
   @ApiResponse({ status: 400, description: 'Insufficient balance, currency mismatch, or invalid operation' })
   @ApiResponse({ status: 404, description: 'Account not found' })
   @ApiResponse({ status: 409, description: 'Duplicate transaction' })
@@ -91,11 +100,11 @@ export class TransactionController {
   @Post('refund')
   @ApiOperation({
     summary: 'Process refund',
-    description: 'Process a refund from merchant to customer for a previous payment (B2C transaction). Supports partial and full refunds. Uses CQRS/Event Sourcing with automatic compensation on failures.',
+    description: 'Process a refund from merchant to customer for a previous payment (B2C transaction). Returns immediately with pending status. Poll GET /transactions/:id to check completion. Supports partial and full refunds. Uses CQRS/Event Sourcing with eventual consistency and automatic compensation on failures.',
   })
   @ApiResponse({
     status: 201,
-    description: 'Refund initiated successfully',
+    description: 'Refund initiated (status: pending). Check transaction status via GET /transactions/:id',
     schema: {
       type: 'object',
       properties: {
@@ -126,13 +135,12 @@ export class TransactionController {
 
     await this.commandBus.execute(command);
 
-    // Wait for saga to complete
-    const transaction = await this.transactionService.waitForTransactionCompletion(refundId);
-
+    // Return immediately with refund ID
+    // Client should poll GET /api/v1/transactions/:refundId to check status
     return {
       refundId,
       originalPaymentId: dto.originalPaymentId,
-      status: transaction.status,
+      status: 'pending',
     };
   }
 
@@ -166,11 +174,11 @@ export class TransactionController {
   @Post('payment')
   @ApiOperation({
     summary: 'Process payment',
-    description: 'Process a payment from customer to merchant (C2B transaction). Uses CQRS/Event Sourcing with automatic compensation on failures.',
+    description: 'Process a payment from customer to merchant (C2B transaction). Returns immediately with pending status. Poll GET /transactions/:id to check completion. Uses CQRS/Event Sourcing with eventual consistency and automatic compensation on failures.',
   })
   @ApiResponse({
     status: 201,
-    description: 'Payment initiated successfully',
+    description: 'Payment initiated (status: pending). Check transaction status via GET /transactions/:id',
     schema: {
       type: 'object',
       properties: {
@@ -225,12 +233,11 @@ export class TransactionController {
 
     await this.commandBus.execute(command);
 
-    // Wait for saga to complete
-    const transaction = await this.transactionService.waitForTransactionCompletion(transactionId);
-
+    // Return immediately with transaction ID
+    // Client should poll GET /api/v1/transactions/:transactionId to check status
     return {
       transactionId,
-      status: transaction.status,
+      status: 'pending',
     };
   }
 }

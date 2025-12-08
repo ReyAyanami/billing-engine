@@ -92,70 +92,28 @@ export class TransactionService {
 
     await this.commandBus.execute(command);
 
-    // Wait for transaction to be persisted (event sourcing is async)
-    const transaction = await this.waitForTransaction(transactionId, 5000);
-
+    // Return immediately - transaction will be processed asynchronously by saga
+    // Client should poll GET /transactions/:id to check status
     return {
-      transactionId: transaction.id,
-      idempotencyKey: transaction.idempotencyKey,
-      type: transaction.type,
-      sourceAccountId: transaction.sourceAccountId,
-      destinationAccountId: transaction.destinationAccountId,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      sourceBalanceBefore: '0', // Not tracked in entity model
-      sourceBalanceAfter: '0', // Not tracked in entity model
-      destinationBalanceBefore: '0', // Not tracked in entity model
-      destinationBalanceAfter: '0', // Not tracked in entity model
-      status: transaction.status,
-      reference: transaction.reference,
-      metadata: transaction.metadata,
-      createdAt: transaction.createdAt,
-      completedAt: transaction.completedAt,
+      transactionId: transactionId,
+      idempotencyKey: dto.idempotencyKey,
+      type: TransactionType.TOPUP,
+      sourceAccountId: dto.sourceAccountId,
+      destinationAccountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      sourceBalanceBefore: '0',
+      sourceBalanceAfter: '0',
+      destinationBalanceBefore: '0',
+      destinationBalanceAfter: '0',
+      status: TransactionStatus.PENDING,
+      reference: undefined,
+      metadata: {},
+      createdAt: new Date(),
+      completedAt: undefined,
     };
   }
 
-  /**
-   * Wait for transaction to be completed by saga (polls database)
-   * Public so controller can use it
-   */
-  async waitForTransactionCompletion(transactionId: string, maxWait: number = 5000): Promise<Transaction> {
-    return this.waitForTransaction(transactionId, maxWait);
-  }
-
-  /**
-   * Internal wait for transaction completion
-   */
-  private async waitForTransaction(transactionId: string, maxWait: number = 5000): Promise<Transaction> {
-    const start = Date.now();
-    while (Date.now() - start < maxWait) {
-      const transaction = await this.transactionRepository.findOne({
-        where: { id: transactionId },
-      });
-      
-      if (transaction) {
-        // Check if transaction has reached a final state
-        if (transaction.status === TransactionStatus.COMPLETED || 
-            transaction.status === TransactionStatus.FAILED ||
-            transaction.status === TransactionStatus.COMPENSATED) {
-          return transaction;
-        }
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    
-    // If we timeout, check one more time and return what we have
-    const transaction = await this.transactionRepository.findOne({
-      where: { id: transactionId },
-    });
-    
-    if (transaction) {
-      return transaction;
-    }
-    
-    throw new Error(`Transaction not completed after ${maxWait}ms: ${transactionId}`);
-  }
 
   /**
    * Withdrawal (CQRS): User Account (source) → External Account (destination)
@@ -211,26 +169,25 @@ export class TransactionService {
 
     await this.commandBus.execute(command);
 
-    // Wait for transaction to be persisted
-    const transaction = await this.waitForTransaction(transactionId, 5000);
-
+    // Return immediately - transaction will be processed asynchronously by saga
+    // Client should poll GET /transactions/:id to check status
     return {
-      transactionId: transaction.id,
-      idempotencyKey: transaction.idempotencyKey,
-      type: transaction.type,
-      sourceAccountId: transaction.sourceAccountId,
-      destinationAccountId: transaction.destinationAccountId,
-      amount: transaction.amount,
-      currency: transaction.currency,
+      transactionId: transactionId,
+      idempotencyKey: dto.idempotencyKey,
+      type: TransactionType.WITHDRAWAL,
+      sourceAccountId: dto.sourceAccountId,
+      destinationAccountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
       sourceBalanceBefore: '0',
       sourceBalanceAfter: '0',
       destinationBalanceBefore: '0',
       destinationBalanceAfter: '0',
-      status: transaction.status,
-      reference: transaction.reference,
-      metadata: transaction.metadata,
-      createdAt: transaction.createdAt,
-      completedAt: transaction.completedAt,
+      status: TransactionStatus.PENDING,
+      reference: undefined,
+      metadata: {},
+      createdAt: new Date(),
+      completedAt: undefined,
     };
   }
 
@@ -297,20 +254,18 @@ export class TransactionService {
 
     await this.commandBus.execute(command);
 
-    // Wait for transaction to be persisted
-    const transaction = await this.waitForTransaction(transactionId, 5000);
-
-    // Map to TransferResult format
+    // Return immediately - transaction will be processed asynchronously by saga
+    // Client should poll GET /transactions/:id to check status
     return {
-      debitTransactionId: transaction.id,
-      creditTransactionId: transaction.id, // Single transaction model
-      sourceAccountId: transaction.sourceAccountId,
-      destinationAccountId: transaction.destinationAccountId,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      status: transaction.status,
-      reference: transaction.reference || '',
-      createdAt: transaction.createdAt,
+      debitTransactionId: transactionId,
+      creditTransactionId: transactionId,
+      sourceAccountId: dto.sourceAccountId,
+      destinationAccountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      status: TransactionStatus.PENDING,
+      reference: '',
+      createdAt: new Date(),
     };
   }
 
@@ -388,26 +343,25 @@ export class TransactionService {
 
     await this.commandBus.execute(command);
 
-    // Wait for transaction to be persisted
-    const transaction = await this.waitForTransaction(transactionId, 5000);
-
+    // Return immediately - transaction will be processed asynchronously by saga
+    // Client should poll GET /transactions/:id to check status
     return {
-      transactionId: transaction.id,
-      idempotencyKey: transaction.idempotencyKey,
-      type: transaction.type,
-      sourceAccountId: transaction.sourceAccountId,
-      destinationAccountId: transaction.destinationAccountId,
-      amount: transaction.amount,
-      currency: transaction.currency,
+      transactionId: transactionId,
+      idempotencyKey: dto.idempotencyKey,
+      type: TransactionType.REFUND,
+      sourceAccountId: originalTransaction.destinationAccountId, // Reverse direction
+      destinationAccountId: originalTransaction.sourceAccountId,
+      amount: refundAmount.toString(),
+      currency: originalTransaction.currency,
       sourceBalanceBefore: '0',
       sourceBalanceAfter: '0',
       destinationBalanceBefore: '0',
       destinationBalanceAfter: '0',
-      status: transaction.status,
-      reference: transaction.reference,
-      metadata: transaction.metadata,
-      createdAt: transaction.createdAt,
-      completedAt: transaction.completedAt,
+      status: TransactionStatus.PENDING,
+      reference: undefined,
+      metadata: {},
+      createdAt: new Date(),
+      completedAt: undefined,
     };
   }
 
