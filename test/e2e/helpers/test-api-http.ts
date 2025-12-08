@@ -86,7 +86,7 @@ export class TestAPIHTTP {
    * Create a new account
    */
   async createAccount(params: CreateAccountParams = {}) {
-    const payload = {
+    const payload: any = {
       ownerId: params.ownerId || this.generateId('owner'),
       ownerType: params.ownerType || 'user',  // lowercase
       accountType: params.accountType || 'user',  // Use string value
@@ -94,8 +94,8 @@ export class TestAPIHTTP {
     };
     
     // Add optional fields only if provided
-    if (params.maxBalance) payload['maxBalance'] = params.maxBalance;
-    if (params.minBalance) payload['minBalance'] = params.minBalance;
+    if (params.maxBalance) payload.maxBalance = params.maxBalance;
+    if (params.minBalance) payload.minBalance = params.minBalance;
     
     const response = await request(this.server)
       .post('/api/v1/accounts')
@@ -198,9 +198,6 @@ export class TestAPIHTTP {
 
     return response.body;
   }
-
-  // Cache for external accounts (one per currency)
-  private externalAccounts?: Record<string, any>;
 
   /**
    * Withdraw from an account (send funds to external destination)
