@@ -38,11 +38,13 @@ export interface TopupOptions {
 export interface TransferOptions {
   idempotencyKey?: string;
   reference?: string;
+  skipPolling?: boolean;
 }
 
 export interface PaymentOptions {
   idempotencyKey?: string;
   metadata?: Record<string, any>;
+  skipPolling?: boolean;
 }
 
 export interface RefundOptions {
@@ -201,6 +203,7 @@ export class TestAPIHTTP {
 
   /**
    * Withdraw from an account (send funds to external destination)
+   * Returns immediately with pending status, then polls for completion
    */
   async withdraw(
     accountId: string,
@@ -227,11 +230,20 @@ export class TestAPIHTTP {
       })
       .expect(201);
 
+    // Poll for completion (async saga processing)
+    if (!options.skipPolling) {
+      const transactionId = response.body.transactionId;
+      if (transactionId) {
+        await this.pollTransactionCompletion(transactionId);
+      }
+    }
+
     return response.body;
   }
 
   /**
    * Transfer between two accounts
+   * Returns immediately with pending status, then polls for completion
    */
   async transfer(
     fromAccountId: string,
@@ -252,11 +264,20 @@ export class TestAPIHTTP {
       })
       .expect(201);
 
+    // Poll for completion (async saga processing)
+    if (!options.skipPolling) {
+      const transactionId = response.body.debitTransactionId || response.body.transactionId;
+      if (transactionId) {
+        await this.pollTransactionCompletion(transactionId);
+      }
+    }
+
     return response.body;
   }
 
   /**
    * Process a payment (customer to merchant)
+   * Returns immediately with pending status, then polls for completion
    */
   async payment(
     customerAccountId: string,
@@ -277,7 +298,37 @@ export class TestAPIHTTP {
       })
       .expect(201);
 
+    // Poll for completion (async saga processing)
+    if (!options.skipPolling) {
+      await this.pollTransactionCompletion(response.body.transactionId);
+    }
+
     return response.body;
+  }
+
+  /**
+   * Poll transaction status until it reaches a final state
+   */
+  private async pollTransactionCompletion(transactionId: string, maxWait: number = 5000): Promise<void> {
+    const start = Date.now();
+    const pollInterval = 50;
+
+    while (Date.now() - start < maxWait) {
+      const txResponse = await request(this.server)
+        .get(`/api/v1/transactions/${transactionId}`);
+
+      if (txResponse.status === 200) {
+        const status = txResponse.body.status;
+        if (status === 'completed' || status === 'failed' || status === 'compensated') {
+          return;
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    // Timeout - transaction still pending
+    console.warn(`⚠️  Transaction ${transactionId} did not complete within ${maxWait}ms`);
   }
 
   /**
