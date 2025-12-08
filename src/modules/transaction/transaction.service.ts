@@ -151,6 +151,24 @@ export class TransactionService {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
     }
 
+    // Upfront validation: Check source account exists and is valid
+    const sourceAccount = await this.accountService.findById(dto.sourceAccountId);
+    
+    // Validate account is active
+    this.accountService.validateAccountActive(sourceAccount);
+
+    // Validate currency match
+    if (sourceAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException([sourceAccount.currency, dto.currency]);
+    }
+
+    // Validate sufficient balance
+    const balance = new Decimal(sourceAccount.balance);
+    const withdrawalAmount = new Decimal(dto.amount);
+    if (balance.lessThan(withdrawalAmount)) {
+      throw new InsufficientBalanceException(dto.sourceAccountId, balance.toString(), withdrawalAmount.toString());
+    }
+
     // Generate transaction ID
     const transactionId = uuidv4();
 

@@ -230,6 +230,12 @@ export class TestAPIHTTP {
       })
       .expect(201);
 
+    // Wait for transaction to complete (saga is async)
+    const transactionId = response.body.transactionId;
+    if (transactionId) {
+      await this.waitForTransactionCompletion(transactionId);
+    }
+
     return response.body;
   }
 
@@ -254,6 +260,12 @@ export class TestAPIHTTP {
         reference: options.reference || 'Test transfer',
       })
       .expect(201);
+
+    // Wait for transaction to complete (saga is async)
+    const transactionId = response.body.debitTransactionId || response.body.transactionId;
+    if (transactionId) {
+      await this.waitForTransactionCompletion(transactionId);
+    }
 
     return response.body;
   }
@@ -280,7 +292,34 @@ export class TestAPIHTTP {
       })
       .expect(201);
 
+    // Wait for transaction to complete (saga is async)
+    const transactionId = response.body.transactionId;
+    await this.waitForTransactionCompletion(transactionId);
+
     return response.body;
+  }
+
+  /**
+   * Wait for a transaction to be completed or failed
+   */
+  private async waitForTransactionCompletion(transactionId: string, maxWait: number = 5000): Promise<void> {
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      try {
+        const response = await request(this.server)
+          .get(`/api/v1/transactions/${transactionId}`)
+          .expect(200);
+        
+        const status = response.body.status;
+        if (status === 'completed' || status === 'failed' || status === 'compensated') {
+          return;
+        }
+      } catch (error) {
+        // Transaction not found yet, wait
+      }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error(`Transaction ${transactionId} did not complete within ${maxWait}ms`);
   }
 
   /**
