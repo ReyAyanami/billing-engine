@@ -10,6 +10,7 @@ import {
 } from './transaction.entity';
 import { Account } from '../account/account.entity';
 import { AccountService } from '../account/account.service';
+import { toAccountId } from '../../common/types/branded.types';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -135,7 +136,7 @@ export class TransactionService {
 
     // Upfront validation: Check source account exists and is valid
     const sourceAccount = await this.accountService.findById(
-      dto.sourceAccountId,
+      toAccountId(dto.sourceAccountId),
     );
 
     // Validate account is active
@@ -143,7 +144,7 @@ export class TransactionService {
 
     // Validate destination account exists (if provided)
     if (dto.destinationAccountId) {
-      await this.accountService.findById(dto.destinationAccountId);
+      await this.accountService.findById(toAccountId(dto.destinationAccountId));
     }
 
     // Validate currency match
@@ -226,10 +227,10 @@ export class TransactionService {
 
     // Upfront validation: Check accounts exist and are valid
     const sourceAccount = await this.accountService.findById(
-      dto.sourceAccountId,
+      toAccountId(dto.sourceAccountId),
     );
     const destinationAccount = await this.accountService.findById(
-      dto.destinationAccountId,
+      toAccountId(dto.destinationAccountId),
     );
 
     // Validate accounts are active
@@ -408,7 +409,7 @@ export class TransactionService {
    * Find account by ID (helper for controller validation)
    */
   async findAccountById(accountId: string): Promise<Account> {
-    return await this.accountService.findById(accountId);
+    return await this.accountService.findById(toAccountId(accountId));
   }
 
   /**

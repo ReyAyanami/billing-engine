@@ -13,6 +13,7 @@ import {
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
 import { OperationContext } from '../../common/types';
+import { AccountId, OwnerId } from '../../common/types/branded.types';
 
 @Injectable()
 export class AccountService {
@@ -92,7 +93,7 @@ export class AccountService {
     return savedAccount;
   }
 
-  async findById(id: string): Promise<Account> {
+  async findById(id: AccountId): Promise<Account> {
     const account = await this.accountRepository.findOne({
       where: { id },
       relations: ['currencyDetails'],
@@ -105,7 +106,7 @@ export class AccountService {
     return account;
   }
 
-  async findByOwner(ownerId: string, ownerType: string): Promise<Account[]> {
+  async findByOwner(ownerId: OwnerId, ownerType: string): Promise<Account[]> {
     return await this.accountRepository.find({
       where: { ownerId, ownerType },
       relations: ['currencyDetails'],
@@ -114,7 +115,7 @@ export class AccountService {
   }
 
   async getBalance(
-    id: string,
+    id: AccountId,
   ): Promise<{ balance: string; currency: string; status: string }> {
     const account = await this.findById(id);
     return {
@@ -125,7 +126,7 @@ export class AccountService {
   }
 
   async updateStatus(
-    id: string,
+    id: AccountId,
     status: AccountStatus,
     context: OperationContext,
   ): Promise<Account> {
@@ -157,7 +158,7 @@ export class AccountService {
   /**
    * Find and lock account for update (used in transactions)
    */
-  async findAndLock(id: string, manager: EntityManager): Promise<Account> {
+  async findAndLock(id: AccountId, manager: EntityManager): Promise<Account> {
     const account = await manager.findOne(Account, {
       where: { id },
       lock: { mode: 'pessimistic_write' },

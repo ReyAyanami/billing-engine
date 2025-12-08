@@ -14,6 +14,7 @@ import {
   AccountNotFoundException,
   InvalidOperationException,
 } from '../../src/common/exceptions/billing.exception';
+import { toAccountId } from '../../src/common/types/branded.types';
 
 describe('AccountService', () => {
   let service: AccountService;
@@ -141,7 +142,7 @@ describe('AccountService', () => {
         .spyOn(accountRepository, 'findOne')
         .mockResolvedValue(mockAccount as Account);
 
-      const result = await service.findById('account-123');
+      const result = await service.findById(toAccountId('account-123'));
 
       expect(result).toEqual(mockAccount);
       expect(accountRepository.findOne).toHaveBeenCalledWith({
@@ -153,9 +154,9 @@ describe('AccountService', () => {
     it('should throw AccountNotFoundException if account not found', async () => {
       jest.spyOn(accountRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findById('nonexistent')).rejects.toThrow(
-        AccountNotFoundException,
-      );
+      await expect(
+        service.findById(toAccountId('nonexistent')),
+      ).rejects.toThrow(AccountNotFoundException);
     });
   });
 
@@ -176,7 +177,7 @@ describe('AccountService', () => {
       jest.spyOn(auditService, 'log').mockResolvedValue(undefined as any);
 
       const result = await service.updateStatus(
-        'account-123',
+        toAccountId('account-123'),
         AccountStatus.SUSPENDED,
         mockContext,
       );
@@ -196,7 +197,11 @@ describe('AccountService', () => {
         .mockResolvedValue(mockAccount as Account);
 
       await expect(
-        service.updateStatus('account-123', AccountStatus.ACTIVE, mockContext),
+        service.updateStatus(
+          toAccountId('account-123'),
+          AccountStatus.ACTIVE,
+          mockContext,
+        ),
       ).rejects.toThrow(InvalidOperationException);
     });
   });
@@ -214,7 +219,7 @@ describe('AccountService', () => {
         .spyOn(accountRepository, 'findOne')
         .mockResolvedValue(mockAccount as Account);
 
-      const result = await service.getBalance('account-123');
+      const result = await service.getBalance(toAccountId('account-123'));
 
       expect(result).toEqual({
         balance: '250.50',

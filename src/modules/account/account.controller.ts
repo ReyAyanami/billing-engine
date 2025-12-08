@@ -21,6 +21,7 @@ import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountStatusDto } from './dto/update-account-status.dto';
 import { Account } from './account.entity';
 import { v4 as uuidv4 } from 'uuid';
+import { toAccountId, toOwnerId } from '../../common/types/branded.types';
 
 @ApiTags('accounts')
 @Controller('api/v1/accounts')
@@ -62,7 +63,7 @@ export class AccountController {
   @ApiResponse({ status: 200, description: 'Account found', type: Account })
   @ApiResponse({ status: 404, description: 'Account not found' })
   async findById(@Param('id') id: string): Promise<Account> {
-    return await this.accountService.findById(id);
+    return await this.accountService.findById(toAccountId(id));
   }
 
   @Get()
@@ -85,7 +86,7 @@ export class AccountController {
     @Query('ownerId') ownerId: string,
     @Query('ownerType') ownerType: string,
   ): Promise<Account[]> {
-    return await this.accountService.findByOwner(ownerId, ownerType);
+    return await this.accountService.findByOwner(toOwnerId(ownerId), ownerType);
   }
 
   @Get(':id/balance')
@@ -99,7 +100,7 @@ export class AccountController {
   async getBalance(
     @Param('id') id: string,
   ): Promise<{ balance: string; currency: string; status: string }> {
-    return await this.accountService.getBalance(id);
+    return await this.accountService.getBalance(toAccountId(id));
   }
 
   @Patch(':id/status')
@@ -127,7 +128,7 @@ export class AccountController {
     };
 
     return await this.accountService.updateStatus(
-      id,
+      toAccountId(id),
       updateStatusDto.status,
       context,
     );
