@@ -111,10 +111,11 @@ export function getJsonValue(
       current !== null &&
       !Array.isArray(current)
     ) {
-      current = current[key];
-      if (current === undefined) {
+      const next: JsonValue | undefined = current[key];
+      if (next === undefined) {
         return undefined;
       }
+      current = next;
     } else {
       return undefined;
     }

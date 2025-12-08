@@ -98,8 +98,9 @@ export class InMemoryEventStore implements IEventStore {
     }
 
     if (validEvents.length > 0) {
+      const firstEvent = validEvents[0];
       this.logger.debug(
-        `First event type: ${validEvents[0].constructor?.name || 'unknown'}`,
+        `First event type: ${firstEvent?.constructor?.name || 'unknown'}`,
       );
     }
 

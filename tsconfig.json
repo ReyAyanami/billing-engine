@@ -36,9 +36,9 @@
     "noImplicitReturns": true,          // All code paths must return
     "noImplicitOverride": true,         // Require 'override' keyword
     "noUnusedLocals": true,             // Flag unused local variables
-    "noUnusedParameters": true          // Flag unused parameters
-    // TODO: Enable after fixing index signature issues (see TYPE_SAFETY_ROADMAP.md):
-    // "noUncheckedIndexedAccess": true,   // Array/object access returns T | undefined (~30 fixes needed)
+    "noUnusedParameters": true,         // Flag unused parameters
+    "noUncheckedIndexedAccess": true    // Array/object access returns T | undefined
+    // TODO: Enable after fixing bracket notation (see TYPE_SAFETY_ROADMAP.md):
     // "noPropertyAccessFromIndexSignature": true // Require bracket notation (~20 fixes needed)
   }
 }
