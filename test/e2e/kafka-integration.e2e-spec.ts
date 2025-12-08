@@ -23,8 +23,6 @@ import { generateTestId } from '../helpers/test-id-generator';
  * - Kafka cluster is healthy and accessible
  */
 describe('🔌 Kafka Integration Test', () => {
-  jest.setTimeout(120000); // 2 minutes for Kafka operations (real Kafka is slow)
-  
   let app: INestApplication;
   let commandBus: CommandBus;
   let eventStore: KafkaEventStore;

@@ -16,7 +16,6 @@ import { generateTestId } from '../../helpers/test-id-generator';
 import Decimal from 'decimal.js';
 
 describe('Payment Saga E2E Test', () => {
-  jest.setTimeout(90000); // 90 seconds for saga operations
 
   let app: INestApplication;
   let commandBus: CommandBus;

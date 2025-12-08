@@ -15,7 +15,6 @@ import { EventPollingHelper } from '../../helpers/event-polling.helper';
 import { generateTestId } from '../../helpers/test-id-generator';
 
 describe('Withdrawal Saga E2E Test', () => {
-  jest.setTimeout(90000);
 
   let app: INestApplication;
   let commandBus: CommandBus;

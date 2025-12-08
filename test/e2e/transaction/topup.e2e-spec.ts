@@ -15,7 +15,6 @@ import { EventPollingHelper } from '../../helpers/event-polling.helper';
 import { generateTestId } from '../../helpers/test-id-generator';
 
 describe('Week 3 - Complete Saga E2E Test', () => {
-  jest.setTimeout(60000); // 60 seconds timeout for async saga operations
   let app: INestApplication;
   let commandBus: CommandBus;
   let queryBus: QueryBus;

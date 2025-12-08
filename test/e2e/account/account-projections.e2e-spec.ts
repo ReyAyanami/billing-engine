@@ -13,7 +13,6 @@ import { EventPollingHelper } from '../../helpers/event-polling.helper';
 import { generateTestId, getTestRunId } from '../../helpers/test-id-generator';
 
 describe('Week 2 - Projections E2E Test', () => {
-  jest.setTimeout(30000); // 30 seconds for Kafka operations
   
   let app: INestApplication;
   let commandBus: CommandBus;

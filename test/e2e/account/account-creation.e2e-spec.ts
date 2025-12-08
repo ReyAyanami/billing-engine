@@ -11,7 +11,6 @@ import { EventPollingHelper } from '../../helpers/event-polling.helper';
 import { generateTestId } from '../../helpers/test-id-generator';
 
 describe('Week 1 POC - Event Sourcing End-to-End (e2e)', () => {
-  jest.setTimeout(30000); // 30 seconds for Kafka operations
   
   let app: INestApplication;
   let commandBus: CommandBus;
