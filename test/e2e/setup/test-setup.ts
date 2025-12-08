@@ -53,8 +53,9 @@ export class TestSetup {
    * Call this in beforeEach()
    */
   static async beforeEach(): Promise<void> {
-    // Small delay for any pending async operations
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // Wait for any pending async operations (sagas, event handlers)
+    // In CQRS, events may still be processing from previous test
+    await new Promise(resolve => setTimeout(resolve, 200));
     
     // Clean database for test isolation
     await this.cleanDatabase();
@@ -65,8 +66,9 @@ export class TestSetup {
    * Call this in afterEach()
    */
   static async afterEach(): Promise<void> {
-    // Small delay for async event processing
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // Wait for async event processing to complete
+    // Sagas should complete in milliseconds, but give buffer for cleanup
+    await new Promise(resolve => setTimeout(resolve, 200));
   }
 
   /**
