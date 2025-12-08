@@ -34,11 +34,12 @@ export class BalanceChangedEntityHandler implements IEventHandler<BalanceChanged
       account.balance = event.newBalance;
       await this.accountRepository.save(account);
 
-      this.logger.log(`✅ Account entity balance updated: ${event.aggregateId} (${event.newBalance})`);
+      this.logger.log(
+        `✅ Account entity balance updated: ${event.aggregateId} (${event.newBalance})`,
+      );
     } catch (error) {
       this.logger.error(`❌ Failed to update Account entity balance`, error);
       throw error;
     }
   }
 }
-

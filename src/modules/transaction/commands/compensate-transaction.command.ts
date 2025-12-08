@@ -20,4 +20,3 @@ export class CompensateTransactionCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

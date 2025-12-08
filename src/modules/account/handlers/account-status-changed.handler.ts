@@ -8,9 +8,7 @@ import { AccountProjectionService } from '../projections/account-projection.serv
  * Updates the read model projection when account status changes.
  */
 @EventsHandler(AccountStatusChangedEvent)
-export class AccountStatusChangedHandler
-  implements IEventHandler<AccountStatusChangedEvent>
-{
+export class AccountStatusChangedHandler implements IEventHandler<AccountStatusChangedEvent> {
   private readonly logger = new Logger(AccountStatusChangedHandler.name);
 
   constructor(private readonly projectionService: AccountProjectionService) {}
@@ -32,9 +30,11 @@ export class AccountStatusChangedHandler
 
       this.logger.log(`✅ AccountStatusChangedEvent processed successfully`);
     } catch (error) {
-      this.logger.error(`❌ Failed to process AccountStatusChangedEvent`, error);
+      this.logger.error(
+        `❌ Failed to process AccountStatusChangedEvent`,
+        error,
+      );
       throw error;
     }
   }
 }
-

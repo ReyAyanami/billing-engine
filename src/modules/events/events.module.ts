@@ -7,4 +7,3 @@ import { EventsController } from './events.controller';
   controllers: [EventsController],
 })
 export class EventsModule {}
-

@@ -48,7 +48,9 @@ export class CreateAccountHandler implements ICommandHandler<CreateAccountComman
       // Get uncommitted events from the aggregate
       const events = account.getUncommittedEvents();
 
-      this.logger.log(`Generated ${events.length} event(s) for account ${command.accountId}`);
+      this.logger.log(
+        `Generated ${events.length} event(s) for account ${command.accountId}`,
+      );
 
       // Save events to the event store (Kafka)
       await this.eventStore.append('Account', command.accountId, events);
@@ -64,9 +66,11 @@ export class CreateAccountHandler implements ICommandHandler<CreateAccountComman
 
       this.logger.log(`✅ Account created successfully: ${command.accountId}`);
     } catch (error) {
-      this.logger.error(`❌ Failed to create account ${command.accountId}`, error);
+      this.logger.error(
+        `❌ Failed to create account ${command.accountId}`,
+        error,
+      );
       throw error;
     }
   }
 }
-

@@ -18,8 +18,12 @@ export class InitialDoubleEntrySchema1765110800000 implements MigrationInterface
                 "metadata" JSONB
             )
         `);
-    await queryRunner.query(`CREATE INDEX "IDX_currencies_type" ON "currencies" ("type")`);
-    await queryRunner.query(`CREATE INDEX "IDX_currencies_is_active" ON "currencies" ("is_active")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_currencies_type" ON "currencies" ("type")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_currencies_is_active" ON "currencies" ("is_active")`,
+    );
 
     // Create account type enum
     await queryRunner.query(`
@@ -54,10 +58,18 @@ export class InitialDoubleEntrySchema1765110800000 implements MigrationInterface
                 CONSTRAINT "CHK_min_balance_non_negative" CHECK ("min_balance" IS NULL OR "min_balance" >= 0)
             )
         `);
-    await queryRunner.query(`CREATE INDEX "IDX_accounts_owner" ON "accounts" ("owner_id", "owner_type")`);
-    await queryRunner.query(`CREATE INDEX "IDX_accounts_account_type" ON "accounts" ("account_type")`);
-    await queryRunner.query(`CREATE INDEX "IDX_accounts_status" ON "accounts" ("status")`);
-    await queryRunner.query(`CREATE INDEX "IDX_accounts_created_at" ON "accounts" ("created_at")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_accounts_owner" ON "accounts" ("owner_id", "owner_type")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_accounts_account_type" ON "accounts" ("account_type")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_accounts_status" ON "accounts" ("status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_accounts_created_at" ON "accounts" ("created_at")`,
+    );
 
     // Create transaction type enum
     await queryRunner.query(`
@@ -96,13 +108,27 @@ export class InitialDoubleEntrySchema1765110800000 implements MigrationInterface
                 CONSTRAINT "CHK_not_self_transfer" CHECK ("source_account_id" != "destination_account_id")
             )
         `);
-    await queryRunner.query(`CREATE INDEX "IDX_transactions_source_created" ON "transactions" ("source_account_id", "created_at" DESC)`);
-    await queryRunner.query(`CREATE INDEX "IDX_transactions_destination_created" ON "transactions" ("destination_account_id", "created_at" DESC)`);
-    await queryRunner.query(`CREATE INDEX "IDX_transactions_idempotency" ON "transactions" ("idempotency_key")`);
-    await queryRunner.query(`CREATE INDEX "IDX_transactions_status" ON "transactions" ("status")`);
-    await queryRunner.query(`CREATE INDEX "IDX_transactions_type" ON "transactions" ("type")`);
-    await queryRunner.query(`CREATE INDEX "IDX_transactions_created_at" ON "transactions" ("created_at")`);
-    await queryRunner.query(`CREATE INDEX "IDX_transactions_parent" ON "transactions" ("parent_transaction_id")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_transactions_source_created" ON "transactions" ("source_account_id", "created_at" DESC)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_transactions_destination_created" ON "transactions" ("destination_account_id", "created_at" DESC)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_transactions_idempotency" ON "transactions" ("idempotency_key")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_transactions_status" ON "transactions" ("status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_transactions_type" ON "transactions" ("type")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_transactions_created_at" ON "transactions" ("created_at")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_transactions_parent" ON "transactions" ("parent_transaction_id")`,
+    );
 
     // Create audit_logs table
     await queryRunner.query(`
@@ -118,10 +144,18 @@ export class InitialDoubleEntrySchema1765110800000 implements MigrationInterface
                 "timestamp" TIMESTAMP NOT NULL DEFAULT NOW()
             )
         `);
-    await queryRunner.query(`CREATE INDEX "IDX_audit_logs_entity" ON "audit_logs" ("entity_type", "entity_id")`);
-    await queryRunner.query(`CREATE INDEX "IDX_audit_logs_correlation" ON "audit_logs" ("correlation_id")`);
-    await queryRunner.query(`CREATE INDEX "IDX_audit_logs_timestamp" ON "audit_logs" ("timestamp")`);
-    await queryRunner.query(`CREATE INDEX "IDX_audit_logs_operation" ON "audit_logs" ("operation")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_audit_logs_entity" ON "audit_logs" ("entity_type", "entity_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_audit_logs_correlation" ON "audit_logs" ("correlation_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_audit_logs_timestamp" ON "audit_logs" ("timestamp")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_audit_logs_operation" ON "audit_logs" ("operation")`,
+    );
 
     // Seed initial currencies
     await queryRunner.query(`
@@ -161,4 +195,3 @@ export class InitialDoubleEntrySchema1765110800000 implements MigrationInterface
     await queryRunner.query(`DROP EXTENSION IF EXISTS "uuid-ossp"`);
   }
 }
-

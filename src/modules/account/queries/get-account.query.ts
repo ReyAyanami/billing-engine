@@ -12,4 +12,3 @@ export class GetAccountQuery extends Query {
     super(correlationId);
   }
 }
-

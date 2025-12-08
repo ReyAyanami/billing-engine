@@ -111,10 +111,7 @@ const EventHandlers = [
   TransactionCompensatedProjectionHandler,
 ];
 
-const QueryHandlers = [
-  GetTransactionHandler,
-  GetTransactionsByAccountHandler,
-];
+const QueryHandlers = [GetTransactionHandler, GetTransactionsByAccountHandler];
 
 @Module({
   imports: [
@@ -135,4 +132,3 @@ const QueryHandlers = [
   exports: [TransactionService, TransactionProjectionService],
 })
 export class TransactionModule {}
-

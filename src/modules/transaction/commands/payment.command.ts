@@ -26,4 +26,3 @@ export class PaymentCommand extends Command {
     super(correlationId || uuidv4(), actorId);
   }
 }
-

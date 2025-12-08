@@ -20,4 +20,3 @@ import { KafkaService } from './kafka.service';
   exports: ['EVENT_STORE', KafkaService, KafkaEventStore],
 })
 export class KafkaModule {}
-

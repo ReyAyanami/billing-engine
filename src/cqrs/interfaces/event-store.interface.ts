@@ -49,4 +49,3 @@ export interface IEventStore {
     fromTimestamp?: Date,
   ): AsyncGenerator<DomainEvent>;
 }
-

@@ -108,7 +108,9 @@ export class AccountService {
     });
   }
 
-  async getBalance(id: string): Promise<{ balance: string; currency: string; status: string }> {
+  async getBalance(
+    id: string,
+  ): Promise<{ balance: string; currency: string; status: string }> {
     const account = await this.findById(id);
     return {
       balance: account.balance,
@@ -150,10 +152,7 @@ export class AccountService {
   /**
    * Find and lock account for update (used in transactions)
    */
-  async findAndLock(
-    id: string,
-    manager: EntityManager,
-  ): Promise<Account> {
+  async findAndLock(id: string, manager: EntityManager): Promise<Account> {
     const account = await manager.findOne(Account, {
       where: { id },
       lock: { mode: 'pessimistic_write' },
@@ -205,4 +204,3 @@ export class AccountService {
     }
   }
 }
-

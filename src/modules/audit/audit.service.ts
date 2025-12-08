@@ -50,10 +50,7 @@ export class AuditService {
     });
   }
 
-  async findByOperation(
-    operation: string,
-    limit = 50,
-  ): Promise<AuditLog[]> {
+  async findByOperation(operation: string, limit = 50): Promise<AuditLog[]> {
     return await this.auditLogRepository.find({
       where: { operation },
       order: { timestamp: 'DESC' },
@@ -61,4 +58,3 @@ export class AuditService {
     });
   }
 }
-

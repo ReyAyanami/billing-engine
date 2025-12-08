@@ -23,10 +23,15 @@ export class TopupCompletedEntityHandler implements IEventHandler<TopupCompleted
 
     try {
       // Retry logic: Handle race condition where completion arrives before creation
-      const transaction = await this.waitForTransaction(event.aggregateId, 1000);
+      const transaction = await this.waitForTransaction(
+        event.aggregateId,
+        1000,
+      );
 
       if (!transaction) {
-        this.logger.error(`Transaction not found after retries: ${event.aggregateId}`);
+        this.logger.error(
+          `Transaction not found after retries: ${event.aggregateId}`,
+        );
         return;
       }
 
@@ -44,7 +49,10 @@ export class TopupCompletedEntityHandler implements IEventHandler<TopupCompleted
   /**
    * Wait for transaction to be created (with retries)
    */
-  private async waitForTransaction(transactionId: string, maxWait: number): Promise<Transaction | null> {
+  private async waitForTransaction(
+    transactionId: string,
+    maxWait: number,
+  ): Promise<Transaction | null> {
     const start = Date.now();
     while (Date.now() - start < maxWait) {
       const transaction = await this.transactionRepository.findOne({
@@ -53,9 +61,8 @@ export class TopupCompletedEntityHandler implements IEventHandler<TopupCompleted
       if (transaction) {
         return transaction;
       }
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
     return null;
   }
 }
-

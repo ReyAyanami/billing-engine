@@ -33,7 +33,11 @@ export class AccountNotFoundException extends BillingException {
 }
 
 export class InsufficientBalanceException extends BillingException {
-  constructor(accountId: string, availableBalance: string, requestedAmount: string) {
+  constructor(
+    accountId: string,
+    availableBalance: string,
+    requestedAmount: string,
+  ) {
     super(
       'INSUFFICIENT_BALANCE',
       'Account balance is insufficient for this operation',
@@ -109,4 +113,3 @@ export class RefundException extends BillingException {
     super('REFUND_ERROR', message, details, HttpStatus.BAD_REQUEST);
   }
 }
-

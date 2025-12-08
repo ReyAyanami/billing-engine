@@ -8,9 +8,7 @@ import { AccountProjectionService } from '../projections/account-projection.serv
  * Updates the read model projection when account limits change.
  */
 @EventsHandler(AccountLimitsChangedEvent)
-export class AccountLimitsChangedHandler
-  implements IEventHandler<AccountLimitsChangedEvent>
-{
+export class AccountLimitsChangedHandler implements IEventHandler<AccountLimitsChangedEvent> {
   private readonly logger = new Logger(AccountLimitsChangedHandler.name);
 
   constructor(private readonly projectionService: AccountProjectionService) {}
@@ -19,19 +17,19 @@ export class AccountLimitsChangedHandler
     this.logger.log(
       `📨 Handling AccountLimitsChangedEvent for account: ${event.aggregateId}`,
     );
-    
+
     if (event.newMaxBalance !== undefined) {
       this.logger.log(
         `   Max Balance: ${event.previousMaxBalance || 'none'} → ${event.newMaxBalance}`,
       );
     }
-    
+
     if (event.newMinBalance !== undefined) {
       this.logger.log(
         `   Min Balance: ${event.previousMinBalance || 'none'} → ${event.newMinBalance}`,
       );
     }
-    
+
     if (event.reason) {
       this.logger.log(`   Reason: ${event.reason}`);
     }
@@ -44,9 +42,11 @@ export class AccountLimitsChangedHandler
 
       this.logger.log(`✅ AccountLimitsChangedEvent processed successfully`);
     } catch (error) {
-      this.logger.error(`❌ Failed to process AccountLimitsChangedEvent`, error);
+      this.logger.error(
+        `❌ Failed to process AccountLimitsChangedEvent`,
+        error,
+      );
       throw error;
     }
   }
 }
-

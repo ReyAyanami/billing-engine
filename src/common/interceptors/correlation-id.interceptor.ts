@@ -25,4 +25,3 @@ export class CorrelationIdInterceptor implements NestInterceptor {
     return next.handle();
   }
 }
-

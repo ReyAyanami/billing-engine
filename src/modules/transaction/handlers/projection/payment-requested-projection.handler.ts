@@ -9,9 +9,7 @@ import { TransactionStatus, TransactionType } from '../../transaction.entity';
  * Updates the read model for fast queries.
  */
 @EventsHandler(PaymentRequestedEvent)
-export class PaymentRequestedProjectionHandler
-  implements IEventHandler<PaymentRequestedEvent>
-{
+export class PaymentRequestedProjectionHandler implements IEventHandler<PaymentRequestedEvent> {
   private readonly logger = new Logger(PaymentRequestedProjectionHandler.name);
 
   constructor(
@@ -19,9 +17,7 @@ export class PaymentRequestedProjectionHandler
   ) {}
 
   async handle(event: PaymentRequestedEvent): Promise<void> {
-    this.logger.log(
-      `📊 [Projection] PaymentRequested: ${event.aggregateId}`,
-    );
+    this.logger.log(`📊 [Projection] PaymentRequested: ${event.aggregateId}`);
     this.logger.log(`   Customer: ${event.customerAccountId}`);
     this.logger.log(`   Merchant: ${event.merchantAccountId}`);
     this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
@@ -58,4 +54,3 @@ export class PaymentRequestedProjectionHandler
     }
   }
 }
-

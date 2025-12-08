@@ -41,4 +41,3 @@ export class TransferCompletedEvent extends DomainEvent {
     };
   }
 }
-

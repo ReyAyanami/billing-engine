@@ -11,4 +11,3 @@ import { CurrencyController } from './currency.controller';
   exports: [CurrencyService],
 })
 export class CurrencyModule {}
-

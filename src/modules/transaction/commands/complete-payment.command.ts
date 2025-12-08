@@ -15,4 +15,3 @@ export class CompletePaymentCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

@@ -1,12 +1,19 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 import { AccountType, AccountStatus } from '../account.entity';
 
 /**
  * Account Projection (Read Model)
- * 
+ *
  * This is the read-optimized version of account data.
  * Updated by event handlers for fast queries without event replay.
- * 
+ *
  * This is separate from the Account entity (write model) to follow CQRS pattern.
  */
 @Entity('account_projections')
@@ -36,10 +43,22 @@ export class AccountProjection {
   @Column({ type: 'decimal', precision: 20, scale: 2, default: 0 })
   balance: string;
 
-  @Column({ name: 'max_balance', type: 'decimal', precision: 20, scale: 2, nullable: true })
+  @Column({
+    name: 'max_balance',
+    type: 'decimal',
+    precision: 20,
+    scale: 2,
+    nullable: true,
+  })
   maxBalance: string | null;
 
-  @Column({ name: 'min_balance', type: 'decimal', precision: 20, scale: 2, nullable: true })
+  @Column({
+    name: 'min_balance',
+    type: 'decimal',
+    precision: 20,
+    scale: 2,
+    nullable: true,
+  })
   minBalance: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
@@ -60,4 +79,3 @@ export class AccountProjection {
   @Column({ name: 'last_event_timestamp', type: 'timestamp', nullable: true })
   lastEventTimestamp: Date | null;
 }
-

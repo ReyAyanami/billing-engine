@@ -1,6 +1,6 @@
 /**
  * E2E Test: Payment
- * 
+ *
  * Tests payment functionality (Customer to Merchant) through HTTP REST API.
  * Fast, reliable, no sleeps or timeouts needed.
  */
@@ -46,7 +46,7 @@ describe('Feature: Payment', () => {
       // GIVEN: Customer with $100 and merchant with $0
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
 
       // WHEN: Customer pays merchant $30
@@ -74,7 +74,7 @@ describe('Feature: Payment', () => {
       // GIVEN: Customer with $100 and merchant with $0
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
 
       // WHEN: Customer makes multiple payments
@@ -83,8 +83,12 @@ describe('Feature: Payment', () => {
       await testApi.payment(customer.id, merchant.id, '10.00', 'USD');
 
       // THEN: Balances should be correct
-      expect((await testApi.getBalance(customer.id)).balance).toBe('40.00000000');
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('60.00000000');
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '40.00000000',
+      );
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '60.00000000',
+      );
     });
 
     it('should support different currencies', async () => {
@@ -93,7 +97,7 @@ describe('Feature: Payment', () => {
       const merchantUSD = await testApi.createAccount({ currency: 'USD' });
       const customerEUR = await testApi.createAccount({ currency: 'EUR' });
       const merchantEUR = await testApi.createAccount({ currency: 'EUR' });
-      
+
       await testApi.topup(customerUSD.id, '100.00', 'USD');
       await testApi.topup(customerEUR.id, '85.50', 'EUR');
 
@@ -102,17 +106,25 @@ describe('Feature: Payment', () => {
       await testApi.payment(customerEUR.id, merchantEUR.id, '10.50', 'EUR');
 
       // THEN: Each should have correct balances
-      expect((await testApi.getBalance(customerUSD.id)).balance).toBe('75.00000000');
-      expect((await testApi.getBalance(merchantUSD.id)).balance).toBe('25.00000000');
-      expect((await testApi.getBalance(customerEUR.id)).balance).toBe('75.00000000');
-      expect((await testApi.getBalance(merchantEUR.id)).balance).toBe('10.50000000');
+      expect((await testApi.getBalance(customerUSD.id)).balance).toBe(
+        '75.00000000',
+      );
+      expect((await testApi.getBalance(merchantUSD.id)).balance).toBe(
+        '25.00000000',
+      );
+      expect((await testApi.getBalance(customerEUR.id)).balance).toBe(
+        '75.00000000',
+      );
+      expect((await testApi.getBalance(merchantEUR.id)).balance).toBe(
+        '10.50000000',
+      );
     });
 
     it('should include payment metadata', async () => {
       // GIVEN: Customer and merchant
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
 
       // WHEN: Payment with metadata
@@ -131,10 +143,14 @@ describe('Feature: Payment', () => {
 
       // THEN: Transaction should be created
       expect(transaction).toBeDefined();
-      
+
       // AND: Balances should be updated
-      expect((await testApi.getBalance(customer.id)).balance).toBe('0.01000000');
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('99.99000000');
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '0.01000000',
+      );
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '99.99000000',
+      );
     });
   });
 
@@ -188,7 +204,7 @@ describe('Feature: Payment', () => {
       // GIVEN: USD customer and EUR merchant
       const customerUSD = await testApi.createAccount({ currency: 'USD' });
       const merchantEUR = await testApi.createAccount({ currency: 'EUR' });
-      
+
       await testApi.topup(customerUSD.id, '100.00', 'USD');
 
       // WHEN/THEN: Payment between different currencies should fail
@@ -210,7 +226,7 @@ describe('Feature: Payment', () => {
       // GIVEN: Customer with $50
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '50.00', 'USD');
 
       // WHEN/THEN: Try to pay $100 should fail
@@ -278,7 +294,7 @@ describe('Feature: Payment', () => {
       // GIVEN: Customer with $100 and merchant
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
       const idempotencyKey = testApi.generateId();
 
@@ -302,9 +318,12 @@ describe('Feature: Payment', () => {
       );
 
       // AND: Balances should only change once
-      expect((await testApi.getBalance(customer.id)).balance).toBe('70.00000000');
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('30.00000000');
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '70.00000000',
+      );
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '30.00000000',
+      );
     });
   });
 });
-

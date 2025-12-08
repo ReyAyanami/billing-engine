@@ -9,9 +9,7 @@ import { TransactionType, TransactionStatus } from '../../transaction.entity';
  * This is separate from the saga coordinator - it only updates the read model.
  */
 @EventsHandler(TransferRequestedEvent)
-export class TransferRequestedProjectionHandler
-  implements IEventHandler<TransferRequestedEvent>
-{
+export class TransferRequestedProjectionHandler implements IEventHandler<TransferRequestedEvent> {
   private readonly logger = new Logger(TransferRequestedProjectionHandler.name);
 
   constructor(
@@ -39,11 +37,15 @@ export class TransferRequestedProjectionHandler
         metadata: event.metadata,
       });
 
-      this.logger.log(`✅ [Projection] Transaction projection created: ${event.aggregateId}`);
+      this.logger.log(
+        `✅ [Projection] Transaction projection created: ${event.aggregateId}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to create transaction projection`, error);
+      this.logger.error(
+        `❌ [Projection] Failed to create transaction projection`,
+        error,
+      );
       // Don't throw - projection failures shouldn't break the saga
     }
   }
 }
-

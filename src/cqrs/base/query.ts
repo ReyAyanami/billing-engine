@@ -28,4 +28,3 @@ export abstract class Query {
     return this.constructor.name;
   }
 }
-

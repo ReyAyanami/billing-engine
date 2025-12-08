@@ -35,4 +35,3 @@ export class TransactionFailedEvent extends DomainEvent {
     };
   }
 }
-

@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { Kafka, Producer, Consumer, Admin, KafkaConfig } from 'kafkajs';
 import { ConfigService } from '@nestjs/config';
 
@@ -16,10 +21,16 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private configService: ConfigService) {
     const brokers = this.configService
-      .get<string>('KAFKA_BROKERS', 'localhost:9092,localhost:9093,localhost:9094')
+      .get<string>(
+        'KAFKA_BROKERS',
+        'localhost:9092,localhost:9093,localhost:9094',
+      )
       .split(',');
 
-    const clientId = this.configService.get<string>('KAFKA_CLIENT_ID', 'billing-engine');
+    const clientId = this.configService.get<string>(
+      'KAFKA_CLIENT_ID',
+      'billing-engine',
+    );
 
     const kafkaConfig: KafkaConfig = {
       clientId,
@@ -63,7 +74,9 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       // List topics to verify connection
       const topics = await this.admin.listTopics();
       const billingTopics = topics.filter((t) => t.startsWith('billing.'));
-      this.logger.log(`📋 Found ${billingTopics.length} billing topics: ${billingTopics.join(', ')}`);
+      this.logger.log(
+        `📋 Found ${billingTopics.length} billing topics: ${billingTopics.join(', ')}`,
+      );
     } catch (error) {
       this.logger.error('❌ Failed to connect to Kafka', error);
       throw error;
@@ -146,4 +159,3 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-

@@ -52,10 +52,10 @@ export class TransactionService {
 
   /**
    * Top-up (CQRS): External Account (source) → User Account (destination)
-   * 
+   *
    * Adds funds to an account from an external source. Uses CQRS/Event Sourcing
    * for full auditability and event replay capability.
-   * 
+   *
    * Flow:
    * 1. Create TopupCommand
    * 2. Command Handler creates events
@@ -114,10 +114,9 @@ export class TransactionService {
     };
   }
 
-
   /**
    * Withdrawal (CQRS): User Account (source) → External Account (destination)
-   * 
+   *
    * Withdraws funds from user account to external destination. Uses CQRS/Event Sourcing
    * for full auditability and event replay capability.
    */
@@ -135,8 +134,10 @@ export class TransactionService {
     }
 
     // Upfront validation: Check source account exists and is valid
-    const sourceAccount = await this.accountService.findById(dto.sourceAccountId);
-    
+    const sourceAccount = await this.accountService.findById(
+      dto.sourceAccountId,
+    );
+
     // Validate account is active
     this.accountService.validateAccountActive(sourceAccount);
 
@@ -154,7 +155,11 @@ export class TransactionService {
     const balance = new Decimal(sourceAccount.balance);
     const withdrawalAmount = new Decimal(dto.amount);
     if (balance.lessThan(withdrawalAmount)) {
-      throw new InsufficientBalanceException(dto.sourceAccountId, balance.toString(), withdrawalAmount.toString());
+      throw new InsufficientBalanceException(
+        dto.sourceAccountId,
+        balance.toString(),
+        withdrawalAmount.toString(),
+      );
     }
 
     // Generate transaction ID
@@ -163,9 +168,9 @@ export class TransactionService {
     // Execute CQRS command
     const command = new WithdrawalCommand(
       transactionId,
-      dto.sourceAccountId,      // accountId (user account to withdraw from)
-      dto.amount,                // amount
-      dto.currency,             // currency
+      dto.sourceAccountId, // accountId (user account to withdraw from)
+      dto.amount, // amount
+      dto.currency, // currency
       dto.destinationAccountId, // destinationAccountId (external account)
       dto.idempotencyKey,
       context.correlationId,
@@ -198,7 +203,7 @@ export class TransactionService {
 
   /**
    * Transfer (CQRS): Account A (source) → Account B (destination)
-   * 
+   *
    * Transfers funds between two accounts. Uses CQRS/Event Sourcing with saga coordination.
    */
   async transfer(
@@ -220,8 +225,12 @@ export class TransactionService {
     }
 
     // Upfront validation: Check accounts exist and are valid
-    const sourceAccount = await this.accountService.findById(dto.sourceAccountId);
-    const destinationAccount = await this.accountService.findById(dto.destinationAccountId);
+    const sourceAccount = await this.accountService.findById(
+      dto.sourceAccountId,
+    );
+    const destinationAccount = await this.accountService.findById(
+      dto.destinationAccountId,
+    );
 
     // Validate accounts are active
     this.accountService.validateAccountActive(sourceAccount);
@@ -232,14 +241,21 @@ export class TransactionService {
       throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
     }
     if (destinationAccount.currency !== dto.currency) {
-      throw new CurrencyMismatchException(destinationAccount.currency, dto.currency);
+      throw new CurrencyMismatchException(
+        destinationAccount.currency,
+        dto.currency,
+      );
     }
 
     // Validate sufficient balance
     const sourceBalance = new Decimal(sourceAccount.balance);
     const transferAmount = new Decimal(dto.amount);
     if (sourceBalance.lessThan(transferAmount)) {
-      throw new InsufficientBalanceException(dto.sourceAccountId, sourceBalance.toString(), transferAmount.toString());
+      throw new InsufficientBalanceException(
+        dto.sourceAccountId,
+        sourceBalance.toString(),
+        transferAmount.toString(),
+      );
     }
 
     // Generate transaction ID
@@ -276,7 +292,7 @@ export class TransactionService {
 
   /**
    * Refund (CQRS): Reverses a previous transaction
-   * 
+   *
    * Uses CQRS/Event Sourcing with saga coordination for automatic compensation.
    */
   async refund(
@@ -309,13 +325,15 @@ export class TransactionService {
       throw new RefundException('Can only refund completed transactions');
     }
     if (!originalTransaction.amount) {
-      throw new RefundException(`Original transaction ${originalTransaction.id} has no amount`);
+      throw new RefundException(
+        `Original transaction ${originalTransaction.id} has no amount`,
+      );
     }
 
     // Determine refund amount
     const originalAmount = new Decimal(originalTransaction.amount);
     let refundAmount: Decimal;
-    
+
     if (dto.amount !== undefined && dto.amount !== null && dto.amount !== '') {
       refundAmount = new Decimal(dto.amount);
     } else {
@@ -396,7 +414,9 @@ export class TransactionService {
   /**
    * Find transaction by idempotency key (helper for controller)
    */
-  async findByIdempotencyKey(idempotencyKey: string): Promise<Transaction | null> {
+  async findByIdempotencyKey(
+    idempotencyKey: string,
+  ): Promise<Transaction | null> {
     return await this.transactionRepository.findOne({
       where: { idempotencyKey },
     });
@@ -426,7 +446,9 @@ export class TransactionService {
     }
 
     if (filters.status) {
-      query.andWhere('transaction.status = :status', { status: filters.status });
+      query.andWhere('transaction.status = :status', {
+        status: filters.status,
+      });
     }
 
     query.orderBy('transaction.created_at', 'DESC');
@@ -456,7 +478,10 @@ export class TransactionService {
     });
 
     if (existingTransaction) {
-      throw new DuplicateTransactionException(idempotencyKey, existingTransaction.id);
+      throw new DuplicateTransactionException(
+        idempotencyKey,
+        existingTransaction.id,
+      );
     }
   }
 
@@ -511,9 +536,15 @@ export class TransactionService {
     manager: EntityManager,
   ): Promise<[Account, Account]> {
     const [firstId, secondId] = [accountId1, accountId2].sort();
-    
-    const firstAccount = await this.accountService.findAndLock(firstId, manager);
-    const secondAccount = await this.accountService.findAndLock(secondId, manager);
+
+    const firstAccount = await this.accountService.findAndLock(
+      firstId,
+      manager,
+    );
+    const secondAccount = await this.accountService.findAndLock(
+      secondId,
+      manager,
+    );
 
     // Return in original order
     return accountId1 === firstId
@@ -563,4 +594,3 @@ export class TransactionService {
     };
   }
 }
-

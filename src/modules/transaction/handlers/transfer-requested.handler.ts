@@ -8,16 +8,16 @@ import { CompensateTransactionCommand } from '../commands/compensate-transaction
 
 /**
  * Event handler for TransferRequestedEvent (Saga Coordinator).
- * 
+ *
  * This implements the Transaction Saga pattern for transfers:
  * 1. Listen for TransferRequested
  * 2. Update SOURCE account balance (DEBIT)
  * 3. Update DESTINATION account balance (CREDIT)
  * 4. On success: Complete transaction (via CompleteTransferCommand)
  * 5. On failure: Fail transaction (via FailTransactionCommand)
- * 
+ *
  * This ensures consistency across Transaction and TWO Account aggregates.
- * 
+ *
  * Note: This is a choreography-based saga. In production, you might want
  * to use orchestration-based saga for better compensation handling.
  */
@@ -28,7 +28,9 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
   constructor(private commandBus: CommandBus) {}
 
   async handle(event: TransferRequestedEvent): Promise<void> {
-    this.logger.log(`📨 SAGA: Handling TransferRequestedEvent: ${event.aggregateId}`);
+    this.logger.log(
+      `📨 SAGA: Handling TransferRequestedEvent: ${event.aggregateId}`,
+    );
     this.logger.log(`   Source Account: ${event.sourceAccountId}`);
     this.logger.log(`   Destination Account: ${event.destinationAccountId}`);
     this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
@@ -38,7 +40,7 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
     try {
       // Step 1: DEBIT the source account
       this.logger.log(`   ⚙️  Step 1: Debiting source account...`);
-      
+
       const debitCommand = new UpdateBalanceCommand(
         event.sourceAccountId,
         event.amount,
@@ -54,7 +56,7 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
 
       // Step 2: CREDIT the destination account
       this.logger.log(`   ⚙️  Step 2: Crediting destination account...`);
-      
+
       const creditCommand = new UpdateBalanceCommand(
         event.destinationAccountId,
         event.amount,
@@ -65,17 +67,20 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
         event.metadata?.actorId,
       );
 
-      const destinationNewBalance = await this.commandBus.execute(creditCommand);
-      this.logger.log(`   ✅ Destination account credited: ${destinationNewBalance}`);
+      const destinationNewBalance =
+        await this.commandBus.execute(creditCommand);
+      this.logger.log(
+        `   ✅ Destination account credited: ${destinationNewBalance}`,
+      );
 
       // Step 3: Complete the transaction
       this.logger.log(`   ⚙️  Step 3: Completing transaction...`);
-      
+
       // At this point, sourceNewBalance is guaranteed to be defined
       if (!sourceNewBalance) {
         throw new Error('Source balance update failed');
       }
-      
+
       const completeCommand = new CompleteTransferCommand(
         event.aggregateId,
         sourceNewBalance,
@@ -91,11 +96,13 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
     } catch (error) {
       // Step 4 (on failure): Compensate and fail the transaction
       this.logger.error(`   ❌ SAGA: Transfer failed: ${error.message}`);
-      
+
       // Check if we need compensation (source was debited)
       if (sourceNewBalance) {
-        this.logger.log(`   ⚙️  Step 4a: Compensating - crediting source account back...`);
-        
+        this.logger.log(
+          `   ⚙️  Step 4a: Compensating - crediting source account back...`,
+        );
+
         try {
           // COMPENSATION: Credit back the source account
           const compensateUpdateCommand = new UpdateBalanceCommand(
@@ -120,7 +127,8 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
                 accountId: event.sourceAccountId,
                 action: 'CREDIT',
                 amount: event.amount,
-                reason: 'Rollback of source debit due to destination credit failure',
+                reason:
+                  'Rollback of source debit due to destination credit failure',
               },
             ],
             event.correlationId,
@@ -129,7 +137,9 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
 
           await this.commandBus.execute(compensateCommand);
           this.logger.log(`   ✅ Transaction marked as COMPENSATED`);
-          this.logger.log(`✅ SAGA: Transfer compensated successfully (rolled back)`);
+          this.logger.log(
+            `✅ SAGA: Transfer compensated successfully (rolled back)`,
+          );
         } catch (compensationError) {
           this.logger.error(
             `   ❌ SAGA: CRITICAL - Compensation failed! Manual intervention needed.`,
@@ -146,12 +156,17 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
             );
             await this.commandBus.execute(failCommand);
           } catch (failError) {
-            this.logger.error(`   ❌ SAGA: Failed to mark as failed`, failError);
+            this.logger.error(
+              `   ❌ SAGA: Failed to mark as failed`,
+              failError,
+            );
           }
         }
       } else {
         // No compensation needed, just fail
-        this.logger.log(`   ⚙️  Step 4b: No compensation needed (source not yet debited)`);
+        this.logger.log(
+          `   ⚙️  Step 4b: No compensation needed (source not yet debited)`,
+        );
         try {
           const failCommand = new FailTransactionCommand(
             event.aggregateId,
@@ -164,10 +179,12 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
           await this.commandBus.execute(failCommand);
           this.logger.log(`   ✅ Transaction marked as failed`);
         } catch (failError) {
-          this.logger.error(`   ❌ SAGA: Failed to mark transaction as failed`, failError);
+          this.logger.error(
+            `   ❌ SAGA: Failed to mark transaction as failed`,
+            failError,
+          );
         }
       }
     }
   }
 }
-

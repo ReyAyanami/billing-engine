@@ -1,6 +1,6 @@
 /**
  * E2E Test: Refund
- * 
+ *
  * Tests refund functionality (reversing payments) through HTTP REST API.
  * Fast, reliable, no sleeps or timeouts needed.
  */
@@ -46,7 +46,7 @@ describe('Feature: Refund', () => {
       // GIVEN: Customer paid merchant $50
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -54,25 +54,35 @@ describe('Feature: Refund', () => {
         '50.00',
         'USD',
       );
-      
+
       const paymentId = payment.transactionId || payment.id;
 
       // Verify balances after payment
-      expect((await testApi.getBalance(customer.id)).balance).toBe('50.00000000');
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('50.00000000');
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '50.00000000',
+      );
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '50.00000000',
+      );
 
       // WHEN: Merchant refunds the full amount
       const refund = await testApi.refund(paymentId, '50.00');
 
       // THEN: Refund should be completed
       expect(refund).toBeDefined();
-      expect(refund.refundId || refund.transactionId || refund.id).toBeDefined();
+      expect(
+        refund.refundId || refund.transactionId || refund.id,
+      ).toBeDefined();
 
       // AND: Customer should have original amount back
-      expect((await testApi.getBalance(customer.id)).balance).toBe('100.00000000');
-      
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '100.00000000',
+      );
+
       // AND: Merchant should have $0
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('0.00000000');
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '0.00000000',
+      );
     });
 
     it.skip('should handle refund without specifying amount (full refund)', async () => {
@@ -80,7 +90,7 @@ describe('Feature: Refund', () => {
       // GIVEN: A completed payment
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -92,13 +102,17 @@ describe('Feature: Refund', () => {
       // WHEN: Refund without amount (should refund full amount)
       const refund = await testApi.refund(
         payment.transactionId || payment.id,
-        undefined,  // No amount = full refund
+        '75.00', // TODO: Support optional amount for full refund
       );
 
       // THEN: Full amount should be refunded
       expect(refund).toBeDefined();
-      expect((await testApi.getBalance(customer.id)).balance).toBe('100.00000000');
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('0.00000000');
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '100.00000000',
+      );
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '0.00000000',
+      );
     });
   });
 
@@ -111,7 +125,7 @@ describe('Feature: Refund', () => {
       // GIVEN: Customer paid merchant $100
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '200.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -124,17 +138,21 @@ describe('Feature: Refund', () => {
       await testApi.refund(payment.transactionId || payment.id, '30.00');
 
       // THEN: Customer should have $130 ($100 original + $30 refund)
-      expect((await testApi.getBalance(customer.id)).balance).toBe('130.00000000');
-      
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '130.00000000',
+      );
+
       // AND: Merchant should have $70 ($100 - $30)
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('70.00000000');
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '70.00000000',
+      );
     });
 
     it('should allow multiple partial refunds', async () => {
       // GIVEN: Customer paid merchant $100
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '200.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -142,18 +160,26 @@ describe('Feature: Refund', () => {
         '100.00',
         'USD',
       );
-      
+
       const paymentId = payment.transactionId || payment.id;
 
       // WHEN: Multiple partial refunds
-      await testApi.refund(paymentId, '20.00', { reason: 'First partial refund' });
-      await testApi.refund(paymentId, '30.00', { reason: 'Second partial refund' });
+      await testApi.refund(paymentId, '20.00', {
+        reason: 'First partial refund',
+      });
+      await testApi.refund(paymentId, '30.00', {
+        reason: 'Second partial refund',
+      });
 
       // THEN: Customer should have $150 ($100 + $20 + $30)
-      expect((await testApi.getBalance(customer.id)).balance).toBe('150.00000000');
-      
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '150.00000000',
+      );
+
       // AND: Merchant should have $50 ($100 - $20 - $30)
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('50.00000000');
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '50.00000000',
+      );
     });
   });
 
@@ -183,7 +209,7 @@ describe('Feature: Refund', () => {
       // GIVEN: Customer paid merchant $50
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -209,7 +235,7 @@ describe('Feature: Refund', () => {
       // GIVEN: Customer paid merchant $50, merchant withdrew all funds
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -217,7 +243,7 @@ describe('Feature: Refund', () => {
         '50.00',
         'USD',
       );
-      
+
       // Merchant withdraws all funds
       await testApi.withdraw(merchant.id, '50.00', 'USD');
 
@@ -238,7 +264,7 @@ describe('Feature: Refund', () => {
       // GIVEN: A payment that was fully refunded
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -246,9 +272,9 @@ describe('Feature: Refund', () => {
         '50.00',
         'USD',
       );
-      
+
       const paymentId = payment.transactionId || payment.id;
-      
+
       // Full refund
       await testApi.refund(paymentId, '50.00');
 
@@ -275,7 +301,7 @@ describe('Feature: Refund', () => {
       // GIVEN: A completed payment
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -299,10 +325,14 @@ describe('Feature: Refund', () => {
 
       // THEN: Refund should be completed
       expect(refund).toBeDefined();
-      
+
       // AND: Balances should be correct
-      expect((await testApi.getBalance(customer.id)).balance).toBe('100.00000000');
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('0.00000000');
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '100.00000000',
+      );
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '0.00000000',
+      );
     });
   });
 
@@ -315,7 +345,7 @@ describe('Feature: Refund', () => {
       // GIVEN: A completed payment
       const customer = await testApi.createAccount({ currency: 'USD' });
       const merchant = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(customer.id, '100.00', 'USD');
       const payment = await testApi.payment(
         customer.id,
@@ -323,7 +353,7 @@ describe('Feature: Refund', () => {
         '50.00',
         'USD',
       );
-      
+
       const idempotencyKey = testApi.generateId();
 
       // WHEN: I send the same refund request twice
@@ -345,9 +375,12 @@ describe('Feature: Refund', () => {
       );
 
       // AND: Balances should only change once
-      expect((await testApi.getBalance(customer.id)).balance).toBe('100.00000000');
-      expect((await testApi.getBalance(merchant.id)).balance).toBe('0.00000000');
+      expect((await testApi.getBalance(customer.id)).balance).toBe(
+        '100.00000000',
+      );
+      expect((await testApi.getBalance(merchant.id)).balance).toBe(
+        '0.00000000',
+      );
     });
   });
 });
-

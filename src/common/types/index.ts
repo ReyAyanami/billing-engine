@@ -36,4 +36,3 @@ export interface TransferResult {
   createdAt: Date;
   completedAt?: Date | null;
 }
-

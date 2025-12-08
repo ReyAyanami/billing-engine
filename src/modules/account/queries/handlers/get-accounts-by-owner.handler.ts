@@ -9,9 +9,7 @@ import { AccountProjectionService } from '../../projections/account-projection.s
  * Returns all accounts for a specific owner from the read model projection.
  */
 @QueryHandler(GetAccountsByOwnerQuery)
-export class GetAccountsByOwnerHandler
-  implements IQueryHandler<GetAccountsByOwnerQuery>
-{
+export class GetAccountsByOwnerHandler implements IQueryHandler<GetAccountsByOwnerQuery> {
   private readonly logger = new Logger(GetAccountsByOwnerHandler.name);
 
   constructor(private readonly projectionService: AccountProjectionService) {}
@@ -19,10 +17,13 @@ export class GetAccountsByOwnerHandler
   async execute(query: GetAccountsByOwnerQuery): Promise<AccountProjection[]> {
     this.logger.log(`🔍 Querying accounts for owner: ${query.ownerId}`);
 
-    const projections = await this.projectionService.findByOwnerId(query.ownerId);
+    const projections = await this.projectionService.findByOwnerId(
+      query.ownerId,
+    );
 
-    this.logger.log(`✅ Found ${projections.length} account(s) for owner: ${query.ownerId}`);
+    this.logger.log(
+      `✅ Found ${projections.length} account(s) for owner: ${query.ownerId}`,
+    );
     return projections;
   }
 }
-

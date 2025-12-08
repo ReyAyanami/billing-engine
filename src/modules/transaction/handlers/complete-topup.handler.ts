@@ -22,8 +22,11 @@ export class CompleteTopupHandler implements ICommandHandler<CompleteTopupComman
 
     try {
       // Load transaction aggregate from event history
-      const events = await this.eventStore.getEvents('Transaction', command.transactionId);
-      
+      const events = await this.eventStore.getEvents(
+        'Transaction',
+        command.transactionId,
+      );
+
       if (events.length === 0) {
         throw new Error(`Transaction not found: ${command.transactionId}`);
       }
@@ -43,7 +46,11 @@ export class CompleteTopupHandler implements ICommandHandler<CompleteTopupComman
 
       // Get and persist uncommitted events
       const newEvents = transaction.getUncommittedEvents();
-      await this.eventStore.append('Transaction', command.transactionId, newEvents);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        newEvents,
+      );
 
       // Publish events
       newEvents.forEach((event) => {
@@ -52,11 +59,15 @@ export class CompleteTopupHandler implements ICommandHandler<CompleteTopupComman
 
       transaction.commit();
 
-      this.logger.log(`✅ Topup transaction completed: ${command.transactionId}`);
+      this.logger.log(
+        `✅ Topup transaction completed: ${command.transactionId}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ Failed to complete topup ${command.transactionId}`, error);
+      this.logger.error(
+        `❌ Failed to complete topup ${command.transactionId}`,
+        error,
+      );
       throw error;
     }
   }
 }
-

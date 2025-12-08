@@ -3,7 +3,11 @@ import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TopupRequestedEvent } from '../events/topup-requested.event';
-import { Transaction, TransactionType, TransactionStatus } from '../transaction.entity';
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from '../transaction.entity';
 
 /**
  * Event handler for TopupRequestedEvent.
@@ -28,7 +32,9 @@ export class TopupRequestedEntityHandler implements IEventHandler<TopupRequested
       });
 
       if (existing) {
-        this.logger.log(`Transaction entity already exists: ${event.aggregateId}`);
+        this.logger.log(
+          `Transaction entity already exists: ${event.aggregateId}`,
+        );
         return;
       }
 
@@ -62,4 +68,3 @@ export class TopupRequestedEntityHandler implements IEventHandler<TopupRequested
     }
   }
 }
-

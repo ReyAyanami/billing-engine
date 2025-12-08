@@ -8,14 +8,14 @@ import { CompensateTransactionCommand } from '../commands/compensate-transaction
 
 /**
  * Event handler for RefundRequestedEvent (Saga Coordinator).
- * 
+ *
  * This implements the Transaction Saga pattern for refunds:
  * 1. Listen for RefundRequested
  * 2. Update MERCHANT account balance (DEBIT)
  * 3. Update CUSTOMER account balance (CREDIT)
  * 4. On success: Complete refund (via CompleteRefundCommand)
  * 5. On failure: Compensate + Fail refund
- * 
+ *
  * Refund reverses a payment:
  * - Payment: Customer → Merchant (C2B)
  * - Refund: Merchant → Customer (B2C)
@@ -27,12 +27,16 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
   constructor(private commandBus: CommandBus) {}
 
   async handle(event: RefundRequestedEvent): Promise<void> {
-    this.logger.log(`📨 SAGA: Handling RefundRequestedEvent: ${event.aggregateId}`);
+    this.logger.log(
+      `📨 SAGA: Handling RefundRequestedEvent: ${event.aggregateId}`,
+    );
     this.logger.log(`   Original Payment: ${event.originalPaymentId}`);
     this.logger.log(`   Merchant: ${event.merchantAccountId}`);
     this.logger.log(`   Customer: ${event.customerAccountId}`);
-    this.logger.log(`   Refund Amount: ${event.refundAmount} ${event.currency}`);
-    
+    this.logger.log(
+      `   Refund Amount: ${event.refundAmount} ${event.currency}`,
+    );
+
     if (event.refundMetadata?.reason) {
       this.logger.log(`   Reason: ${event.refundMetadata.reason}`);
     }
@@ -42,7 +46,7 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
     try {
       // Step 1: DEBIT the merchant account
       this.logger.log(`   ⚙️  Step 1: Debiting merchant account...`);
-      
+
       const debitCommand = new UpdateBalanceCommand(
         event.merchantAccountId,
         event.refundAmount,
@@ -58,7 +62,7 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
 
       // Step 2: CREDIT the customer account
       this.logger.log(`   ⚙️  Step 2: Crediting customer account...`);
-      
+
       const creditCommand = new UpdateBalanceCommand(
         event.customerAccountId,
         event.refundAmount,
@@ -74,12 +78,12 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
 
       // Step 3: Complete the refund
       this.logger.log(`   ⚙️  Step 3: Completing refund...`);
-      
+
       // At this point, merchantNewBalance is guaranteed to be defined
       if (!merchantNewBalance) {
         throw new Error('Merchant balance update failed');
       }
-      
+
       const completeCommand = new CompleteRefundCommand(
         event.aggregateId,
         merchantNewBalance,
@@ -95,11 +99,13 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
     } catch (error) {
       // Step 4 (on failure): Compensate and fail the refund
       this.logger.error(`   ❌ SAGA: Refund failed: ${error.message}`);
-      
+
       // Check if we need compensation (merchant was debited)
       if (merchantNewBalance) {
-        this.logger.log(`   ⚙️  Step 4a: Compensating - crediting merchant account back...`);
-        
+        this.logger.log(
+          `   ⚙️  Step 4a: Compensating - crediting merchant account back...`,
+        );
+
         try {
           // COMPENSATION: Credit back the merchant account
           const compensateUpdateCommand = new UpdateBalanceCommand(
@@ -124,7 +130,8 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
                 accountId: event.merchantAccountId,
                 action: 'CREDIT',
                 amount: event.refundAmount,
-                reason: 'Rollback of merchant debit due to customer credit failure',
+                reason:
+                  'Rollback of merchant debit due to customer credit failure',
               },
             ],
             event.correlationId,
@@ -133,7 +140,9 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
 
           await this.commandBus.execute(compensateCommand);
           this.logger.log(`   ✅ Refund marked as COMPENSATED`);
-          this.logger.log(`✅ SAGA: Refund compensated successfully (rolled back)`);
+          this.logger.log(
+            `✅ SAGA: Refund compensated successfully (rolled back)`,
+          );
         } catch (compensationError) {
           this.logger.error(
             `   ❌ SAGA: CRITICAL - Compensation failed! Manual intervention needed.`,
@@ -150,12 +159,17 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
             );
             await this.commandBus.execute(failCommand);
           } catch (failError) {
-            this.logger.error(`   ❌ SAGA: Failed to mark as failed`, failError);
+            this.logger.error(
+              `   ❌ SAGA: Failed to mark as failed`,
+              failError,
+            );
           }
         }
       } else {
         // No compensation needed, just fail
-        this.logger.log(`   ⚙️  Step 4b: No compensation needed (merchant not yet debited)`);
+        this.logger.log(
+          `   ⚙️  Step 4b: No compensation needed (merchant not yet debited)`,
+        );
         try {
           const failCommand = new FailTransactionCommand(
             event.aggregateId,
@@ -168,10 +182,12 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
           await this.commandBus.execute(failCommand);
           this.logger.log(`   ✅ Refund marked as failed`);
         } catch (failError) {
-          this.logger.error(`   ❌ SAGA: Failed to mark refund as failed`, failError);
+          this.logger.error(
+            `   ❌ SAGA: Failed to mark refund as failed`,
+            failError,
+          );
         }
       }
     }
   }
 }
-

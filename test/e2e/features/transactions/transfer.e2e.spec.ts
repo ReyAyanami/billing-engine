@@ -1,6 +1,6 @@
 /**
  * E2E Test: Account Transfer
- * 
+ *
  * Tests transfer functionality through HTTP REST API.
  * Fast, reliable, no sleeps or timeouts needed.
  */
@@ -46,7 +46,7 @@ describe('Feature: Account Transfer', () => {
       // GIVEN: Two accounts, Alice with $100 and Bob with $0
       const alice = await testApi.createAccount({ currency: 'USD' });
       const bob = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(alice.id, '100.00', 'USD');
 
       // WHEN: Alice transfers $30 to Bob
@@ -59,7 +59,11 @@ describe('Feature: Account Transfer', () => {
 
       // THEN: Transaction should be completed
       expect(transaction).toBeDefined();
-      expect(transaction.debitTransactionId || transaction.transactionId || transaction.id).toBeDefined();
+      expect(
+        transaction.debitTransactionId ||
+          transaction.transactionId ||
+          transaction.id,
+      ).toBeDefined();
 
       // AND: Alice should have $70
       const aliceBalance = await testApi.getBalance(alice.id);
@@ -75,7 +79,7 @@ describe('Feature: Account Transfer', () => {
       const alice = await testApi.createAccount({ currency: 'USD' });
       const bob = await testApi.createAccount({ currency: 'USD' });
       const charlie = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(alice.id, '100.00', 'USD');
 
       // WHEN: Alice transfers to Bob, Bob transfers to Charlie
@@ -85,7 +89,9 @@ describe('Feature: Account Transfer', () => {
       // THEN: Balances should be correct
       expect((await testApi.getBalance(alice.id)).balance).toBe('50.00000000');
       expect((await testApi.getBalance(bob.id)).balance).toBe('30.00000000');
-      expect((await testApi.getBalance(charlie.id)).balance).toBe('20.00000000');
+      expect((await testApi.getBalance(charlie.id)).balance).toBe(
+        '20.00000000',
+      );
     });
 
     it('should support different currencies', async () => {
@@ -94,7 +100,7 @@ describe('Feature: Account Transfer', () => {
       const bobUSD = await testApi.createAccount({ currency: 'USD' });
       const aliceEUR = await testApi.createAccount({ currency: 'EUR' });
       const bobEUR = await testApi.createAccount({ currency: 'EUR' });
-      
+
       await testApi.topup(aliceUSD.id, '100.00', 'USD');
       await testApi.topup(aliceEUR.id, '85.50', 'EUR');
 
@@ -103,9 +109,13 @@ describe('Feature: Account Transfer', () => {
       await testApi.transfer(aliceEUR.id, bobEUR.id, '10.50', 'EUR');
 
       // THEN: Each should have correct balances
-      expect((await testApi.getBalance(aliceUSD.id)).balance).toBe('75.00000000');
+      expect((await testApi.getBalance(aliceUSD.id)).balance).toBe(
+        '75.00000000',
+      );
       expect((await testApi.getBalance(bobUSD.id)).balance).toBe('25.00000000');
-      expect((await testApi.getBalance(aliceEUR.id)).balance).toBe('75.00000000');
+      expect((await testApi.getBalance(aliceEUR.id)).balance).toBe(
+        '75.00000000',
+      );
       expect((await testApi.getBalance(bobEUR.id)).balance).toBe('10.50000000');
     });
 
@@ -113,7 +123,7 @@ describe('Feature: Account Transfer', () => {
       // GIVEN: Alice with $50, Bob with $0
       const alice = await testApi.createAccount({ currency: 'USD' });
       const bob = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(alice.id, '50.00', 'USD');
 
       // WHEN: Alice transfers all funds to Bob
@@ -175,7 +185,7 @@ describe('Feature: Account Transfer', () => {
       // GIVEN: USD and EUR accounts
       const aliceUSD = await testApi.createAccount({ currency: 'USD' });
       const bobEUR = await testApi.createAccount({ currency: 'EUR' });
-      
+
       await testApi.topup(aliceUSD.id, '100.00', 'USD');
 
       // WHEN/THEN: Transfer between different currencies should fail
@@ -197,7 +207,7 @@ describe('Feature: Account Transfer', () => {
       // GIVEN: Alice with $50
       const alice = await testApi.createAccount({ currency: 'USD' });
       const bob = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(alice.id, '50.00', 'USD');
 
       // WHEN/THEN: Try to transfer $100 should fail
@@ -265,7 +275,7 @@ describe('Feature: Account Transfer', () => {
       // GIVEN: Two accounts, Alice with $100
       const alice = await testApi.createAccount({ currency: 'USD' });
       const bob = await testApi.createAccount({ currency: 'USD' });
-      
+
       await testApi.topup(alice.id, '100.00', 'USD');
       const idempotencyKey = testApi.generateId();
 
@@ -295,4 +305,3 @@ describe('Feature: Account Transfer', () => {
     });
   });
 });
-

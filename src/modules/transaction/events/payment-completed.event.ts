@@ -40,4 +40,3 @@ export class PaymentCompletedEvent extends DomainEvent {
     };
   }
 }
-

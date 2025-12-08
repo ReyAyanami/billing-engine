@@ -24,7 +24,7 @@ async function bootstrap() {
     .setTitle('Billing Engine API')
     .setDescription(
       'A production-grade billing system API for managing accounts, transactions, and payments. ' +
-      'Supports multiple currencies, atomic transfers, refunds, and complete audit trails.',
+        'Supports multiple currencies, atomic transfers, refunds, and complete audit trails.',
     )
     .setVersion('1.0')
     .addTag('accounts', 'Account management operations')
@@ -47,6 +47,8 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(`Billing Engine API running on port ${port}`);
-  console.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
+  console.log(
+    `Swagger documentation available at http://localhost:${port}/api/docs`,
+  );
 }
 bootstrap();

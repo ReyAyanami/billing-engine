@@ -37,4 +37,3 @@ export class TopupCompletedEvent extends DomainEvent {
     };
   }
 }
-

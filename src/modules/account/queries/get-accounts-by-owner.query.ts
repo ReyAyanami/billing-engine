@@ -12,4 +12,3 @@ export class GetAccountsByOwnerQuery extends Query {
     super(correlationId);
   }
 }
-

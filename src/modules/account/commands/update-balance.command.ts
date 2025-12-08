@@ -17,4 +17,3 @@ export class UpdateBalanceCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

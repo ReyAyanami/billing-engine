@@ -3,7 +3,7 @@ import { DomainEvent } from '../../../cqrs/base/domain-event';
 /**
  * Domain event emitted when a transaction is compensated (rolled back).
  * This happens when a saga fails partway through and needs to undo changes.
- * 
+ *
  * Example: Transfer debited source but failed to credit destination.
  * Compensation: Credit the source back to original balance.
  */
@@ -47,4 +47,3 @@ export class TransactionCompensatedEvent extends DomainEvent {
     };
   }
 }
-

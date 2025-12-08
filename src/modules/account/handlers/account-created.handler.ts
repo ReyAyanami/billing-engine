@@ -14,7 +14,9 @@ export class AccountCreatedHandler implements IEventHandler<AccountCreatedEvent>
   constructor(private readonly projectionService: AccountProjectionService) {}
 
   async handle(event: AccountCreatedEvent): Promise<void> {
-    this.logger.log(`📨 Handling AccountCreatedEvent for account: ${event.aggregateId}`);
+    this.logger.log(
+      `📨 Handling AccountCreatedEvent for account: ${event.aggregateId}`,
+    );
     this.logger.log(`   Owner: ${event.ownerId} (${event.ownerType})`);
     this.logger.log(`   Type: ${event.accountType}`);
     this.logger.log(`   Currency: ${event.currency}`);
@@ -35,4 +37,3 @@ export class AccountCreatedHandler implements IEventHandler<AccountCreatedEvent>
     }
   }
 }
-

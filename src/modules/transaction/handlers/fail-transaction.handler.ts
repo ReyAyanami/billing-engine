@@ -22,8 +22,11 @@ export class FailTransactionHandler implements ICommandHandler<FailTransactionCo
 
     try {
       // Load transaction aggregate from event history
-      const events = await this.eventStore.getEvents('Transaction', command.transactionId);
-      
+      const events = await this.eventStore.getEvents(
+        'Transaction',
+        command.transactionId,
+      );
+
       if (events.length === 0) {
         throw new Error(`Transaction not found: ${command.transactionId}`);
       }
@@ -44,7 +47,11 @@ export class FailTransactionHandler implements ICommandHandler<FailTransactionCo
 
       // Get and persist uncommitted events
       const newEvents = transaction.getUncommittedEvents();
-      await this.eventStore.append('Transaction', command.transactionId, newEvents);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        newEvents,
+      );
 
       // Publish events
       newEvents.forEach((event) => {
@@ -53,11 +60,15 @@ export class FailTransactionHandler implements ICommandHandler<FailTransactionCo
 
       transaction.commit();
 
-      this.logger.log(`✅ Transaction failed: ${command.transactionId} (${command.reason})`);
+      this.logger.log(
+        `✅ Transaction failed: ${command.transactionId} (${command.reason})`,
+      );
     } catch (error) {
-      this.logger.error(`❌ Failed to mark transaction as failed ${command.transactionId}`, error);
+      this.logger.error(
+        `❌ Failed to mark transaction as failed ${command.transactionId}`,
+        error,
+      );
       throw error;
     }
   }
 }
-

@@ -7,13 +7,13 @@ import { FailTransactionCommand } from '../commands/fail-transaction.command';
 
 /**
  * Event handler for WithdrawalRequestedEvent (Saga Coordinator).
- * 
+ *
  * This implements the Transaction Saga pattern for withdrawals:
  * 1. Listen for WithdrawalRequested
  * 2. Update account balance (via UpdateBalanceCommand - DEBIT)
  * 3. On success: Complete transaction (via CompleteWithdrawalCommand)
  * 4. On failure: Fail transaction (via FailTransactionCommand)
- * 
+ *
  * This ensures consistency across Transaction and Account aggregates.
  */
 @EventsHandler(WithdrawalRequestedEvent)
@@ -23,7 +23,9 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
   constructor(private commandBus: CommandBus) {}
 
   async handle(event: WithdrawalRequestedEvent): Promise<void> {
-    this.logger.log(`📨 SAGA: Handling WithdrawalRequestedEvent: ${event.aggregateId}`);
+    this.logger.log(
+      `📨 SAGA: Handling WithdrawalRequestedEvent: ${event.aggregateId}`,
+    );
     this.logger.log(`   Account: ${event.accountId}`);
     this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
     this.logger.log(`   Destination: ${event.destinationAccountId}`);
@@ -31,7 +33,7 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
     try {
       // Step 1: Update account balance (DEBIT)
       this.logger.log(`   ⚙️  Step 1: Debiting account balance...`);
-      
+
       const updateBalanceCommand = new UpdateBalanceCommand(
         event.accountId,
         event.amount,
@@ -47,7 +49,7 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
 
       // Step 2: Complete the transaction
       this.logger.log(`   ⚙️  Step 2: Completing transaction...`);
-      
+
       const completeCommand = new CompleteWithdrawalCommand(
         event.aggregateId,
         newBalance,
@@ -76,10 +78,12 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
         await this.commandBus.execute(failCommand);
         this.logger.log(`   ✅ Transaction marked as failed`);
       } catch (failError) {
-        this.logger.error(`   ❌ SAGA: Failed to mark transaction as failed`, failError);
+        this.logger.error(
+          `   ❌ SAGA: Failed to mark transaction as failed`,
+          failError,
+        );
         // This is critical - we should alert/retry
       }
     }
   }
 }
-

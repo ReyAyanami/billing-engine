@@ -24,7 +24,8 @@ export class CreateRefundDto {
   originalPaymentId: string;
 
   @ApiProperty({
-    description: 'Refund amount (must be > 0 and ≤ remaining refundable amount)',
+    description:
+      'Refund amount (must be > 0 and ≤ remaining refundable amount)',
     example: '99.99',
   })
   @IsString()
@@ -66,4 +67,3 @@ export class CreateRefundDto {
     [key: string]: any;
   };
 }
-

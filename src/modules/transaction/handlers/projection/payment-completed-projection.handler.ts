@@ -9,9 +9,7 @@ import { TransactionStatus } from '../../transaction.entity';
  * Marks the transaction as COMPLETED and records final balances.
  */
 @EventsHandler(PaymentCompletedEvent)
-export class PaymentCompletedProjectionHandler
-  implements IEventHandler<PaymentCompletedEvent>
-{
+export class PaymentCompletedProjectionHandler implements IEventHandler<PaymentCompletedEvent> {
   private readonly logger = new Logger(PaymentCompletedProjectionHandler.name);
 
   constructor(
@@ -19,9 +17,7 @@ export class PaymentCompletedProjectionHandler
   ) {}
 
   async handle(event: PaymentCompletedEvent): Promise<void> {
-    this.logger.log(
-      `📊 [Projection] PaymentCompleted: ${event.aggregateId}`,
-    );
+    this.logger.log(`📊 [Projection] PaymentCompleted: ${event.aggregateId}`);
     this.logger.log(`   Customer new balance: ${event.customerNewBalance}`);
     this.logger.log(`   Merchant new balance: ${event.merchantNewBalance}`);
 
@@ -47,4 +43,3 @@ export class PaymentCompletedProjectionHandler
     }
   }
 }
-

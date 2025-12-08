@@ -22,8 +22,11 @@ export class UpdateBalanceHandler implements ICommandHandler<UpdateBalanceComman
 
     try {
       // Load account aggregate from event history
-      const events = await this.eventStore.getEvents('Account', command.accountId);
-      
+      const events = await this.eventStore.getEvents(
+        'Account',
+        command.accountId,
+      );
+
       if (events.length === 0) {
         throw new Error(`Account not found: ${command.accountId}`);
       }
@@ -47,7 +50,9 @@ export class UpdateBalanceHandler implements ICommandHandler<UpdateBalanceComman
 
       // Get uncommitted events
       const newEvents = account.getUncommittedEvents();
-      this.logger.log(`Generated ${newEvents.length} event(s) for account ${command.accountId}`);
+      this.logger.log(
+        `Generated ${newEvents.length} event(s) for account ${command.accountId}`,
+      );
 
       // Save events to event store (Kafka)
       await this.eventStore.append('Account', command.accountId, newEvents);
@@ -62,13 +67,17 @@ export class UpdateBalanceHandler implements ICommandHandler<UpdateBalanceComman
 
       // Return the new balance
       const newBalance = account.getBalance().toString();
-      this.logger.log(`✅ Balance updated for account: ${command.accountId} (${newBalance})`);
+      this.logger.log(
+        `✅ Balance updated for account: ${command.accountId} (${newBalance})`,
+      );
 
       return newBalance;
     } catch (error) {
-      this.logger.error(`❌ Failed to update balance for account ${command.accountId}`, error);
+      this.logger.error(
+        `❌ Failed to update balance for account ${command.accountId}`,
+        error,
+      );
       throw error;
     }
   }
 }
-

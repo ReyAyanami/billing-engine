@@ -17,15 +17,20 @@ export class GetTransactionHandler implements IQueryHandler<GetTransactionQuery>
   ) {}
 
   async execute(query: GetTransactionQuery): Promise<TransactionProjection> {
-    this.logger.log(`Executing GetTransactionQuery for: ${query.transactionId}`);
+    this.logger.log(
+      `Executing GetTransactionQuery for: ${query.transactionId}`,
+    );
 
-    const projection = await this.projectionService.findById(query.transactionId);
+    const projection = await this.projectionService.findById(
+      query.transactionId,
+    );
 
     if (!projection) {
-      throw new NotFoundException(`Transaction not found: ${query.transactionId}`);
+      throw new NotFoundException(
+        `Transaction not found: ${query.transactionId}`,
+      );
     }
 
     return projection;
   }
 }
-

@@ -1,6 +1,6 @@
 /**
  * E2E Test: Account Top-up
- * 
+ *
  * Tests top-up functionality through HTTP REST API.
  * Fast, reliable, no sleeps or timeouts needed.
  */
@@ -30,7 +30,7 @@ describe('Feature: Account Top-up', () => {
 
   beforeEach(async () => {
     await testSetup.beforeEach();
-    testApi.reset();  // Clear cached external accounts
+    testApi.reset(); // Clear cached external accounts
   });
 
   afterEach(async () => {
@@ -47,7 +47,7 @@ describe('Feature: Account Top-up', () => {
       const account = await testApi.createAccount({
         currency: 'USD',
       });
-      expect(account.balance).toBe('0.00000000');  // 8 decimal precision
+      expect(account.balance).toBe('0.00000000'); // 8 decimal precision
 
       // WHEN: I top-up $100
       const transaction = await testApi.topup(account.id, '100.00', 'USD');
@@ -85,8 +85,12 @@ describe('Feature: Account Top-up', () => {
       await testApi.topup(eurAccount.id, '85.50', 'EUR');
 
       // THEN: Each account should have correct balance
-      expect((await testApi.getBalance(usdAccount.id)).balance).toBe('100.00000000');
-      expect((await testApi.getBalance(eurAccount.id)).balance).toBe('85.50000000');
+      expect((await testApi.getBalance(usdAccount.id)).balance).toBe(
+        '100.00000000',
+      );
+      expect((await testApi.getBalance(eurAccount.id)).balance).toBe(
+        '85.50000000',
+      );
     });
   });
 
@@ -169,4 +173,3 @@ describe('Feature: Account Top-up', () => {
     });
   });
 });
-

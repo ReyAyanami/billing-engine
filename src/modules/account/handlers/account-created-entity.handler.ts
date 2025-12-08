@@ -8,7 +8,7 @@ import { Account } from '../account.entity';
 /**
  * Event handler for AccountCreatedEvent.
  * Creates the Account entity in the accounts table (write model).
- * 
+ *
  * This is separate from the projection handler to keep concerns separated:
  * - This handler: Write model (accounts table for CRUD operations)
  * - AccountCreatedHandler: Read model (account_projections for queries)
@@ -62,4 +62,3 @@ export class AccountCreatedEntityHandler implements IEventHandler<AccountCreated
     }
   }
 }
-

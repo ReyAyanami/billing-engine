@@ -7,9 +7,7 @@ import { TransactionProjectionService } from '../../projections/transaction-proj
  * Event handler to update transaction projection when transfer completes.
  */
 @EventsHandler(TransferCompletedEvent)
-export class TransferCompletedProjectionHandler
-  implements IEventHandler<TransferCompletedEvent>
-{
+export class TransferCompletedProjectionHandler implements IEventHandler<TransferCompletedEvent> {
   private readonly logger = new Logger(TransferCompletedProjectionHandler.name);
 
   constructor(
@@ -30,10 +28,14 @@ export class TransferCompletedProjectionHandler
         event.timestamp,
       );
 
-      this.logger.log(`✅ [Projection] Transaction projection updated: ${event.aggregateId}`);
+      this.logger.log(
+        `✅ [Projection] Transaction projection updated: ${event.aggregateId}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to update transaction projection`, error);
+      this.logger.error(
+        `❌ [Projection] Failed to update transaction projection`,
+        error,
+      );
     }
   }
 }
-

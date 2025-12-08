@@ -15,4 +15,3 @@ export class CompleteRefundCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

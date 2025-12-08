@@ -8,10 +8,10 @@ import { TransactionProjectionService } from '../../projections/transaction-proj
  * Compensation happens when a saga fails partway through and rolls back changes.
  */
 @EventsHandler(TransactionCompensatedEvent)
-export class TransactionCompensatedProjectionHandler
-  implements IEventHandler<TransactionCompensatedEvent>
-{
-  private readonly logger = new Logger(TransactionCompensatedProjectionHandler.name);
+export class TransactionCompensatedProjectionHandler implements IEventHandler<TransactionCompensatedEvent> {
+  private readonly logger = new Logger(
+    TransactionCompensatedProjectionHandler.name,
+  );
 
   constructor(
     private readonly projectionService: TransactionProjectionService,
@@ -22,7 +22,9 @@ export class TransactionCompensatedProjectionHandler
       `📊 [Projection] TransactionCompensated: ${event.aggregateId}`,
     );
     this.logger.log(`   Reason: ${event.reason}`);
-    this.logger.log(`   Actions: ${event.compensationActions.length} compensation action(s)`);
+    this.logger.log(
+      `   Actions: ${event.compensationActions.length} compensation action(s)`,
+    );
 
     try {
       await this.projectionService.updateTransactionCompensated(
@@ -46,4 +48,3 @@ export class TransactionCompensatedProjectionHandler
     }
   }
 }
-

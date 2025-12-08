@@ -25,7 +25,7 @@ export class CurrencyService {
 
   async validateCurrency(code: string): Promise<Currency> {
     const currency = await this.findByCode(code);
-    
+
     if (!currency) {
       throw new InvalidCurrencyException(code);
     }
@@ -41,10 +41,25 @@ export class CurrencyService {
     const defaultCurrencies = [
       { code: 'USD', name: 'US Dollar', type: 'fiat' as const, precision: 2 },
       { code: 'EUR', name: 'Euro', type: 'fiat' as const, precision: 2 },
-      { code: 'GBP', name: 'British Pound', type: 'fiat' as const, precision: 2 },
+      {
+        code: 'GBP',
+        name: 'British Pound',
+        type: 'fiat' as const,
+        precision: 2,
+      },
       { code: 'BTC', name: 'Bitcoin', type: 'non-fiat' as const, precision: 8 },
-      { code: 'ETH', name: 'Ethereum', type: 'non-fiat' as const, precision: 8 },
-      { code: 'POINTS', name: 'Loyalty Points', type: 'non-fiat' as const, precision: 0 },
+      {
+        code: 'ETH',
+        name: 'Ethereum',
+        type: 'non-fiat' as const,
+        precision: 8,
+      },
+      {
+        code: 'POINTS',
+        name: 'Loyalty Points',
+        type: 'non-fiat' as const,
+        precision: 0,
+      },
     ];
 
     for (const currencyData of defaultCurrencies) {
@@ -59,4 +74,3 @@ export class CurrencyService {
     }
   }
 }
-

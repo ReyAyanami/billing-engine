@@ -38,4 +38,3 @@ export class WithdrawalRequestedEvent extends DomainEvent {
     };
   }
 }
-

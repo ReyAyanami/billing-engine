@@ -18,4 +18,3 @@ export class TransferCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

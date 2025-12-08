@@ -56,4 +56,3 @@ const QueryHandlers = [GetAccountHandler, GetAccountsByOwnerHandler];
   exports: [AccountService, AccountProjectionService],
 })
 export class AccountModule {}
-

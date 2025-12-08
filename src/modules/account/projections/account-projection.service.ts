@@ -57,7 +57,9 @@ export class AccountProjectionService {
     });
 
     if (!projection) {
-      this.logger.error(`Projection not found for account: ${event.aggregateId}`);
+      this.logger.error(
+        `Projection not found for account: ${event.aggregateId}`,
+      );
       throw new Error(`Projection not found for account: ${event.aggregateId}`);
     }
 
@@ -84,7 +86,9 @@ export class AccountProjectionService {
   /**
    * Updates projection status from AccountStatusChangedEvent
    */
-  async handleAccountStatusChanged(event: AccountStatusChangedEvent): Promise<void> {
+  async handleAccountStatusChanged(
+    event: AccountStatusChangedEvent,
+  ): Promise<void> {
     this.logger.log(`Updating status for account: ${event.aggregateId}`);
 
     const projection = await this.projectionRepository.findOne({
@@ -92,7 +96,9 @@ export class AccountProjectionService {
     });
 
     if (!projection) {
-      this.logger.error(`Projection not found for account: ${event.aggregateId}`);
+      this.logger.error(
+        `Projection not found for account: ${event.aggregateId}`,
+      );
       throw new Error(`Projection not found for account: ${event.aggregateId}`);
     }
 
@@ -119,7 +125,9 @@ export class AccountProjectionService {
   /**
    * Updates projection limits from AccountLimitsChangedEvent
    */
-  async handleAccountLimitsChanged(event: AccountLimitsChangedEvent): Promise<void> {
+  async handleAccountLimitsChanged(
+    event: AccountLimitsChangedEvent,
+  ): Promise<void> {
     this.logger.log(`Updating limits for account: ${event.aggregateId}`);
 
     const projection = await this.projectionRepository.findOne({
@@ -127,7 +135,9 @@ export class AccountProjectionService {
     });
 
     if (!projection) {
-      this.logger.error(`Projection not found for account: ${event.aggregateId}`);
+      this.logger.error(
+        `Projection not found for account: ${event.aggregateId}`,
+      );
       throw new Error(`Projection not found for account: ${event.aggregateId}`);
     }
 
@@ -172,7 +182,10 @@ export class AccountProjectionService {
   /**
    * Finds all projections (with pagination)
    */
-  async findAll(limit: number = 100, offset: number = 0): Promise<AccountProjection[]> {
+  async findAll(
+    limit: number = 100,
+    offset: number = 0,
+  ): Promise<AccountProjection[]> {
     return this.projectionRepository.find({
       take: limit,
       skip: offset,
@@ -180,4 +193,3 @@ export class AccountProjectionService {
     });
   }
 }
-

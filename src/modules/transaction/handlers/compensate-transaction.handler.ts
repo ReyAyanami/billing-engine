@@ -9,9 +9,7 @@ import type { IEventStore } from '../../../cqrs/interfaces/event-store.interface
  * Compensates (rolls back) a transaction by reverting changes made during a saga.
  */
 @CommandHandler(CompensateTransactionCommand)
-export class CompensateTransactionHandler
-  implements ICommandHandler<CompensateTransactionCommand>
-{
+export class CompensateTransactionHandler implements ICommandHandler<CompensateTransactionCommand> {
   private readonly logger = new Logger(CompensateTransactionHandler.name);
 
   constructor(
@@ -24,11 +22,16 @@ export class CompensateTransactionHandler
       `[CompensateTransactionHandler] Compensating transaction: ${command.transactionId}`,
     );
     this.logger.log(`   Reason: ${command.reason}`);
-    this.logger.log(`   Compensation actions: ${command.compensationActions.length}`);
+    this.logger.log(
+      `   Compensation actions: ${command.compensationActions.length}`,
+    );
 
     try {
       // Load transaction aggregate from event history
-      const events = await this.eventStore.getEvents('Transaction', command.transactionId);
+      const events = await this.eventStore.getEvents(
+        'Transaction',
+        command.transactionId,
+      );
 
       if (events.length === 0) {
         throw new Error(`Transaction not found: ${command.transactionId}`);
@@ -50,7 +53,11 @@ export class CompensateTransactionHandler
 
       // Get and persist uncommitted events
       const newEvents = transaction.getUncommittedEvents();
-      await this.eventStore.append('Transaction', command.transactionId, newEvents);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        newEvents,
+      );
 
       // Publish events
       newEvents.forEach((event) => {
@@ -71,4 +78,3 @@ export class CompensateTransactionHandler
     }
   }
 }
-

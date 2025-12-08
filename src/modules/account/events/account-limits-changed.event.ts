@@ -50,4 +50,3 @@ export class AccountLimitsChangedEvent extends DomainEvent {
     };
   }
 }
-

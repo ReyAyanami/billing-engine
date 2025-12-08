@@ -32,9 +32,10 @@ export abstract class AggregateRoot {
       handler.call(this, event);
     } else {
       // Get event type for warning message
-      const eventType = typeof event.getEventType === 'function' 
-        ? event.getEventType() 
-        : (event.eventType || 'Unknown');
+      const eventType =
+        typeof event.getEventType === 'function'
+          ? event.getEventType()
+          : event.eventType || 'Unknown';
       console.warn(
         `No handler found for event ${eventType} on aggregate ${this.getAggregateType()}`,
       );
@@ -57,7 +58,7 @@ export abstract class AggregateRoot {
   private getEventHandler(event: DomainEvent | any): Function | undefined {
     // Handle both proper DomainEvent instances and plain objects from event store
     let eventType: string;
-    
+
     if (typeof event.getEventType === 'function') {
       // Proper DomainEvent instance
       eventType = event.getEventType();
@@ -68,7 +69,7 @@ export abstract class AggregateRoot {
       console.error('Unable to determine event type from event:', event);
       return undefined;
     }
-    
+
     const handlerName = `on${eventType}`;
 
     const handler = (this as any)[handlerName];
@@ -137,4 +138,3 @@ export abstract class AggregateRoot {
     // Override in subclasses
   }
 }
-

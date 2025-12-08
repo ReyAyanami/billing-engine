@@ -15,4 +15,3 @@ export class GetTransactionQuery extends Query {
     this.actorId = actorId;
   }
 }
-

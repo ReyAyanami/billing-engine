@@ -20,4 +20,3 @@ export class CreateAccountCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

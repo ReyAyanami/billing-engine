@@ -1,14 +1,14 @@
 /**
  * Test API - HTTP-Based (FAST!)
- * 
+ *
  * This class tests through HTTP REST API - exactly how users interact with the system.
- * 
+ *
  * Benefits over CQRS-based testing:
  * - ⚡ 10x faster (no async event bus delays)
  * - ✅ Tests real user interface (HTTP)
  * - ✅ Synchronous responses (no waiting/polling)
  * - ✅ No sleeps or timeouts needed
- * 
+ *
  * Usage:
  *   const testApi = new TestAPIHTTP(app);
  *   const account = await testApi.createAccount({ currency: 'USD' });
@@ -19,7 +19,10 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { v4 as uuid, v4 as uuidv4 } from 'uuid';
 import { EventSource } from 'eventsource';
-import { AccountType, AccountStatus } from '../../../src/modules/account/account.entity';
+import {
+  AccountType,
+  AccountStatus,
+} from '../../../src/modules/account/account.entity';
 import { DataSource } from 'typeorm';
 
 export interface CreateAccountParams {
@@ -69,14 +72,14 @@ export class TestAPIHTTP {
     const workerId = process.env.JEST_WORKER_ID || '1';
     this.workerPrefix = `w${workerId}`;
   }
-  
+
   /**
    * Reset cached data (call this in beforeEach)
    */
   reset() {
     this.externalAccounts = {};
   }
-  
+
   /**
    * Generate a unique ID for test data
    * Returns valid UUID for parallel test isolation
@@ -85,13 +88,14 @@ export class TestAPIHTTP {
     // Always return valid UUID - worker isolation handled by database cleanup
     return uuidv4();
   }
-  
+
   /**
    * Get external account for currency (creates if needed)
    */
   async getExternalAccount(currency: string) {
     if (!this.externalAccounts[currency]) {
-      this.externalAccounts[currency] = await this.createExternalAccount(currency);
+      this.externalAccounts[currency] =
+        await this.createExternalAccount(currency);
     }
     return this.externalAccounts[currency];
   }
@@ -106,23 +110,23 @@ export class TestAPIHTTP {
   async createAccount(params: CreateAccountParams = {}) {
     const payload: any = {
       ownerId: params.ownerId || this.generateId('owner'),
-      ownerType: params.ownerType || 'user',  // lowercase
-      accountType: params.accountType || 'user',  // Use string value
+      ownerType: params.ownerType || 'user', // lowercase
+      accountType: params.accountType || 'user', // Use string value
       currency: params.currency || 'USD',
     };
-    
+
     // Add optional fields only if provided
     if (params.maxBalance) payload.maxBalance = params.maxBalance;
     if (params.minBalance) payload.minBalance = params.minBalance;
-    
+
     const response = await request(this.server)
       .post('/api/v1/accounts')
       .send(payload);
-    
+
     // If not 201, throw with error details
     if (response.status !== 201) {
       throw new Error(
-        `Failed to create account (${response.status}): ${JSON.stringify(response.body)}`
+        `Failed to create account (${response.status}): ${JSON.stringify(response.body)}`,
       );
     }
 
@@ -191,26 +195,28 @@ export class TestAPIHTTP {
   ) {
     // Create external account as source (or get from cache)
     if (!this.externalAccounts[currency]) {
-      this.externalAccounts[currency] = await this.createExternalAccount(currency);
+      this.externalAccounts[currency] =
+        await this.createExternalAccount(currency);
     }
-    
+
     const sourceAccountId = this.externalAccounts[currency].id;
-    
+
     const response = await request(this.server)
       .post('/api/v1/transactions/topup')
       .send({
-        idempotencyKey: options.idempotencyKey || this.generateId('idempotency'),
+        idempotencyKey:
+          options.idempotencyKey || this.generateId('idempotency'),
         sourceAccountId,
         destinationAccountId: accountId,
         amount,
         currency,
         reference: options.reference || 'Test topup',
       });
-    
+
     // If not 201, throw with error details
     if (response.status !== 201) {
       throw new Error(
-        `Failed to topup (${response.status}): ${JSON.stringify(response.body)}`
+        `Failed to topup (${response.status}): ${JSON.stringify(response.body)}`,
       );
     }
 
@@ -237,15 +243,17 @@ export class TestAPIHTTP {
   ) {
     // Create external account as destination
     if (!this.externalAccounts[currency]) {
-      this.externalAccounts[currency] = await this.createExternalAccount(currency);
+      this.externalAccounts[currency] =
+        await this.createExternalAccount(currency);
     }
-    
+
     const destinationAccountId = this.externalAccounts[currency].id;
-    
+
     const response = await request(this.server)
       .post('/api/v1/transactions/withdraw')
       .send({
-        idempotencyKey: options.idempotencyKey || this.generateId('idempotency'),
+        idempotencyKey:
+          options.idempotencyKey || this.generateId('idempotency'),
         sourceAccountId: accountId,
         destinationAccountId,
         amount,
@@ -279,7 +287,8 @@ export class TestAPIHTTP {
     const response = await request(this.server)
       .post('/api/v1/transactions/transfer')
       .send({
-        idempotencyKey: options.idempotencyKey || this.generateId('idempotency'),
+        idempotencyKey:
+          options.idempotencyKey || this.generateId('idempotency'),
         sourceAccountId: fromAccountId,
         destinationAccountId: toAccountId,
         amount,
@@ -289,13 +298,14 @@ export class TestAPIHTTP {
 
     if (response.status !== 201) {
       throw new Error(
-        `Transfer failed (${response.status}): ${JSON.stringify(response.body)}`
+        `Transfer failed (${response.status}): ${JSON.stringify(response.body)}`,
       );
     }
 
     // Poll for completion (async saga processing)
     if (!options.skipPolling) {
-      const transactionId = response.body.debitTransactionId || response.body.transactionId;
+      const transactionId =
+        response.body.debitTransactionId || response.body.transactionId;
       if (transactionId) {
         await this.pollTransactionCompletion(transactionId);
       }
@@ -318,7 +328,8 @@ export class TestAPIHTTP {
     const response = await request(this.server)
       .post('/api/v1/transactions/payment')
       .send({
-        idempotencyKey: options.idempotencyKey || this.generateId('idempotency'),
+        idempotencyKey:
+          options.idempotencyKey || this.generateId('idempotency'),
         customerAccountId,
         merchantAccountId,
         amount,
@@ -328,7 +339,7 @@ export class TestAPIHTTP {
 
     if (response.status !== 201) {
       throw new Error(
-        `Payment failed (${response.status}): ${JSON.stringify(response.body)}`
+        `Payment failed (${response.status}): ${JSON.stringify(response.body)}`,
       );
     }
 
@@ -349,31 +360,39 @@ export class TestAPIHTTP {
    * In test environment, SSE doesn't work since app doesn't listen on HTTP
    * Poll with short intervals - if saga doesn't complete in 2s, it's a BUG
    */
-  private async pollTransactionCompletion(transactionId: string, maxWait: number = 2000): Promise<void> {
+  private async pollTransactionCompletion(
+    transactionId: string,
+    maxWait: number = 2000,
+  ): Promise<void> {
     const start = Date.now();
     const pollInterval = 50; // Poll every 50ms
-    
+
     while (Date.now() - start < maxWait) {
-      const response = await request(this.server)
-        .get(`/api/v1/transactions/${transactionId}`);
-      
+      const response = await request(this.server).get(
+        `/api/v1/transactions/${transactionId}`,
+      );
+
       if (response.status === 200) {
         const status = response.body.status;
-        
+
         // Check if reached final state
-        if (status === 'completed' || status === 'failed' || status === 'compensated') {
+        if (
+          status === 'completed' ||
+          status === 'failed' ||
+          status === 'compensated'
+        ) {
           return; // Success!
         }
       }
-      
+
       // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
     }
-    
+
     // Timeout - this is a BUG
     throw new Error(
       `❌ BUG: Transaction ${transactionId} did not complete within ${maxWait}ms. ` +
-      `Saga should complete in milliseconds. This indicates a processing failure.`
+        `Saga should complete in milliseconds. This indicates a processing failure.`,
     );
   }
 
@@ -388,19 +407,22 @@ export class TestAPIHTTP {
     const response = await request(this.server)
       .post('/api/v1/transactions/refund')
       .send({
-        idempotencyKey: options.idempotencyKey || this.generateId('idempotency'),
+        idempotencyKey:
+          options.idempotencyKey || this.generateId('idempotency'),
         originalPaymentId: originalTransactionId, // DTO expects 'originalPaymentId'
         refundAmount: amount, // DTO expects 'refundAmount'
         currency: 'USD', // Required field
-        refundMetadata: options.metadata ? {
-          reason: options.reason || 'Test refund',
-          ...options.metadata,
-        } : { reason: options.reason || 'Test refund' },
+        refundMetadata: options.metadata
+          ? {
+              reason: options.reason || 'Test refund',
+              ...options.metadata,
+            }
+          : { reason: options.reason || 'Test refund' },
       });
 
     if (response.status !== 201) {
       throw new Error(
-        `Refund failed (${response.status}): ${JSON.stringify(response.body)}`
+        `Refund failed (${response.status}): ${JSON.stringify(response.body)}`,
       );
     }
 
@@ -450,38 +472,48 @@ export class TestAPIHTTP {
    * Polls every 10ms until projection exists or timeout
    * Much faster than fixed delays!
    */
-  async waitForAccountProjection(accountId: string, maxWait = 3000): Promise<any> {
+  async waitForAccountProjection(
+    accountId: string,
+    maxWait = 3000,
+  ): Promise<any> {
     const start = Date.now();
     while (Date.now() - start < maxWait) {
       const result = await this.dataSource.query(
         'SELECT * FROM account_projections WHERE id = $1',
-        [accountId]
+        [accountId],
       );
       if (result && result.length > 0) {
         return result[0];
       }
-      await new Promise(resolve => setTimeout(resolve, 10)); // Poll every 10ms
+      await new Promise((resolve) => setTimeout(resolve, 10)); // Poll every 10ms
     }
-    throw new Error(`Account projection not ready after ${maxWait}ms: ${accountId}`);
+    throw new Error(
+      `Account projection not ready after ${maxWait}ms: ${accountId}`,
+    );
   }
 
   /**
    * Wait for transaction projection to be ready
    * Polls every 10ms until projection exists or timeout
    */
-  async waitForTransactionProjection(transactionId: string, maxWait = 3000): Promise<any> {
+  async waitForTransactionProjection(
+    transactionId: string,
+    maxWait = 3000,
+  ): Promise<any> {
     const start = Date.now();
     while (Date.now() - start < maxWait) {
       const result = await this.dataSource.query(
         'SELECT * FROM transaction_projections WHERE id = $1',
-        [transactionId]
+        [transactionId],
       );
       if (result && result.length > 0) {
         return result[0];
       }
-      await new Promise(resolve => setTimeout(resolve, 10)); // Poll every 10ms
+      await new Promise((resolve) => setTimeout(resolve, 10)); // Poll every 10ms
     }
-    throw new Error(`Transaction projection not ready after ${maxWait}ms: ${transactionId}`);
+    throw new Error(
+      `Transaction projection not ready after ${maxWait}ms: ${transactionId}`,
+    );
   }
 
   /**
@@ -494,13 +526,12 @@ export class TestAPIHTTP {
     expectedStatus = 400,
   ) {
     const req = request(this.server)[method](path);
-    
+
     if (data) {
       req.send(data);
     }
-    
+
     const response = await req.expect(expectedStatus);
     return response.body;
   }
 }
-

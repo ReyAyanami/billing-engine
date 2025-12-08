@@ -24,4 +24,3 @@ export class RefundCommand extends Command {
     super(correlationId || uuidv4(), actorId);
   }
 }
-

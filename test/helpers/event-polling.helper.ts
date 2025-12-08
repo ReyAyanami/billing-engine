@@ -35,29 +35,32 @@ export class EventPollingHelper {
       if (Date.now() - startTime > timeoutMs) {
         throw new Error(
           `Timeout waiting for events. Aggregate: ${aggregateType}/${aggregateId}, ` +
-          `Expected: ${minEvents} events, Got: 0 events after ${timeoutMs}ms`,
+            `Expected: ${minEvents} events, Got: 0 events after ${timeoutMs}ms`,
         );
       }
 
       try {
-        const events = await this.eventStore.getEvents(aggregateType, aggregateId);
-        
+        const events = await this.eventStore.getEvents(
+          aggregateType,
+          aggregateId,
+        );
+
         if (events && events.length >= minEvents) {
           console.log(
             `✅ [EventPolling] Found ${events.length} event(s) for ${aggregateType}/${aggregateId} ` +
-            `after ${retries} retries (${Date.now() - startTime}ms)`,
+              `after ${retries} retries (${Date.now() - startTime}ms)`,
           );
           return events;
         }
 
         console.log(
           `⏳ [EventPolling] Retry ${retries + 1}/${maxRetries}: ` +
-          `Found ${events?.length || 0}/${minEvents} events, waiting ${retryDelayMs}ms...`,
+            `Found ${events?.length || 0}/${minEvents} events, waiting ${retryDelayMs}ms...`,
         );
       } catch (error) {
         console.log(
           `⏳ [EventPolling] Retry ${retries + 1}/${maxRetries}: ` +
-          `Error retrieving events (${error.message}), waiting ${retryDelayMs}ms...`,
+            `Error retrieving events (${error.message}), waiting ${retryDelayMs}ms...`,
         );
       }
 
@@ -68,7 +71,7 @@ export class EventPollingHelper {
 
     throw new Error(
       `Failed to retrieve events after ${maxRetries} retries. ` +
-      `Aggregate: ${aggregateType}/${aggregateId}, Expected: ${minEvents} events`,
+        `Aggregate: ${aggregateType}/${aggregateId}, Expected: ${minEvents} events`,
     );
   }
 
@@ -100,29 +103,29 @@ export class EventPollingHelper {
       if (Date.now() - startTime > timeoutMs) {
         throw new Error(
           `Timeout waiting for ${description}. ` +
-          `No valid projection found after ${timeoutMs}ms`,
+            `No valid projection found after ${timeoutMs}ms`,
         );
       }
 
       try {
         const projection = await fetchFn();
-        
+
         if (projection && validateFn(projection)) {
           console.log(
             `✅ [ProjectionPolling] Found valid ${description} ` +
-            `after ${retries} retries (${Date.now() - startTime}ms)`,
+              `after ${retries} retries (${Date.now() - startTime}ms)`,
           );
           return projection;
         }
 
         console.log(
           `⏳ [ProjectionPolling] Retry ${retries + 1}/${maxRetries}: ` +
-          `${description} not ready, waiting ${retryDelayMs}ms...`,
+            `${description} not ready, waiting ${retryDelayMs}ms...`,
         );
       } catch (error) {
         console.log(
           `⏳ [ProjectionPolling] Retry ${retries + 1}/${maxRetries}: ` +
-          `Error (${error.message}), waiting ${retryDelayMs}ms...`,
+            `Error (${error.message}), waiting ${retryDelayMs}ms...`,
         );
       }
 
@@ -136,4 +139,3 @@ export class EventPollingHelper {
     );
   }
 }
-

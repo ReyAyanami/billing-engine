@@ -9,17 +9,19 @@ import { TransactionType, TransactionStatus } from '../../transaction.entity';
  * This is separate from the saga coordinator - it only updates the read model.
  */
 @EventsHandler(WithdrawalRequestedEvent)
-export class WithdrawalRequestedProjectionHandler
-  implements IEventHandler<WithdrawalRequestedEvent>
-{
-  private readonly logger = new Logger(WithdrawalRequestedProjectionHandler.name);
+export class WithdrawalRequestedProjectionHandler implements IEventHandler<WithdrawalRequestedEvent> {
+  private readonly logger = new Logger(
+    WithdrawalRequestedProjectionHandler.name,
+  );
 
   constructor(
     private readonly projectionService: TransactionProjectionService,
   ) {}
 
   async handle(event: WithdrawalRequestedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] WithdrawalRequested: ${event.aggregateId}`);
+    this.logger.log(
+      `📊 [Projection] WithdrawalRequested: ${event.aggregateId}`,
+    );
 
     try {
       await this.projectionService.createTransactionProjection({
@@ -39,11 +41,15 @@ export class WithdrawalRequestedProjectionHandler
         metadata: event.metadata,
       });
 
-      this.logger.log(`✅ [Projection] Transaction projection created: ${event.aggregateId}`);
+      this.logger.log(
+        `✅ [Projection] Transaction projection created: ${event.aggregateId}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to create transaction projection`, error);
+      this.logger.error(
+        `❌ [Projection] Failed to create transaction projection`,
+        error,
+      );
       // Don't throw - projection failures shouldn't break the saga
     }
   }
 }
-

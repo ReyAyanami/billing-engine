@@ -3,7 +3,11 @@ import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TransferRequestedEvent } from '../events/transfer-requested.event';
-import { Transaction, TransactionType, TransactionStatus } from '../transaction.entity';
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from '../transaction.entity';
 
 @EventsHandler(TransferRequestedEvent)
 export class TransferRequestedEntityHandler implements IEventHandler<TransferRequestedEvent> {
@@ -23,7 +27,9 @@ export class TransferRequestedEntityHandler implements IEventHandler<TransferReq
       });
 
       if (existing) {
-        this.logger.log(`Transaction entity already exists: ${event.aggregateId}`);
+        this.logger.log(
+          `Transaction entity already exists: ${event.aggregateId}`,
+        );
         return;
       }
 
@@ -56,4 +62,3 @@ export class TransferRequestedEntityHandler implements IEventHandler<TransferReq
     }
   }
 }
-

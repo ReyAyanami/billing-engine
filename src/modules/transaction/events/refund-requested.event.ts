@@ -3,7 +3,7 @@ import { DomainEvent } from '../../../cqrs/base/domain-event';
 /**
  * Domain event emitted when a refund transaction is requested.
  * Refund: Merchant returns money to customer for a previous payment.
- * 
+ *
  * Flow: Merchant Account (DEBIT) → Customer Account (CREDIT)
  */
 export class RefundRequestedEvent extends DomainEvent {
@@ -50,4 +50,3 @@ export class RefundRequestedEvent extends DomainEvent {
     };
   }
 }
-

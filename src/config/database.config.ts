@@ -10,9 +10,12 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => ({
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   // Use migrations in production, synchronize in development
-  synchronize: process.env.NODE_ENV !== 'production' && process.env.USE_MIGRATIONS !== 'true',
-  migrationsRun: process.env.NODE_ENV === 'production' || process.env.USE_MIGRATIONS === 'true',
+  synchronize:
+    process.env.NODE_ENV !== 'production' &&
+    process.env.USE_MIGRATIONS !== 'true',
+  migrationsRun:
+    process.env.NODE_ENV === 'production' ||
+    process.env.USE_MIGRATIONS === 'true',
   logging: process.env.NODE_ENV === 'development',
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
-

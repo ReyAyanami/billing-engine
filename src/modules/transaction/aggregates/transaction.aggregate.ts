@@ -31,7 +31,7 @@ export enum TransactionType {
 
 /**
  * Transaction Aggregate - Event-Sourced Version
- * 
+ *
  * Manages the lifecycle of financial transactions.
  * Follows a state machine: PENDING → COMPLETED/FAILED
  */
@@ -50,7 +50,7 @@ export class TransactionAggregate extends AggregateRoot {
   private requestedAt: Date;
   private completedAt?: Date;
   private failedAt?: Date;
-  
+
   // Balance tracking (for completed transactions)
   private newBalance?: string;
   private sourceNewBalance?: string;
@@ -185,7 +185,9 @@ export class TransactionAggregate extends AggregateRoot {
     }
 
     if (!params.accountId || !params.amount || !params.destinationAccountId) {
-      throw new Error('Account ID, amount, and destination account are required');
+      throw new Error(
+        'Account ID, amount, and destination account are required',
+      );
     }
 
     const event = new WithdrawalRequestedEvent(
@@ -276,8 +278,14 @@ export class TransactionAggregate extends AggregateRoot {
       throw new Error('Transaction already exists');
     }
 
-    if (!params.sourceAccountId || !params.destinationAccountId || !params.amount) {
-      throw new Error('Source account, destination account, and amount are required');
+    if (
+      !params.sourceAccountId ||
+      !params.destinationAccountId ||
+      !params.amount
+    ) {
+      throw new Error(
+        'Source account, destination account, and amount are required',
+      );
     }
 
     if (params.sourceAccountId === params.destinationAccountId) {
@@ -383,15 +391,22 @@ export class TransactionAggregate extends AggregateRoot {
       throw new Error('Transaction already exists');
     }
 
-    if (!params.customerAccountId || !params.merchantAccountId || !params.amount) {
-      throw new Error('Customer account, merchant account, and amount are required');
+    if (
+      !params.customerAccountId ||
+      !params.merchantAccountId ||
+      !params.amount
+    ) {
+      throw new Error(
+        'Customer account, merchant account, and amount are required',
+      );
     }
 
     if (params.customerAccountId === params.merchantAccountId) {
       throw new Error('Customer and merchant accounts must be different');
     }
 
-    const PaymentRequestedEvent = require('../events/payment-requested.event').PaymentRequestedEvent;
+    const PaymentRequestedEvent =
+      require('../events/payment-requested.event').PaymentRequestedEvent;
     const event = new PaymentRequestedEvent(
       params.customerAccountId,
       params.merchantAccountId,
@@ -438,7 +453,8 @@ export class TransactionAggregate extends AggregateRoot {
   }): void {
     this.validateCanComplete();
 
-    const PaymentCompletedEvent = require('../events/payment-completed.event').PaymentCompletedEvent;
+    const PaymentCompletedEvent =
+      require('../events/payment-completed.event').PaymentCompletedEvent;
     const event = new PaymentCompletedEvent(
       this.aggregateId,
       params.customerNewBalance,
@@ -491,15 +507,22 @@ export class TransactionAggregate extends AggregateRoot {
       throw new Error('Transaction already exists');
     }
 
-    if (!params.merchantAccountId || !params.customerAccountId || !params.refundAmount) {
-      throw new Error('Merchant account, customer account, and refund amount are required');
+    if (
+      !params.merchantAccountId ||
+      !params.customerAccountId ||
+      !params.refundAmount
+    ) {
+      throw new Error(
+        'Merchant account, customer account, and refund amount are required',
+      );
     }
 
     if (params.merchantAccountId === params.customerAccountId) {
       throw new Error('Merchant and customer accounts must be different');
     }
 
-    const RefundRequestedEvent = require('../events/refund-requested.event').RefundRequestedEvent;
+    const RefundRequestedEvent =
+      require('../events/refund-requested.event').RefundRequestedEvent;
     const event = new RefundRequestedEvent(
       params.originalPaymentId,
       params.merchantAccountId,
@@ -547,7 +570,8 @@ export class TransactionAggregate extends AggregateRoot {
   }): void {
     this.validateCanComplete();
 
-    const RefundCompletedEvent = require('../events/refund-completed.event').RefundCompletedEvent;
+    const RefundCompletedEvent =
+      require('../events/refund-completed.event').RefundCompletedEvent;
     const event = new RefundCompletedEvent(
       this.aggregateId,
       params.merchantNewBalance,
@@ -685,7 +709,9 @@ export class TransactionAggregate extends AggregateRoot {
     }
 
     if (this.status !== TransactionStatus.PENDING) {
-      throw new Error(`Cannot complete transaction with status: ${this.status}`);
+      throw new Error(
+        `Cannot complete transaction with status: ${this.status}`,
+      );
     }
   }
 
@@ -770,4 +796,3 @@ export class TransactionAggregate extends AggregateRoot {
     };
   }
 }
-

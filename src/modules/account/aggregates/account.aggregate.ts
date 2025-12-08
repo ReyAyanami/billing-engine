@@ -8,7 +8,7 @@ import Decimal from 'decimal.js';
 
 /**
  * Account Aggregate - Event-Sourced Version
- * 
+ *
  * This aggregate encapsulates all business logic for accounts.
  * It maintains state by applying domain events and ensures business rules are enforced.
  */
@@ -89,8 +89,12 @@ export class AccountAggregate extends AggregateRoot {
     this.currency = event.currency;
     this.status = event.status;
     this.balance = new Decimal(0);
-    this.maxBalance = event.maxBalance ? new Decimal(event.maxBalance) : undefined;
-    this.minBalance = event.minBalance ? new Decimal(event.minBalance) : undefined;
+    this.maxBalance = event.maxBalance
+      ? new Decimal(event.maxBalance)
+      : undefined;
+    this.minBalance = event.minBalance
+      ? new Decimal(event.minBalance)
+      : undefined;
     this.createdAt = event.timestamp;
     this.updatedAt = event.timestamp;
   }
@@ -158,7 +162,9 @@ export class AccountAggregate extends AggregateRoot {
 
     // Validate: Account must be active
     if (this.status !== AccountStatus.ACTIVE) {
-      throw new Error(`Cannot change balance on account with status: ${this.status}`);
+      throw new Error(
+        `Cannot change balance on account with status: ${this.status}`,
+      );
     }
 
     // Calculate new balance
@@ -370,4 +376,3 @@ export class AccountAggregate extends AggregateRoot {
     };
   }
 }
-

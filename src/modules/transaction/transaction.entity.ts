@@ -51,9 +51,9 @@ export class Transaction {
   @Column({ name: 'source_account_id', type: 'uuid' })
   sourceAccountId: string;
 
-  @ManyToOne(() => Account, { 
-    onDelete: 'RESTRICT', 
-    onUpdate: 'CASCADE' 
+  @ManyToOne(() => Account, {
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'source_account_id' })
   sourceAccount: Account;
@@ -61,9 +61,9 @@ export class Transaction {
   @Column({ name: 'destination_account_id', type: 'uuid' })
   destinationAccountId: string;
 
-  @ManyToOne(() => Account, { 
-    onDelete: 'RESTRICT', 
-    onUpdate: 'CASCADE' 
+  @ManyToOne(() => Account, {
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'destination_account_id' })
   destinationAccount: Account;
@@ -74,16 +74,36 @@ export class Transaction {
   @Column({ length: 10 })
   currency: string;
 
-  @Column({ name: 'source_balance_before', type: 'decimal', precision: 20, scale: 8 })
+  @Column({
+    name: 'source_balance_before',
+    type: 'decimal',
+    precision: 20,
+    scale: 8,
+  })
   sourceBalanceBefore: string;
 
-  @Column({ name: 'source_balance_after', type: 'decimal', precision: 20, scale: 8 })
+  @Column({
+    name: 'source_balance_after',
+    type: 'decimal',
+    precision: 20,
+    scale: 8,
+  })
   sourceBalanceAfter: string;
 
-  @Column({ name: 'destination_balance_before', type: 'decimal', precision: 20, scale: 8 })
+  @Column({
+    name: 'destination_balance_before',
+    type: 'decimal',
+    precision: 20,
+    scale: 8,
+  })
   destinationBalanceBefore: string;
 
-  @Column({ name: 'destination_balance_after', type: 'decimal', precision: 20, scale: 8 })
+  @Column({
+    name: 'destination_balance_after',
+    type: 'decimal',
+    precision: 20,
+    scale: 8,
+  })
   destinationBalanceAfter: string;
 
   @Column({
@@ -102,10 +122,10 @@ export class Transaction {
   @Column({ name: 'parent_transaction_id', type: 'uuid', nullable: true })
   parentTransactionId: string | null;
 
-  @ManyToOne(() => Transaction, { 
-    nullable: true, 
-    onDelete: 'RESTRICT', 
-    onUpdate: 'CASCADE' 
+  @ManyToOne(() => Transaction, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'parent_transaction_id' })
   parentTransaction: Transaction | null;
@@ -116,4 +136,3 @@ export class Transaction {
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt: Date | null;
 }
-

@@ -6,7 +6,7 @@ import { IEventStore } from '../../src/cqrs/interfaces/event-store.interface';
 /**
  * In-memory event store for testing purposes.
  * Provides fast, reliable event storage without Kafka overhead.
- * 
+ *
  * This is perfect for E2E tests that need to verify business logic
  * without the complexity of distributed systems.
  */
@@ -45,15 +45,19 @@ export class InMemoryEventStore implements IEventStore {
     }
 
     // Store events (ensure they're valid DomainEvent objects)
-    const validEvents = events.filter(e => e && typeof e === 'object');
+    const validEvents = events.filter((e) => e && typeof e === 'object');
     if (validEvents.length !== events.length) {
-      this.logger.warn(`Filtered out ${events.length - validEvents.length} invalid events`);
+      this.logger.warn(
+        `Filtered out ${events.length - validEvents.length} invalid events`,
+      );
     }
-    
+
     if (validEvents.length > 0) {
-      this.logger.debug(`First event type: ${validEvents[0].constructor?.name || 'unknown'}`);
+      this.logger.debug(
+        `First event type: ${validEvents[0].constructor?.name || 'unknown'}`,
+      );
     }
-    
+
     const allEvents = [...existingEvents, ...validEvents];
     this.events.set(key, allEvents);
 
@@ -79,16 +83,16 @@ export class InMemoryEventStore implements IEventStore {
     const storedEvents = this.events.get(key) || [];
 
     // Convert events to plain objects if they have toJSON method
-    const events = storedEvents.map(event => {
+    const events = storedEvents.map((event) => {
       if (event && typeof event.toJSON === 'function') {
         return event.toJSON();
       }
       return event;
-    });
+    }) as DomainEvent[];
 
     // Apply version filter if specified
     if (fromVersion !== undefined) {
-      return events.filter((e: any) => e.aggregateVersion >= fromVersion);
+      return events.filter((e) => e.aggregateVersion >= fromVersion);
     }
 
     this.logger.debug(
@@ -107,7 +111,7 @@ export class InMemoryEventStore implements IEventStore {
     fromTimestamp?: Date,
   ): AsyncGenerator<DomainEvent> {
     const prefix = `${aggregateType}:`;
-    
+
     for (const [key, events] of this.events.entries()) {
       if (key.startsWith(prefix)) {
         for (const event of events) {
@@ -150,4 +154,3 @@ export class InMemoryEventStore implements IEventStore {
     return `${aggregateType}:${aggregateId}`;
   }
 }
-

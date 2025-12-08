@@ -12,7 +12,7 @@ export class TransferDto {
   @ApiProperty({
     description: 'Unique idempotency key to prevent duplicate transactions',
     example: '770e8400-e29b-41d4-a716-446655440003',
-    format: 'uuid'
+    format: 'uuid',
   })
   @IsUUID()
   @IsNotEmpty()
@@ -21,16 +21,17 @@ export class TransferDto {
   @ApiProperty({
     description: 'Source account ID (funds will be debited from this account)',
     example: '123e4567-e89b-12d3-a456-426614174000',
-    format: 'uuid'
+    format: 'uuid',
   })
   @IsUUID()
   @IsNotEmpty()
   sourceAccountId: string;
 
   @ApiProperty({
-    description: 'Destination account ID (funds will be credited to this account)',
+    description:
+      'Destination account ID (funds will be credited to this account)',
     example: '456e7890-e89b-12d3-a456-426614174001',
-    format: 'uuid'
+    format: 'uuid',
   })
   @IsUUID()
   @IsNotEmpty()
@@ -38,7 +39,7 @@ export class TransferDto {
 
   @ApiProperty({
     description: 'Amount to transfer (positive decimal number as string)',
-    example: '250.00'
+    example: '250.00',
   })
   @IsString()
   @IsNotEmpty()
@@ -47,7 +48,7 @@ export class TransferDto {
 
   @ApiProperty({
     description: 'Currency code (must match both accounts)',
-    example: 'USD'
+    example: 'USD',
   })
   @IsString()
   @IsNotEmpty()
@@ -56,7 +57,7 @@ export class TransferDto {
   @ApiProperty({
     description: 'Optional reference or description for the transfer',
     example: 'Payment for services',
-    required: false
+    required: false,
   })
   @IsString()
   @IsOptional()
@@ -65,10 +66,9 @@ export class TransferDto {
   @ApiProperty({
     description: 'Additional metadata for the transfer',
     example: { invoiceId: 'INV-001', paymentMethod: 'internal_transfer' },
-    required: false
+    required: false,
   })
   @IsObject()
   @IsOptional()
   metadata?: Record<string, any>;
 }
-

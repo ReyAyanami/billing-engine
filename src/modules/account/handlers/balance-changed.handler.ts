@@ -14,7 +14,9 @@ export class BalanceChangedHandler implements IEventHandler<BalanceChangedEvent>
   constructor(private readonly projectionService: AccountProjectionService) {}
 
   async handle(event: BalanceChangedEvent): Promise<void> {
-    this.logger.log(`📨 Handling BalanceChangedEvent for account: ${event.aggregateId}`);
+    this.logger.log(
+      `📨 Handling BalanceChangedEvent for account: ${event.aggregateId}`,
+    );
     this.logger.log(`   Previous: ${event.previousBalance}`);
     this.logger.log(`   New: ${event.newBalance}`);
     this.logger.log(`   Change: ${event.changeType} ${event.changeAmount}`);
@@ -36,4 +38,3 @@ export class BalanceChangedHandler implements IEventHandler<BalanceChangedEvent>
     }
   }
 }
-

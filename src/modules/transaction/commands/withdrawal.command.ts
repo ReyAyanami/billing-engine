@@ -18,4 +18,3 @@ export class WithdrawalCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

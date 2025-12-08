@@ -36,4 +36,3 @@ export class AccountStatusChangedEvent extends DomainEvent {
     };
   }
 }
-

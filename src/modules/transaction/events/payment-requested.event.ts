@@ -3,7 +3,7 @@ import { DomainEvent } from '../../../cqrs/base/domain-event';
 /**
  * Domain event emitted when a payment transaction is requested.
  * Payment: Customer pays merchant for goods/services (C2B transaction).
- * 
+ *
  * Flow: Customer Account (DEBIT) → Merchant Account (CREDIT)
  */
 export class PaymentRequestedEvent extends DomainEvent {
@@ -49,4 +49,3 @@ export class PaymentRequestedEvent extends DomainEvent {
     };
   }
 }
-

@@ -18,9 +18,9 @@ export enum AccountStatus {
 }
 
 export enum AccountType {
-  USER = 'user',           // End-user account
-  SYSTEM = 'system',       // Internal system account
-  EXTERNAL = 'external',   // External financial service
+  USER = 'user', // End-user account
+  SYSTEM = 'system', // Internal system account
+  EXTERNAL = 'external', // External financial service
 }
 
 @Entity('accounts')
@@ -46,7 +46,13 @@ export class Account {
   })
   accountType: AccountType;
 
-  @Column({ name: 'account_subtype', type: 'varchar', length: 50, nullable: true, default: null })
+  @Column({
+    name: 'account_subtype',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    default: null,
+  })
   accountSubtype?: string;
 
   @Column({ length: 10 })
@@ -98,4 +104,3 @@ export class Account {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

@@ -39,4 +39,3 @@ export class AuditLog {
   @CreateDateColumn({ type: 'timestamp' })
   timestamp: Date;
 }
-

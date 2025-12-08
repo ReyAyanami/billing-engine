@@ -10,7 +10,7 @@ import { TransactionType, TransactionStatus } from '../transaction.entity';
 
 /**
  * Transaction Projection (Read Model)
- * 
+ *
  * Denormalized view of transaction data optimized for fast queries.
  * Updated by event handlers when transaction events occur.
  */
@@ -55,10 +55,22 @@ export class TransactionProjection {
   @Column({ name: 'failure_code', length: 100, nullable: true })
   failureCode?: string;
 
-  @Column({ name: 'source_new_balance', type: 'numeric', precision: 20, scale: 2, nullable: true })
+  @Column({
+    name: 'source_new_balance',
+    type: 'numeric',
+    precision: 20,
+    scale: 2,
+    nullable: true,
+  })
   sourceNewBalance?: string;
 
-  @Column({ name: 'destination_new_balance', type: 'numeric', precision: 20, scale: 2, nullable: true })
+  @Column({
+    name: 'destination_new_balance',
+    type: 'numeric',
+    precision: 20,
+    scale: 2,
+    nullable: true,
+  })
   destinationNewBalance?: string;
 
   @CreateDateColumn({ name: 'requested_at' })
@@ -97,4 +109,3 @@ export class TransactionProjection {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;
 }
-

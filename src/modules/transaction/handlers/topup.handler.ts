@@ -42,10 +42,16 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
 
       // Get uncommitted events
       const events = transaction.getUncommittedEvents();
-      this.logger.log(`Generated ${events.length} event(s) for transaction ${command.transactionId}`);
+      this.logger.log(
+        `Generated ${events.length} event(s) for transaction ${command.transactionId}`,
+      );
 
       // Save events to the event store (Kafka)
-      await this.eventStore.append('Transaction', command.transactionId, events);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        events,
+      );
 
       // Publish events to the event bus for async processing
       events.forEach((event) => {
@@ -55,13 +61,17 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
       // Mark events as committed
       transaction.commit();
 
-      this.logger.log(`✅ Topup transaction requested: ${command.transactionId}`);
+      this.logger.log(
+        `✅ Topup transaction requested: ${command.transactionId}`,
+      );
 
       return command.transactionId;
     } catch (error) {
-      this.logger.error(`❌ Failed to process topup ${command.transactionId}`, error);
+      this.logger.error(
+        `❌ Failed to process topup ${command.transactionId}`,
+        error,
+      );
       throw error;
     }
   }
 }
-

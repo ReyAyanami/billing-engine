@@ -51,4 +51,3 @@ export class AccountCreatedEvent extends DomainEvent {
     };
   }
 }
-

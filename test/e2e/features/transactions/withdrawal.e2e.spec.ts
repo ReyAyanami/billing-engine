@@ -1,6 +1,6 @@
 /**
  * E2E Test: Account Withdrawal
- * 
+ *
  * Tests withdrawal functionality through HTTP REST API.
  * Fast, reliable, no sleeps or timeouts needed.
  */
@@ -46,7 +46,7 @@ describe('Feature: Account Withdrawal', () => {
       // GIVEN: An account with $100 balance
       const account = await testApi.createAccount({ currency: 'USD' });
       await testApi.topup(account.id, '100.00', 'USD');
-      
+
       const balanceBefore = await testApi.getBalance(account.id);
       expect(balanceBefore.balance).toBe('100.00000000');
 
@@ -81,7 +81,7 @@ describe('Feature: Account Withdrawal', () => {
       // GIVEN: Accounts in different currencies with funds
       const usdAccount = await testApi.createAccount({ currency: 'USD' });
       const eurAccount = await testApi.createAccount({ currency: 'EUR' });
-      
+
       await testApi.topup(usdAccount.id, '100.00', 'USD');
       await testApi.topup(eurAccount.id, '85.50', 'EUR');
 
@@ -90,8 +90,12 @@ describe('Feature: Account Withdrawal', () => {
       await testApi.withdraw(eurAccount.id, '10.50', 'EUR');
 
       // THEN: Each account should have correct balance
-      expect((await testApi.getBalance(usdAccount.id)).balance).toBe('75.00000000');
-      expect((await testApi.getBalance(eurAccount.id)).balance).toBe('75.00000000');
+      expect((await testApi.getBalance(usdAccount.id)).balance).toBe(
+        '75.00000000',
+      );
+      expect((await testApi.getBalance(eurAccount.id)).balance).toBe(
+        '75.00000000',
+      );
     });
 
     it('should allow withdrawing entire balance', async () => {
@@ -230,4 +234,3 @@ describe('Feature: Account Withdrawal', () => {
     });
   });
 });
-

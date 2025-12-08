@@ -13,10 +13,10 @@ import { AuditModule } from '../src/modules/audit/audit.module';
 
 /**
  * Test-specific App Module that excludes KafkaModule.
- * 
+ *
  * This module is used for E2E tests to avoid Kafka initialization overhead
  * and connection warnings. Tests use InMemoryEventStore by default.
- * 
+ *
  * Only kafka-integration.e2e-spec.ts should use the real AppModule with KafkaModule.
  */
 @Global()
@@ -46,4 +46,3 @@ import { AuditModule } from '../src/modules/audit/audit.module';
   exports: ['EVENT_STORE', InMemoryEventStore],
 })
 export class AppTestModule {}
-

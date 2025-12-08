@@ -1,9 +1,9 @@
 /**
  * Test Setup - Full Schema Isolation for Parallel Tests
- * 
+ *
  * Each test suite runs in its own PostgreSQL schema for true isolation.
  * Schema is created from scratch and torn down after tests complete.
- * 
+ *
  * Benefits:
  * - True parallel execution (no database contention)
  * - Each worker has isolated data
@@ -33,7 +33,9 @@ export class TestSetup {
     const timestamp = Date.now();
     this.schemaName = `test_w${workerId}_${timestamp}`;
 
-    console.log(`[Worker ${workerId}] Creating isolated schema: ${this.schemaName}`);
+    console.log(
+      `[Worker ${workerId}] Creating isolated schema: ${this.schemaName}`,
+    );
 
     // Create testing module
     this.moduleRef = await Test.createTestingModule({
@@ -50,7 +52,9 @@ export class TestSetup {
     // Create dedicated schema and switch to it
     await this.createIsolatedSchema();
 
-    console.log(`[Worker ${workerId}] Schema ${this.schemaName} ready with all tables`);
+    console.log(
+      `[Worker ${workerId}] Schema ${this.schemaName} ready with all tables`,
+    );
 
     return this.app;
   }
@@ -64,14 +68,20 @@ export class TestSetup {
       try {
         const workerId = process.env.JEST_WORKER_ID || '1';
         console.log(`[Worker ${workerId}] Dropping schema: ${this.schemaName}`);
-        
+
         // Switch back to public schema
-        await this.dataSource.query(`SET search_path TO ${this.originalSchema};`);
-        
+        await this.dataSource.query(
+          `SET search_path TO ${this.originalSchema};`,
+        );
+
         // Drop the test schema (CASCADE removes all objects)
-        await this.dataSource.query(`DROP SCHEMA IF EXISTS "${this.schemaName}" CASCADE;`);
-        
-        console.log(`[Worker ${workerId}] Schema ${this.schemaName} dropped successfully`);
+        await this.dataSource.query(
+          `DROP SCHEMA IF EXISTS "${this.schemaName}" CASCADE;`,
+        );
+
+        console.log(
+          `[Worker ${workerId}] Schema ${this.schemaName} dropped successfully`,
+        );
       } catch (error) {
         console.warn(`Failed to drop schema ${this.schemaName}:`, error);
       }
@@ -89,8 +99,8 @@ export class TestSetup {
   async beforeEach(): Promise<void> {
     // Wait for any pending async operations (sagas, event handlers)
     // Slightly longer in parallel mode to avoid race conditions
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     // Clean database for test isolation
     await this.cleanDatabase();
   }
@@ -101,7 +111,7 @@ export class TestSetup {
    */
   async afterEach(): Promise<void> {
     // Wait for async event processing to complete
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
   /**
@@ -130,16 +140,18 @@ export class TestSetup {
    */
   private async createIsolatedSchema(): Promise<void> {
     // Create new schema
-    await this.dataSource.query(`CREATE SCHEMA IF NOT EXISTS "${this.schemaName}";`);
-    
+    await this.dataSource.query(
+      `CREATE SCHEMA IF NOT EXISTS "${this.schemaName}";`,
+    );
+
     // Update connection options to use the new schema
     const options = this.dataSource.options as any;
     options.schema = this.schemaName;
-    
+
     // Force TypeORM to recreate all tables in the new schema
     // dropSchema: true will clean the schema first
     await this.dataSource.synchronize(true);
-    
+
     // Seed required data (currencies)
     await this.seedRequiredData();
   }
@@ -150,10 +162,34 @@ export class TestSetup {
   private async seedRequiredData(): Promise<void> {
     // Insert currencies (required for foreign key constraints)
     const currencies = [
-      { code: 'USD', name: 'US Dollar', type: 'fiat', precision: 2, is_active: true },
-      { code: 'EUR', name: 'Euro', type: 'fiat', precision: 2, is_active: true },
-      { code: 'GBP', name: 'British Pound', type: 'fiat', precision: 2, is_active: true },
-      { code: 'BTC', name: 'Bitcoin', type: 'non-fiat', precision: 8, is_active: true },
+      {
+        code: 'USD',
+        name: 'US Dollar',
+        type: 'fiat',
+        precision: 2,
+        is_active: true,
+      },
+      {
+        code: 'EUR',
+        name: 'Euro',
+        type: 'fiat',
+        precision: 2,
+        is_active: true,
+      },
+      {
+        code: 'GBP',
+        name: 'British Pound',
+        type: 'fiat',
+        precision: 2,
+        is_active: true,
+      },
+      {
+        code: 'BTC',
+        name: 'Bitcoin',
+        type: 'non-fiat',
+        precision: 8,
+        is_active: true,
+      },
     ];
 
     for (const currency of currencies) {
@@ -161,7 +197,14 @@ export class TestSetup {
         `INSERT INTO currencies (code, name, type, precision, is_active, metadata) 
          VALUES ($1, $2, $3, $4, $5, $6) 
          ON CONFLICT (code) DO NOTHING;`,
-        [currency.code, currency.name, currency.type, currency.precision, currency.is_active, null]
+        [
+          currency.code,
+          currency.name,
+          currency.type,
+          currency.precision,
+          currency.is_active,
+          null,
+        ],
       );
     }
   }

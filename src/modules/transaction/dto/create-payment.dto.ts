@@ -77,4 +77,3 @@ export class CreatePaymentDto {
     [key: string]: any;
   };
 }
-

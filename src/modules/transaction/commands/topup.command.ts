@@ -18,4 +18,3 @@ export class TopupCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

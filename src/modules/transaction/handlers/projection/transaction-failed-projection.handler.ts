@@ -27,10 +27,14 @@ export class TransactionFailedProjectionHandler implements IEventHandler<Transac
         event.timestamp,
       );
 
-      this.logger.log(`✅ [Projection] Transaction projection updated (failed): ${event.aggregateId}`);
+      this.logger.log(
+        `✅ [Projection] Transaction projection updated (failed): ${event.aggregateId}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to update transaction projection`, error);
+      this.logger.error(
+        `❌ [Projection] Failed to update transaction projection`,
+        error,
+      );
     }
   }
 }
-

@@ -28,10 +28,14 @@ export class TopupCompletedProjectionHandler implements IEventHandler<TopupCompl
         event.timestamp,
       );
 
-      this.logger.log(`✅ [Projection] Transaction projection updated: ${event.aggregateId}`);
+      this.logger.log(
+        `✅ [Projection] Transaction projection updated: ${event.aggregateId}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to update transaction projection`, error);
+      this.logger.error(
+        `❌ [Projection] Failed to update transaction projection`,
+        error,
+      );
     }
   }
 }
-

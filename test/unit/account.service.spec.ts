@@ -3,11 +3,17 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
 import { CommandBus } from '@nestjs/cqrs';
 import { AccountService } from '../../src/modules/account/account.service';
-import { Account, AccountStatus } from '../../src/modules/account/account.entity';
+import {
+  Account,
+  AccountStatus,
+} from '../../src/modules/account/account.entity';
 import { CurrencyService } from '../../src/modules/currency/currency.service';
 import { AuditService } from '../../src/modules/audit/audit.service';
 import { CreateAccountDto } from '../../src/modules/account/dto/create-account.dto';
-import { AccountNotFoundException, InvalidOperationException } from '../../src/common/exceptions/billing.exception';
+import {
+  AccountNotFoundException,
+  InvalidOperationException,
+} from '../../src/common/exceptions/billing.exception';
 
 describe('AccountService', () => {
   let service: AccountService;
@@ -57,7 +63,9 @@ describe('AccountService', () => {
     }).compile();
 
     service = module.get<AccountService>(AccountService);
-    accountRepository = module.get<Repository<Account>>(getRepositoryToken(Account));
+    accountRepository = module.get<Repository<Account>>(
+      getRepositoryToken(Account),
+    );
     currencyService = module.get<CurrencyService>(CurrencyService);
     auditService = module.get<AuditService>(AuditService);
   });
@@ -91,12 +99,16 @@ describe('AccountService', () => {
         type: 'fiat',
         precision: 2,
         isActive: true,
-        metadata: null,
+        metadata: {},
       });
 
-      jest.spyOn(accountRepository, 'create').mockReturnValue(mockAccount as Account);
-      jest.spyOn(accountRepository, 'save').mockResolvedValue(mockAccount as Account);
-      jest.spyOn(auditService, 'log').mockResolvedValue(null);
+      jest
+        .spyOn(accountRepository, 'create')
+        .mockReturnValue(mockAccount as Account);
+      jest
+        .spyOn(accountRepository, 'save')
+        .mockResolvedValue(mockAccount as Account);
+      jest.spyOn(auditService, 'log').mockResolvedValue(undefined as any);
 
       const result = await service.create(createAccountDto, mockContext);
 
@@ -125,7 +137,9 @@ describe('AccountService', () => {
         status: AccountStatus.ACTIVE,
       };
 
-      jest.spyOn(accountRepository, 'findOne').mockResolvedValue(mockAccount as Account);
+      jest
+        .spyOn(accountRepository, 'findOne')
+        .mockResolvedValue(mockAccount as Account);
 
       const result = await service.findById('account-123');
 
@@ -139,7 +153,9 @@ describe('AccountService', () => {
     it('should throw AccountNotFoundException if account not found', async () => {
       jest.spyOn(accountRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findById('nonexistent')).rejects.toThrow(AccountNotFoundException);
+      await expect(service.findById('nonexistent')).rejects.toThrow(
+        AccountNotFoundException,
+      );
     });
   });
 
@@ -150,14 +166,20 @@ describe('AccountService', () => {
         status: AccountStatus.ACTIVE,
       };
 
-      jest.spyOn(accountRepository, 'findOne').mockResolvedValue(mockAccount as Account);
+      jest
+        .spyOn(accountRepository, 'findOne')
+        .mockResolvedValue(mockAccount as Account);
       jest.spyOn(accountRepository, 'save').mockResolvedValue({
         ...mockAccount,
         status: AccountStatus.SUSPENDED,
       } as Account);
-      jest.spyOn(auditService, 'log').mockResolvedValue(null);
+      jest.spyOn(auditService, 'log').mockResolvedValue(undefined as any);
 
-      const result = await service.updateStatus('account-123', AccountStatus.SUSPENDED, mockContext);
+      const result = await service.updateStatus(
+        'account-123',
+        AccountStatus.SUSPENDED,
+        mockContext,
+      );
 
       expect(result.status).toBe(AccountStatus.SUSPENDED);
       expect(auditService.log).toHaveBeenCalled();
@@ -169,7 +191,9 @@ describe('AccountService', () => {
         status: AccountStatus.CLOSED,
       };
 
-      jest.spyOn(accountRepository, 'findOne').mockResolvedValue(mockAccount as Account);
+      jest
+        .spyOn(accountRepository, 'findOne')
+        .mockResolvedValue(mockAccount as Account);
 
       await expect(
         service.updateStatus('account-123', AccountStatus.ACTIVE, mockContext),
@@ -186,7 +210,9 @@ describe('AccountService', () => {
         status: AccountStatus.ACTIVE,
       };
 
-      jest.spyOn(accountRepository, 'findOne').mockResolvedValue(mockAccount as Account);
+      jest
+        .spyOn(accountRepository, 'findOne')
+        .mockResolvedValue(mockAccount as Account);
 
       const result = await service.getBalance('account-123');
 
@@ -198,4 +224,3 @@ describe('AccountService', () => {
     });
   });
 });
-

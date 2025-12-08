@@ -9,7 +9,13 @@ import {
   ValidationPipe,
   UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountStatusDto } from './dto/update-account-status.dto';
@@ -23,9 +29,19 @@ export class AccountController {
   constructor(private readonly accountService: AccountService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new account', description: 'Creates a new account for holding a specific currency' })
-  @ApiResponse({ status: 201, description: 'Account created successfully', type: Account })
-  @ApiResponse({ status: 400, description: 'Invalid input or currency not supported' })
+  @ApiOperation({
+    summary: 'Create a new account',
+    description: 'Creates a new account for holding a specific currency',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Account created successfully',
+    type: Account,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or currency not supported',
+  })
   async create(@Body() createAccountDto: CreateAccountDto): Promise<Account> {
     const context = {
       correlationId: uuidv4(),
@@ -38,7 +54,10 @@ export class AccountController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get account by ID', description: 'Retrieves account details including balance and status' })
+  @ApiOperation({
+    summary: 'Get account by ID',
+    description: 'Retrieves account details including balance and status',
+  })
   @ApiParam({ name: 'id', description: 'Account UUID' })
   @ApiResponse({ status: 200, description: 'Account found', type: Account })
   @ApiResponse({ status: 404, description: 'Account not found' })
@@ -47,9 +66,20 @@ export class AccountController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get accounts by owner', description: 'Retrieves all accounts belonging to a specific owner' })
-  @ApiQuery({ name: 'ownerId', description: 'Owner identifier', required: true })
-  @ApiQuery({ name: 'ownerType', description: 'Owner type (e.g., user, organization)', required: true })
+  @ApiOperation({
+    summary: 'Get accounts by owner',
+    description: 'Retrieves all accounts belonging to a specific owner',
+  })
+  @ApiQuery({
+    name: 'ownerId',
+    description: 'Owner identifier',
+    required: true,
+  })
+  @ApiQuery({
+    name: 'ownerType',
+    description: 'Owner type (e.g., user, organization)',
+    required: true,
+  })
   @ApiResponse({ status: 200, description: 'Accounts found', type: [Account] })
   async findByOwner(
     @Query('ownerId') ownerId: string,
@@ -59,7 +89,10 @@ export class AccountController {
   }
 
   @Get(':id/balance')
-  @ApiOperation({ summary: 'Get account balance', description: 'Retrieves current balance and currency for an account' })
+  @ApiOperation({
+    summary: 'Get account balance',
+    description: 'Retrieves current balance and currency for an account',
+  })
   @ApiParam({ name: 'id', description: 'Account UUID' })
   @ApiResponse({ status: 200, description: 'Balance retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Account not found' })
@@ -70,9 +103,16 @@ export class AccountController {
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: 'Update account status', description: 'Changes account status (active, suspended, closed)' })
+  @ApiOperation({
+    summary: 'Update account status',
+    description: 'Changes account status (active, suspended, closed)',
+  })
   @ApiParam({ name: 'id', description: 'Account UUID' })
-  @ApiResponse({ status: 200, description: 'Status updated successfully', type: Account })
+  @ApiResponse({
+    status: 200,
+    description: 'Status updated successfully',
+    type: Account,
+  })
   @ApiResponse({ status: 400, description: 'Invalid status transition' })
   @ApiResponse({ status: 404, description: 'Account not found' })
   async updateStatus(
@@ -93,4 +133,3 @@ export class AccountController {
     );
   }
 }
-

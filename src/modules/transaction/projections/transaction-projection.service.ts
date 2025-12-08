@@ -167,9 +167,12 @@ export class TransactionProjectionService {
   async findByAccount(accountId: string): Promise<TransactionProjection[]> {
     return this.projectionRepository
       .createQueryBuilder('t')
-      .where('t.sourceAccountId = :accountId OR t.destinationAccountId = :accountId', {
-        accountId,
-      })
+      .where(
+        't.sourceAccountId = :accountId OR t.destinationAccountId = :accountId',
+        {
+          accountId,
+        },
+      )
       .orderBy('t.requestedAt', 'DESC')
       .getMany();
   }
@@ -177,7 +180,9 @@ export class TransactionProjectionService {
   /**
    * Find transactions by status
    */
-  async findByStatus(status: TransactionStatus): Promise<TransactionProjection[]> {
+  async findByStatus(
+    status: TransactionStatus,
+  ): Promise<TransactionProjection[]> {
     return this.projectionRepository.find({
       where: { status },
       order: { requestedAt: 'DESC' },
@@ -187,18 +192,21 @@ export class TransactionProjectionService {
   /**
    * Find transaction by idempotency key
    */
-  async findByIdempotencyKey(idempotencyKey: string): Promise<TransactionProjection | null> {
+  async findByIdempotencyKey(
+    idempotencyKey: string,
+  ): Promise<TransactionProjection | null> {
     return this.projectionRepository.findOne({ where: { idempotencyKey } });
   }
 
   /**
    * Find transactions by correlation ID
    */
-  async findByCorrelationId(correlationId: string): Promise<TransactionProjection[]> {
+  async findByCorrelationId(
+    correlationId: string,
+  ): Promise<TransactionProjection[]> {
     return this.projectionRepository.find({
       where: { correlationId },
       order: { requestedAt: 'DESC' },
     });
   }
 }
-
