@@ -35,10 +35,10 @@
     "noFallthroughCasesInSwitch": true, // Prevent fallthrough in switch
     "noImplicitReturns": true,          // All code paths must return
     "noImplicitOverride": true          // Require 'override' keyword
-    // TODO: Enable in next phase after fixing remaining issues:
-    // "noUnusedLocals": true,             // Flag unused local variables
+    // TODO: Enable in next phase (see TYPE_SAFETY_ROADMAP.md):
+    // "noUnusedLocals": true,             // Flag unused local variables (~18 fixes needed)
     // "noUnusedParameters": true,         // Flag unused parameters
-    // "noUncheckedIndexedAccess": true,   // Array/object access returns T | undefined
-    // "noPropertyAccessFromIndexSignature": true // Require bracket notation for index signatures
+    // "noUncheckedIndexedAccess": true,   // Array/object access returns T | undefined (~30 fixes needed)
+    // "noPropertyAccessFromIndexSignature": true // Require bracket notation (~20 fixes needed)
   }
 }
