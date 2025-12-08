@@ -13,7 +13,9 @@ import { UpdateBalanceHandler } from './handlers/update-balance.handler';
 
 // CQRS Components - Events
 import { AccountCreatedHandler } from './handlers/account-created.handler';
+import { AccountCreatedEntityHandler } from './handlers/account-created-entity.handler';
 import { BalanceChangedHandler } from './handlers/balance-changed.handler';
+import { BalanceChangedEntityHandler } from './handlers/balance-changed-entity.handler';
 import { AccountStatusChangedHandler } from './handlers/account-status-changed.handler';
 import { AccountLimitsChangedHandler } from './handlers/account-limits-changed.handler';
 
@@ -28,7 +30,9 @@ import { AccountProjectionService } from './projections/account-projection.servi
 const CommandHandlers = [CreateAccountHandler, UpdateBalanceHandler];
 const EventHandlers = [
   AccountCreatedHandler,
+  AccountCreatedEntityHandler,
   BalanceChangedHandler,
+  BalanceChangedEntityHandler,
   AccountStatusChangedHandler,
   AccountLimitsChangedHandler,
 ];

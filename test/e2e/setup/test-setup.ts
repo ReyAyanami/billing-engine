@@ -53,6 +53,9 @@ export class TestSetup {
    * Call this in beforeEach()
    */
   static async beforeEach(): Promise<void> {
+    // Small delay for any pending async operations
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     // Clean database for test isolation
     await this.cleanDatabase();
   }
@@ -62,7 +65,8 @@ export class TestSetup {
    * Call this in afterEach()
    */
   static async afterEach(): Promise<void> {
-    // Nothing needed - cleanup happens in beforeEach
+    // Small delay for async event processing
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   /**

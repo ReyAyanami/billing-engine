@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
-import { Account, AccountStatus } from './account.entity';
+import { CommandBus } from '@nestjs/cqrs';
+import { v4 as uuidv4 } from 'uuid';
+import { Account, AccountStatus, AccountType } from './account.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
+import { CreateAccountCommand } from './commands/create-account.command';
 import {
   AccountNotFoundException,
   AccountInactiveException,
@@ -19,6 +22,7 @@ export class AccountService {
     private readonly accountRepository: Repository<Account>,
     private readonly currencyService: CurrencyService,
     private readonly auditService: AuditService,
+    private readonly commandBus: CommandBus,
   ) {}
 
   async create(
@@ -28,7 +32,7 @@ export class AccountService {
     // Validate currency
     await this.currencyService.validateCurrency(createAccountDto.currency);
 
-    // Create account
+    // Create account directly (non-CQRS for simplicity)
     const account = this.accountRepository.create({
       ownerId: createAccountDto.ownerId,
       ownerType: createAccountDto.ownerType,
@@ -43,6 +47,28 @@ export class AccountService {
     });
 
     const savedAccount = await this.accountRepository.save(account);
+
+    // ALSO save to event store for CQRS sagas
+    // This ensures sagas can find the account
+    const command = new CreateAccountCommand(
+      savedAccount.id,
+      savedAccount.ownerId,
+      savedAccount.ownerType,
+      savedAccount.accountType,
+      savedAccount.currency,
+      savedAccount.maxBalance || undefined,
+      savedAccount.minBalance || undefined,
+      context.correlationId,
+      context.actorId,
+    );
+
+    try {
+      await this.commandBus.execute(command);
+    } catch (error) {
+      // If CQRS fails, log but don't fail the request
+      // (Hybrid architecture: HTTP works even if CQRS fails)
+      console.error('CQRS command failed (non-fatal):', error);
+    }
 
     // Audit log
     await this.auditService.log(

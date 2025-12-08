@@ -19,6 +19,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { v4 as uuid } from 'uuid';
 import { AccountType, AccountStatus } from '../../../src/modules/account/account.entity';
+import { DataSource } from 'typeorm';
 
 export interface CreateAccountParams {
   ownerId?: string;
@@ -53,9 +54,11 @@ export interface RefundOptions {
 export class TestAPIHTTP {
   private server: any;
   private externalAccounts: Record<string, any> = {};
+  private dataSource: DataSource;
 
   constructor(app: INestApplication) {
     this.server = app.getHttpServer();
+    this.dataSource = app.get(DataSource);
   }
   
   /**
@@ -333,6 +336,45 @@ export class TestAPIHTTP {
    */
   generateId(prefix?: string): string {
     return uuid();
+  }
+
+  /**
+   * Wait for account projection to be ready
+   * Polls every 10ms until projection exists or timeout
+   * Much faster than fixed delays!
+   */
+  async waitForAccountProjection(accountId: string, maxWait = 3000): Promise<any> {
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      const result = await this.dataSource.query(
+        'SELECT * FROM account_projections WHERE id = $1',
+        [accountId]
+      );
+      if (result && result.length > 0) {
+        return result[0];
+      }
+      await new Promise(resolve => setTimeout(resolve, 10)); // Poll every 10ms
+    }
+    throw new Error(`Account projection not ready after ${maxWait}ms: ${accountId}`);
+  }
+
+  /**
+   * Wait for transaction projection to be ready
+   * Polls every 10ms until projection exists or timeout
+   */
+  async waitForTransactionProjection(transactionId: string, maxWait = 3000): Promise<any> {
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      const result = await this.dataSource.query(
+        'SELECT * FROM transaction_projections WHERE id = $1',
+        [transactionId]
+      );
+      if (result && result.length > 0) {
+        return result[0];
+      }
+      await new Promise(resolve => setTimeout(resolve, 10)); // Poll every 10ms
+    }
+    throw new Error(`Transaction projection not ready after ${maxWait}ms: ${transactionId}`);
   }
 
   /**

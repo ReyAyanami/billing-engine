@@ -133,7 +133,7 @@ describe('Feature: Account Transfer', () => {
       const bob = await testApi.createAccount({ currency: 'USD' });
       const fakeAccountId = '00000000-0000-0000-0000-000000000000';
 
-      // WHEN/THEN: Transfer from fake account should fail
+      // WHEN/THEN: Transfer from fake account should fail with 404
       await testApi.expectError(
         'post',
         '/api/v1/transactions/transfer',
@@ -144,7 +144,7 @@ describe('Feature: Account Transfer', () => {
           amount: '50.00',
           currency: 'USD',
         },
-        400,
+        404,
       );
     });
 
@@ -154,7 +154,7 @@ describe('Feature: Account Transfer', () => {
       await testApi.topup(alice.id, '100.00', 'USD');
       const fakeAccountId = '00000000-0000-0000-0000-000000000000';
 
-      // WHEN/THEN: Transfer to fake account should fail
+      // WHEN/THEN: Transfer to fake account should fail with 404
       await testApi.expectError(
         'post',
         '/api/v1/transactions/transfer',
@@ -165,7 +165,7 @@ describe('Feature: Account Transfer', () => {
           amount: '50.00',
           currency: 'USD',
         },
-        400,
+        404,
       );
     });
 

@@ -8,6 +8,7 @@ import { TransactionModule } from './modules/transaction/transaction.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { KafkaModule } from './cqrs/kafka/kafka.module';
+import { EventsModule } from './modules/events/events.module';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
@@ -24,6 +25,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     TransactionModule,
     CurrencyModule,
     AuditModule,
+    EventsModule, // SSE events for real-time updates
   ],
   controllers: [],
   providers: [

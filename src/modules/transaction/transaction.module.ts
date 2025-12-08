@@ -30,6 +30,18 @@ import { TransferRequestedHandler } from './handlers/transfer-requested.handler'
 import { PaymentRequestedHandler } from './handlers/payment-requested.handler';
 import { RefundRequestedHandler } from './handlers/refund-requested.handler';
 
+// CQRS Components - Events (Entity Handlers)
+import { TopupRequestedEntityHandler } from './handlers/topup-requested-entity.handler';
+import { TopupCompletedEntityHandler } from './handlers/topup-completed-entity.handler';
+import { WithdrawalRequestedEntityHandler } from './handlers/withdrawal-requested-entity.handler';
+import { WithdrawalCompletedEntityHandler } from './handlers/withdrawal-completed-entity.handler';
+import { TransferRequestedEntityHandler } from './handlers/transfer-requested-entity.handler';
+import { TransferCompletedEntityHandler } from './handlers/transfer-completed-entity.handler';
+import { PaymentRequestedEntityHandler } from './handlers/payment-requested-entity.handler';
+import { PaymentCompletedEntityHandler } from './handlers/payment-completed-entity.handler';
+import { RefundRequestedEntityHandler } from './handlers/refund-requested-entity.handler';
+import { RefundCompletedEntityHandler } from './handlers/refund-completed-entity.handler';
+
 // CQRS Components - Events (Projections)
 import { TopupRequestedProjectionHandler } from './handlers/projection/topup-requested-projection.handler';
 import { TopupCompletedProjectionHandler } from './handlers/projection/topup-completed-projection.handler';
@@ -74,7 +86,18 @@ const EventHandlers = [
   TransferRequestedHandler,
   PaymentRequestedHandler,
   RefundRequestedHandler,
-  // Projection updaters
+  // Entity handlers (write model - transactions table)
+  TopupRequestedEntityHandler,
+  TopupCompletedEntityHandler,
+  WithdrawalRequestedEntityHandler,
+  WithdrawalCompletedEntityHandler,
+  TransferRequestedEntityHandler,
+  TransferCompletedEntityHandler,
+  PaymentRequestedEntityHandler,
+  PaymentCompletedEntityHandler,
+  RefundRequestedEntityHandler,
+  RefundCompletedEntityHandler,
+  // Projection updaters (read model - transaction_projections table)
   TopupRequestedProjectionHandler,
   TopupCompletedProjectionHandler,
   WithdrawalRequestedProjectionHandler,

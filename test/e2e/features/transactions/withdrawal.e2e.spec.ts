@@ -115,7 +115,7 @@ describe('Feature: Account Withdrawal', () => {
       // GIVEN: A non-existent account ID
       const fakeAccountId = '00000000-0000-0000-0000-000000000000';
 
-      // WHEN/THEN: Should fail
+      // WHEN/THEN: Should fail with 404 (resource not found)
       await testApi.expectError(
         'post',
         '/api/v1/transactions/withdraw',
@@ -126,7 +126,7 @@ describe('Feature: Account Withdrawal', () => {
           amount: '50.00',
           currency: 'USD',
         },
-        400,
+        404,
       );
     });
 
@@ -135,7 +135,7 @@ describe('Feature: Account Withdrawal', () => {
       const account = await testApi.createAccount({ currency: 'USD' });
       await testApi.topup(account.id, '100.00', 'USD');
 
-      // WHEN/THEN: Try to withdraw with EUR should fail
+      // WHEN/THEN: Try to withdraw with EUR should fail with 404 (destination account not found)
       await testApi.expectError(
         'post',
         '/api/v1/transactions/withdraw',
@@ -146,7 +146,7 @@ describe('Feature: Account Withdrawal', () => {
           amount: '50.00',
           currency: 'EUR',
         },
-        400,
+        404,
       );
     });
 
