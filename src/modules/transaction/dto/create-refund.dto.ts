@@ -23,13 +23,13 @@ export class CreateRefundDto {
   @IsNotEmpty()
   originalPaymentId: string;
 
-  @ApiPropertyOptional({
-    description: 'Refund amount (must be > 0 and ≤ remaining refundable amount). If not specified, full refund.',
+  @ApiProperty({
+    description: 'Refund amount (must be > 0 and ≤ remaining refundable amount)',
     example: '99.99',
   })
   @IsString()
-  @IsOptional()
-  refundAmount?: string;
+  @IsNotEmpty()
+  refundAmount: string;
 
   @ApiProperty({
     description: 'Currency code (ISO 4217)',
