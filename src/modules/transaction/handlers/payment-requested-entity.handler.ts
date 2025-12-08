@@ -1,7 +1,7 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, QueryDeepPartialEntity } from 'typeorm';
 import { PaymentRequestedEvent } from '../events/payment-requested.event';
 import {
   Transaction,
@@ -55,7 +55,7 @@ export class PaymentRequestedEntityHandler implements IEventHandler<PaymentReque
             ...event.metadata,
             paymentMetadata: event.paymentMetadata,
           },
-        } as any)
+        } as QueryDeepPartialEntity<Transaction>)
         .execute();
 
       this.logger.log(`✅ Transaction entity created: ${event.aggregateId}`);

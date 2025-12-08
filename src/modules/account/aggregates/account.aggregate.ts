@@ -189,7 +189,7 @@ export class AccountAggregate extends AggregateRoot {
     const effectiveMinBalance = this.minBalance || new Decimal(0);
     if (newBalance.lessThan(effectiveMinBalance)) {
       throw new Error(
-        `Insufficient balance: current ${previousBalance}, attempting to ${params.changeType} ${changeAmount}, would result in ${newBalance}`,
+        `Insufficient balance: current ${previousBalance.toString()}, attempting to ${params.changeType} ${changeAmount.toString()}, would result in ${newBalance.toString()}`,
       );
     }
 
@@ -308,7 +308,7 @@ export class AccountAggregate extends AggregateRoot {
       const max = new Decimal(params.newMaxBalance);
       if (this.balance.greaterThan(max)) {
         throw new Error(
-          `Current balance ${this.balance} exceeds new max ${max}`,
+          `Current balance ${this.balance.toString()} exceeds new max ${max.toString()}`,
         );
       }
     }
@@ -317,7 +317,7 @@ export class AccountAggregate extends AggregateRoot {
       const min = new Decimal(params.newMinBalance);
       if (this.balance.lessThan(min)) {
         throw new Error(
-          `Current balance ${this.balance} is below new min ${min}`,
+          `Current balance ${this.balance.toString()} is below new min ${min.toString()}`,
         );
       }
     }

@@ -1,7 +1,7 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, QueryDeepPartialEntity } from 'typeorm';
 import { AccountCreatedEvent } from '../events/account-created.event';
 import { Account } from '../account.entity';
 
@@ -52,7 +52,7 @@ export class AccountCreatedEntityHandler implements IEventHandler<AccountCreated
           minBalance: event.minBalance || undefined,
           status: event.status,
           metadata: event.metadata || {},
-        } as any)
+        } as QueryDeepPartialEntity<Account>)
         .execute();
 
       this.logger.log(`✅ Account entity created: ${event.aggregateId}`);
