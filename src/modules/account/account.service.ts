@@ -14,6 +14,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
 import { OperationContext } from '../../common/types';
 import { AccountId, OwnerId } from '../../common/types/branded.types';
+import { assertNever } from '../../common/utils/exhaustive-check';
 
 @Injectable()
 export class AccountService {
@@ -196,17 +197,36 @@ export class AccountService {
     currentStatus: AccountStatus,
     newStatus: AccountStatus,
   ): void {
-    const validTransitions: Record<AccountStatus, AccountStatus[]> = {
-      [AccountStatus.ACTIVE]: [AccountStatus.SUSPENDED, AccountStatus.CLOSED],
-      [AccountStatus.SUSPENDED]: [AccountStatus.ACTIVE, AccountStatus.CLOSED],
-      [AccountStatus.CLOSED]: [], // Terminal state
-    };
+    // Get valid transitions based on current status
+    const validTransitions = this.getValidStatusTransitions(currentStatus);
 
-    if (!validTransitions[currentStatus].includes(newStatus)) {
+    if (!validTransitions.includes(newStatus)) {
       throw new InvalidOperationException(
         `Cannot transition account from ${currentStatus} to ${newStatus}`,
         { currentStatus, newStatus },
       );
+    }
+  }
+
+  /**
+   * Returns valid status transitions for a given status.
+   * Uses exhaustive checking to ensure all enum values are handled.
+   */
+  private getValidStatusTransitions(status: AccountStatus): AccountStatus[] {
+    switch (status) {
+      case AccountStatus.ACTIVE:
+        return [AccountStatus.SUSPENDED, AccountStatus.CLOSED];
+
+      case AccountStatus.SUSPENDED:
+        return [AccountStatus.ACTIVE, AccountStatus.CLOSED];
+
+      case AccountStatus.CLOSED:
+        return []; // Terminal state - no transitions allowed
+
+      default:
+        // Compile-time exhaustiveness check
+        // If a new AccountStatus is added, this will cause a type error
+        return assertNever(status);
     }
   }
 }

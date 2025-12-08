@@ -11,6 +11,7 @@ import { RefundRequestedEvent } from '../events/refund-requested.event';
 import { RefundCompletedEvent } from '../events/refund-completed.event';
 import { TransactionFailedEvent } from '../events/transaction-failed.event';
 import { TransactionCompensatedEvent } from '../events/transaction-compensated.event';
+import { assertNever } from '../../../common/utils/exhaustive-check';
 
 /**
  * Transaction status enum
@@ -690,16 +691,43 @@ export class TransactionAggregate extends AggregateRoot {
 
   /**
    * Validates that transaction can be completed
+   * Uses exhaustive checking to ensure all status values are considered
    */
   private validateCanComplete(): void {
     if (!this.aggregateId) {
       throw new Error('Transaction does not exist');
     }
 
-    if (this.status !== TransactionStatus.PENDING) {
+    // Check if current status allows completion
+    if (!this.canTransitionToCompleted(this.status)) {
       throw new Error(
         `Cannot complete transaction with status: ${this.status}`,
       );
+    }
+  }
+
+  /**
+   * Checks if a transaction can transition to COMPLETED status.
+   * Uses exhaustive checking to ensure all TransactionStatus values are handled.
+   */
+  private canTransitionToCompleted(status: TransactionStatus): boolean {
+    switch (status) {
+      case TransactionStatus.PENDING:
+        return true; // Can complete from pending
+
+      case TransactionStatus.COMPLETED:
+        return false; // Already completed
+
+      case TransactionStatus.FAILED:
+        return false; // Cannot complete a failed transaction
+
+      case TransactionStatus.COMPENSATED:
+        return false; // Cannot complete a compensated transaction
+
+      default:
+        // Compile-time exhaustiveness check
+        // If a new TransactionStatus is added, this will cause a type error
+        return assertNever(status);
     }
   }
 
@@ -756,6 +784,34 @@ export class TransactionAggregate extends AggregateRoot {
 
   getFailureReason(): string | undefined {
     return this.failureReason;
+  }
+
+  /**
+   * Gets a human-readable label for the transaction type.
+   * Uses exhaustive checking to ensure all TransactionType values are handled.
+   */
+  getTransactionTypeLabel(): string {
+    switch (this.transactionType) {
+      case TransactionType.TOPUP:
+        return 'Top-up';
+
+      case TransactionType.WITHDRAWAL:
+        return 'Withdrawal';
+
+      case TransactionType.TRANSFER:
+        return 'Transfer';
+
+      case TransactionType.PAYMENT:
+        return 'Payment';
+
+      case TransactionType.REFUND:
+        return 'Refund';
+
+      default:
+        // Compile-time exhaustiveness check
+        // If a new TransactionType is added, this will cause a type error
+        return assertNever(this.transactionType);
+    }
   }
 
   /**

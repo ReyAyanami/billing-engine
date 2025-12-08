@@ -5,6 +5,7 @@ import { AccountStatusChangedEvent } from '../events/account-status-changed.even
 import { AccountLimitsChangedEvent } from '../events/account-limits-changed.event';
 import { AccountType, AccountStatus } from '../account.entity';
 import Decimal from 'decimal.js';
+import { assertNever } from '../../../common/utils/exhaustive-check';
 
 /**
  * Account Aggregate - Event-Sourced Version
@@ -242,9 +243,7 @@ export class AccountAggregate extends AggregateRoot {
     }
 
     // Validate: Status transitions (business rules)
-    if (this.status === AccountStatus.CLOSED) {
-      throw new Error('Cannot change status of a closed account');
-    }
+    this.validateStatusTransition(this.status, params.newStatus);
 
     // Create and apply the event
     const event = new AccountStatusChangedEvent(
@@ -353,6 +352,45 @@ export class AccountAggregate extends AggregateRoot {
       this.minBalance = new Decimal(event.newMinBalance);
     }
     this.updatedAt = event.timestamp;
+  }
+
+  /**
+   * Validates status transition using exhaustive checking.
+   * Ensures all AccountStatus enum values are handled.
+   */
+  private validateStatusTransition(
+    currentStatus: AccountStatus,
+    newStatus: AccountStatus,
+  ): void {
+    const validTransitions = this.getValidStatusTransitions(currentStatus);
+
+    if (!validTransitions.includes(newStatus)) {
+      throw new Error(
+        `Invalid status transition from ${currentStatus} to ${newStatus}`,
+      );
+    }
+  }
+
+  /**
+   * Returns valid status transitions for a given status.
+   * Uses exhaustive checking to ensure all enum values are handled.
+   */
+  private getValidStatusTransitions(status: AccountStatus): AccountStatus[] {
+    switch (status) {
+      case AccountStatus.ACTIVE:
+        return [AccountStatus.SUSPENDED, AccountStatus.CLOSED];
+
+      case AccountStatus.SUSPENDED:
+        return [AccountStatus.ACTIVE, AccountStatus.CLOSED];
+
+      case AccountStatus.CLOSED:
+        return []; // Terminal state - no transitions allowed
+
+      default:
+        // Compile-time exhaustiveness check
+        // If a new AccountStatus is added, this will cause a type error
+        return assertNever(status);
+    }
   }
 
   /**
