@@ -18,6 +18,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { v4 as uuid } from 'uuid';
+import { EventSource } from 'eventsource';
 import { AccountType, AccountStatus } from '../../../src/modules/account/account.entity';
 import { DataSource } from 'typeorm';
 
@@ -33,6 +34,7 @@ export interface CreateAccountParams {
 export interface TopupOptions {
   idempotencyKey?: string;
   reference?: string;
+  skipPolling?: boolean;
 }
 
 export interface TransferOptions {
@@ -198,6 +200,14 @@ export class TestAPIHTTP {
       );
     }
 
+    // Wait for completion via SSE (async saga processing)
+    if (!options.skipPolling) {
+      const transactionId = response.body.transactionId;
+      if (transactionId) {
+        await this.pollTransactionCompletion(transactionId);
+      }
+    }
+
     return response.body;
   }
 
@@ -307,28 +317,58 @@ export class TestAPIHTTP {
   }
 
   /**
-   * Poll transaction status until it reaches a final state
+   * Wait for transaction completion via SSE (real-time)
+   * If saga doesn't complete within 1 second, it's a BUG, not a timeout issue
    */
-  private async pollTransactionCompletion(transactionId: string, maxWait: number = 5000): Promise<void> {
-    const start = Date.now();
-    const pollInterval = 50;
+  private async pollTransactionCompletion(transactionId: string, maxWait: number = 1000): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const baseUrl = `http://localhost:${process.env.PORT || 3000}`;
+      const eventSource = new EventSource(
+        `${baseUrl}/api/v1/events/transactions/${transactionId}?transactionId=${transactionId}`
+      );
 
-    while (Date.now() - start < maxWait) {
-      const txResponse = await request(this.server)
-        .get(`/api/v1/transactions/${transactionId}`);
+      const timeout = setTimeout(() => {
+        eventSource.close();
+        reject(new Error(
+          `❌ BUG: Transaction ${transactionId} did not complete within ${maxWait}ms. ` +
+          `Saga should complete in milliseconds. This indicates a processing failure.`
+        ));
+      }, maxWait);
 
-      if (txResponse.status === 200) {
-        const status = txResponse.body.status;
-        if (status === 'completed' || status === 'failed' || status === 'compensated') {
-          return;
+      eventSource.onmessage = (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          const eventType = data.type;
+          
+          // Listen for completion events
+          const completionEvents = [
+            'TopupCompletedEvent',
+            'WithdrawalCompletedEvent', 
+            'TransferCompletedEvent',
+            'PaymentCompletedEvent',
+            'RefundCompletedEvent',
+            'TransactionFailedEvent',
+            'TransactionCompensatedEvent'
+          ];
+
+          if (completionEvents.includes(eventType)) {
+            clearTimeout(timeout);
+            eventSource.close();
+            resolve();
+          }
+        } catch (error) {
+          // Ignore parse errors, wait for valid events
         }
-      }
+      };
 
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-    }
-
-    // Timeout - transaction still pending
-    console.warn(`⚠️  Transaction ${transactionId} did not complete within ${maxWait}ms`);
+      eventSource.onerror = (error: any) => {
+        clearTimeout(timeout);
+        eventSource.close();
+        // Don't reject on error - transaction might already be completed
+        // Just resolve and let the test verify the final state
+        resolve();
+      };
+    });
   }
 
   /**
