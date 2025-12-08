@@ -112,9 +112,9 @@ This document outlines the new documentation structure for the Billing Engine pr
 │
 └── infrastructure/
     ├── README.md              # Infrastructure overview
-    ├── postgres.md            # PostgreSQL setup and configuration
-    ├── kafka.md               # Kafka setup and configuration
-    └── docker.md              # Docker and containerization
+    ├── postgres.md            # PostgreSQL via docker-compose
+    ├── kafka.md               # Kafka via docker-compose
+    └── docker.md              # Docker compose usage
 ```
 
 ---
@@ -184,9 +184,9 @@ This document outlines the new documentation structure for the Billing Engine pr
 ### Phase 3: Advanced Documentation (Lower Priority)
 
 #### 3.1 Infrastructure
-- [ ] `docs/infrastructure/postgres.md`
-- [ ] `docs/infrastructure/kafka.md`
-- [ ] `docs/infrastructure/docker.md`
+- [ ] `docs/infrastructure/postgres.md` - PostgreSQL via docker-compose
+- [ ] `docs/infrastructure/kafka.md` - Kafka via docker-compose
+- [ ] `docs/infrastructure/docker.md` - Docker compose usage
 
 #### 3.2 Operations Guides
 - [ ] `docs/guides/deployment.md`

@@ -155,10 +155,10 @@ Core concept explanations:
 - Audit trail
 
 ### Infrastructure (3 files)
-Infrastructure setup:
-- PostgreSQL configuration
-- Kafka configuration
-- Docker and containerization
+Infrastructure setup via docker-compose:
+- PostgreSQL configuration (docker-compose.yml)
+- Kafka configuration (docker-compose.yml)
+- Docker compose usage and commands
 
 ---
 
@@ -331,5 +331,28 @@ Would you like me to proceed with writing the Phase 1 documentation?
 
 ---
 
-*Last Updated: December 8, 2025*
+## 📝 Update: Post-Cleanup (Dec 8, 2025)
+
+After the initial restructure, a cleanup was performed to remove obsolete files:
+
+**Removed**:
+- ❌ 12 obsolete shell scripts (replaced by npm commands)
+- ❌ infrastructure/ directory (unused config files)
+- ❌ grafana/ directory (empty)
+- ❌ docker-compose.old.yml (old backup)
+
+**Result**: 
+- ✅ Simpler project structure
+- ✅ One way to do things: npm commands + docker-compose
+- ✅ Easier to document and maintain
+- ✅ Only `scripts/init-services.sh` remains (used by docker-compose internally)
+
+**Documentation Impact**:
+- Infrastructure docs focus on docker-compose.yml configuration
+- No separate scripts documentation needed (covered in guides)
+- Setup is simpler: `npm start` does everything
+
+---
+
+*Last Updated: December 8, 2025 (Post-Cleanup)*
 
