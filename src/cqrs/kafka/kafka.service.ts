@@ -31,7 +31,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         multiplier: 2,
       },
       connectionTimeout: 10000,
-      requestTimeout: 30000,
+      // Note: requestTimeout removed to prevent negative timeout calculations in KafkaJS
+      // KafkaJS will use its default timeout (30000ms) which works better with retries
     };
 
     this.kafka = new Kafka(kafkaConfig);
