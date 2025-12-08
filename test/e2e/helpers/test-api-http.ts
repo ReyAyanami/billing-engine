@@ -272,8 +272,13 @@ export class TestAPIHTTP {
         amount,
         currency,
         reference: options.reference || 'Test transfer',
-      })
-      .expect(201);
+      });
+
+    if (response.status !== 201) {
+      throw new Error(
+        `Transfer failed (${response.status}): ${JSON.stringify(response.body)}`
+      );
+    }
 
     // Poll for completion (async saga processing)
     if (!options.skipPolling) {

@@ -140,6 +140,11 @@ export class TransactionService {
     // Validate account is active
     this.accountService.validateAccountActive(sourceAccount);
 
+    // Validate destination account exists (if provided)
+    if (dto.destinationAccountId) {
+      await this.accountService.findById(dto.destinationAccountId);
+    }
+
     // Validate currency match
     if (sourceAccount.currency !== dto.currency) {
       throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);

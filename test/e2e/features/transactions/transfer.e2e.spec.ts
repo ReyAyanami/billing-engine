@@ -57,7 +57,7 @@ describe('Feature: Account Transfer', () => {
 
       // THEN: Transaction should be completed
       expect(transaction).toBeDefined();
-      expect(transaction.transactionId || transaction.id).toBeDefined();
+      expect(transaction.debitTransactionId || transaction.transactionId || transaction.id).toBeDefined();
 
       // AND: Alice should have $70
       const aliceBalance = await testApi.getBalance(alice.id);

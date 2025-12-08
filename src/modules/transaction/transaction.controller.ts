@@ -18,6 +18,7 @@ import { TransferDto } from './dto/transfer.dto';
 import { RefundDto } from './dto/refund.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
+import { DuplicateTransactionException } from '../../common/exceptions/billing.exception';
 import { Transaction } from './transaction.entity';
 import { TransactionResult, TransferResult } from '../../common/types';
 import { PaymentCommand } from './commands/payment.command';
@@ -122,6 +123,12 @@ export class TransactionController {
     const correlationId = uuidv4();
     const idempotencyKey = dto.idempotencyKey || uuidv4();
 
+    // Check idempotency first
+    const existing = await this.transactionService.findByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      throw new DuplicateTransactionException(idempotencyKey, existing.id);
+    }
+
     const command = new RefundCommand(
       refundId,
       dto.originalPaymentId,
@@ -198,10 +205,7 @@ export class TransactionController {
     // Check idempotency first
     const existing = await this.transactionService.findByIdempotencyKey(idempotencyKey);
     if (existing) {
-      return {
-        transactionId: existing.id,
-        status: existing.status,
-      };
+      throw new DuplicateTransactionException(idempotencyKey, existing.id);
     }
 
     // Upfront validation: Check accounts exist and are valid
