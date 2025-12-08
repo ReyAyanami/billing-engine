@@ -4,11 +4,15 @@ import { DomainEvent } from '../../src/cqrs/base/domain-event';
 import { IEventStore } from '../../src/cqrs/interfaces/event-store.interface';
 
 /**
- * In-memory event store for testing purposes.
+ * In-memory event store for testing purposes ONLY.
  * Provides fast, reliable event storage without Kafka overhead.
  *
- * This is perfect for E2E tests that need to verify business logic
- * without the complexity of distributed systems.
+ * ⚠️ WARNING: This is a TEST-ONLY implementation!
+ * - Does NOT persist events (data lost on restart)
+ * - Does NOT support distributed systems
+ * - Does NOT scale beyond single process
+ * 
+ * NEVER use this in production! Use KafkaEventStore instead.
  */
 @Injectable()
 export class InMemoryEventStore implements IEventStore {
@@ -17,8 +21,45 @@ export class InMemoryEventStore implements IEventStore {
   private readonly eventBus: EventBus;
 
   constructor(eventBus?: EventBus) {
+    // GUARDRAIL: Prevent accidental production use
+    this.validateTestEnvironment();
+    
     this.eventBus = eventBus!;
-    this.logger.log('📦 InMemoryEventStore initialized (Test Mode)');
+    this.logger.warn('⚠️  InMemoryEventStore initialized - TEST MODE ONLY');
+    this.logger.warn('⚠️  Events are NOT persisted and will be lost on restart!');
+  }
+
+  /**
+   * Validates that this is only used in test environment
+   * @throws Error if used in production
+   */
+  private validateTestEnvironment(): void {
+    const nodeEnv = process.env.NODE_ENV;
+    const isTest = nodeEnv === 'test' || process.env.JEST_WORKER_ID !== undefined;
+    
+    if (!isTest) {
+      const error = `
+╔════════════════════════════════════════════════════════════════╗
+║  ⛔ CRITICAL ERROR: InMemoryEventStore in Production           ║
+╠════════════════════════════════════════════════════════════════╣
+║  InMemoryEventStore is a TEST-ONLY implementation!             ║
+║                                                                 ║
+║  Issues:                                                        ║
+║  - Events are NOT persisted (lost on restart)                  ║
+║  - No distributed system support                               ║
+║  - No event replay capability                                  ║
+║  - No scalability beyond single process                        ║
+║                                                                 ║
+║  ✅ Solution:                                                   ║
+║  Use AppModule (with KafkaEventStore) instead of AppTestModule ║
+║                                                                 ║
+║  Current NODE_ENV: ${nodeEnv || 'undefined'}                   ║
+╚════════════════════════════════════════════════════════════════╝
+      `;
+      
+      this.logger.error(error);
+      throw new Error('InMemoryEventStore cannot be used outside test environment');
+    }
   }
 
   /**
