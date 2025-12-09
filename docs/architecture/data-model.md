@@ -2,9 +2,39 @@
 
 ## Overview
 
-The Billing Engine uses PostgreSQL for both **write operations** (current state) and **read operations** (projections). This document describes the database schema, entities, relationships, and design decisions.
+The Billing Engine uses a **pure event sourcing architecture** where all state changes are stored as immutable events in Kafka. PostgreSQL is used exclusively for **read-optimized projections**. This document describes the database schema, projections, and design decisions.
 
-> 🎓 **Learning Focus**: This schema balances normalization (for writes) with denormalization (for reads) to support CQRS architecture.
+> 🎓 **Learning Focus**: This is a pure CQRS/Event Sourcing implementation. Write operations create events in Kafka, and read operations query denormalized projections in PostgreSQL.
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────┐
+│              Write Side (Commands)              │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  AccountAggregate ──► Events ──► Kafka         │
+│  TransactionAggregate ──► Events ──► Kafka     │
+│                                                 │
+│  (No database writes for aggregates)            │
+└─────────────────────────────────────────────────┘
+                        │
+                        │ Event Stream
+                        ▼
+┌─────────────────────────────────────────────────┐
+│              Read Side (Queries)                │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  Event Handlers ──► PostgreSQL Projections     │
+│                                                 │
+│  - AccountProjection                            │
+│  - TransactionProjection                        │
+│  - AuditLog                                     │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -16,8 +46,8 @@ The Billing Engine uses PostgreSQL for both **write operations** (current state)
 └─────────────┘   │
                   │
 ┌─────────────────▼────────┐
-│      Account             │
-│  (Write Model)           │
+│  AccountProjection       │
+│  (Read Model)            │
 ├──────────────────────────┤
 │ id (PK)                  │
 │ ownerId                  │
@@ -27,51 +57,24 @@ The Billing Engine uses PostgreSQL for both **write operations** (current state)
 │ balance                  │
 │ status (enum)            │
 │ minBalance, maxBalance   │
-│ version (optimistic lock)│
-└─────────┬────────────────┘
-          │
-          │ 1:N
-          │
-┌─────────▼────────────┐
-│   Transaction        │
-│  (Write Model)       │
-├──────────────────────┤
-│ id (PK)              │
-│ idempotencyKey (UK)  │
-│ type (enum)          │
-│ sourceAccountId (FK) │
-│ destinationAccountId │
-│ amount               │
-│ currency             │
-│ status (enum)        │
-│ balances (before/aft)│
-│ parentTransactionId  │
-└──────────────────────┘
-
-┌────────────────────────┐
-│  AccountProjection     │
-│  (Read Model)          │
-├────────────────────────┤
-│ id (PK)                │
-│ ownerId                │
-│ ownerType              │
-│ currency               │
-│ balance                │
-│ status                 │
-│ type                   │
-└────────────────────────┘
+│ version                  │
+└──────────────────────────┘
 
 ┌────────────────────────┐
 │ TransactionProjection  │
 │  (Read Model)          │
 ├────────────────────────┤
 │ id (PK)                │
-│ type                   │
+│ idempotencyKey (UK)    │
+│ type (enum)            │
 │ accountId              │
+│ relatedAccountId       │
 │ amount                 │
 │ currency               │
-│ status                 │
-│ relatedAccountId       │
+│ status (enum)          │
+│ balanceBefore          │
+│ balanceAfter           │
+│ parentTransactionId    │
 │ compensationDetails    │
 └────────────────────────┘
 
@@ -130,13 +133,15 @@ INSERT INTO currencies VALUES
 
 ---
 
-### Account (Write Model)
+### AccountProjection (Read Model)
 
-**Purpose**: Current state of accounts for write operations.
+**Purpose**: Denormalized view of account state for fast queries.
+
+> **Note**: There is no `Account` entity. All writes go through `AccountAggregate` which emits events to Kafka. This projection is built by consuming those events.
 
 ```sql
-CREATE TABLE accounts (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE account_projections (
+  id              UUID PRIMARY KEY,
   owner_id        VARCHAR(255) NOT NULL,
   owner_type      VARCHAR(50) NOT NULL,
   account_type    VARCHAR(20) NOT NULL DEFAULT 'user',
@@ -152,14 +157,14 @@ CREATE TABLE accounts (
   updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_account_owner ON accounts(owner_id, owner_type);
-CREATE INDEX idx_account_status ON accounts(status);
-CREATE INDEX idx_account_type ON accounts(account_type);
-CREATE INDEX idx_account_created ON accounts(created_at);
+CREATE INDEX idx_account_proj_owner ON account_projections(owner_id, owner_type);
+CREATE INDEX idx_account_proj_status ON account_projections(status);
+CREATE INDEX idx_account_proj_type ON account_projections(account_type);
+CREATE INDEX idx_account_proj_created ON account_projections(created_at);
 ```
 
 **Fields**:
-- `id` - Unique identifier (UUID)
+- `id` - Unique identifier (UUID, matches aggregate ID)
 - `owner_id` - External identifier (user ID, system ID, etc.)
 - `owner_type` - Type of owner (`'user'`, `'organization'`, etc.)
 - `account_type` - Type: `'user'`, `'system'`, or `'external'`
@@ -170,7 +175,7 @@ CREATE INDEX idx_account_created ON accounts(created_at);
 - `min_balance` - Minimum allowed balance (optional, defaults to 0)
 - `status` - Account status enum
 - `metadata` - Additional data (JSONB)
-- `version` - Optimistic locking version
+- `version` - Event version for consistency checks
 
 **Account Types**:
 ```typescript
@@ -206,53 +211,55 @@ enum AccountStatus {
 
 ---
 
-### Transaction (Write Model)
+### TransactionProjection (Read Model)
 
-**Purpose**: Record of financial transactions with audit trail.
+**Purpose**: Denormalized view of transaction state for fast queries.
+
+> **Note**: There is no `Transaction` entity. All writes go through `TransactionAggregate` which emits events to Kafka. This projection is built by consuming those events.
 
 ```sql
-CREATE TABLE transactions (
-  id                          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  idempotency_key             UUID UNIQUE NOT NULL,
-  type                        VARCHAR(20) NOT NULL,
-  source_account_id           UUID NOT NULL REFERENCES accounts(id),
-  destination_account_id      UUID NOT NULL REFERENCES accounts(id),
-  amount                      DECIMAL(20, 8) NOT NULL,
-  currency                    VARCHAR(10) NOT NULL,
-  source_balance_before       DECIMAL(20, 8) NOT NULL,
-  source_balance_after        DECIMAL(20, 8) NOT NULL,
-  destination_balance_before  DECIMAL(20, 8) NOT NULL,
-  destination_balance_after   DECIMAL(20, 8) NOT NULL,
-  status                      VARCHAR(20) NOT NULL DEFAULT 'pending',
-  reference                   VARCHAR(500),
-  metadata                    JSONB,
-  parent_transaction_id       UUID REFERENCES transactions(id),
-  created_at                  TIMESTAMP NOT NULL DEFAULT NOW(),
-  completed_at                TIMESTAMP
+CREATE TABLE transaction_projections (
+  id                     UUID PRIMARY KEY,
+  idempotency_key        UUID UNIQUE NOT NULL,
+  type                   VARCHAR(20) NOT NULL,
+  account_id             UUID NOT NULL,
+  related_account_id     UUID,
+  amount                 DECIMAL(20, 8) NOT NULL,
+  currency               VARCHAR(10) NOT NULL,
+  balance_before         DECIMAL(20, 8) NOT NULL,
+  balance_after          DECIMAL(20, 8) NOT NULL,
+  status                 VARCHAR(20) NOT NULL DEFAULT 'pending',
+  reference              VARCHAR(500),
+  metadata               JSONB,
+  parent_transaction_id  UUID,
+  compensation_details   JSONB,
+  created_at             TIMESTAMP NOT NULL DEFAULT NOW(),
+  completed_at           TIMESTAMP
 );
 
-CREATE INDEX idx_tx_source ON transactions(source_account_id, created_at);
-CREATE INDEX idx_tx_destination ON transactions(destination_account_id, created_at);
-CREATE UNIQUE INDEX idx_tx_idempotency ON transactions(idempotency_key);
-CREATE INDEX idx_tx_status ON transactions(status);
-CREATE INDEX idx_tx_created ON transactions(created_at);
-CREATE INDEX idx_tx_parent ON transactions(parent_transaction_id);
+CREATE INDEX idx_tx_proj_account ON transaction_projections(account_id, created_at);
+CREATE INDEX idx_tx_proj_related ON transaction_projections(related_account_id, created_at);
+CREATE UNIQUE INDEX idx_tx_proj_idempotency ON transaction_projections(idempotency_key);
+CREATE INDEX idx_tx_proj_status ON transaction_projections(status);
+CREATE INDEX idx_tx_proj_created ON transaction_projections(created_at);
+CREATE INDEX idx_tx_proj_parent ON transaction_projections(parent_transaction_id);
 ```
 
 **Fields**:
-- `id` - Unique transaction identifier
+- `id` - Unique transaction identifier (matches aggregate ID)
 - `idempotency_key` - UUID for duplicate prevention (unique)
 - `type` - Transaction type enum
-- `source_account_id` - Account debited (FK)
-- `destination_account_id` - Account credited (FK)
+- `account_id` - Primary account involved
+- `related_account_id` - Related account (if applicable)
 - `amount` - Transaction amount (always positive)
 - `currency` - Currency code
-- `source_balance_before/after` - Audit trail for source
-- `destination_balance_before/after` - Audit trail for destination
+- `balance_before` - Account balance before transaction
+- `balance_after` - Account balance after transaction
 - `status` - Transaction status enum
 - `reference` - Human-readable reference
 - `metadata` - Additional data (JSONB)
-- `parent_transaction_id` - For refunds/compensations (FK)
+- `parent_transaction_id` - For refunds/compensations
+- `compensation_details` - Details about compensation/rollback (JSONB)
 - `created_at` - When transaction was initiated
 - `completed_at` - When transaction completed
 
@@ -294,41 +301,7 @@ enum TransactionStatus {
 
 ---
 
-### AccountProjection (Read Model)
-
-**Purpose**: Denormalized view for fast account queries.
-
-```sql
-CREATE TABLE account_projections (
-  id          UUID PRIMARY KEY,
-  owner_id    VARCHAR(255) NOT NULL,
-  owner_type  VARCHAR(50) NOT NULL,
-  currency    VARCHAR(10) NOT NULL,
-  balance     DECIMAL(28, 8) NOT NULL,
-  status      VARCHAR(20) NOT NULL,
-  type        VARCHAR(20) NOT NULL,
-  created_at  TIMESTAMP NOT NULL,
-  updated_at  TIMESTAMP NOT NULL
-);
-
-CREATE INDEX idx_account_proj_owner ON account_projections(owner_id, owner_type);
-CREATE INDEX idx_account_proj_status ON account_projections(status);
-```
-
-**Differences from Account Entity**:
-- No foreign keys (denormalized)
-- No version column (eventually consistent)
-- Simpler structure (only fields needed for queries)
-- Updated by event handlers, not directly by commands
-
-**Why Separate Projection?**
-- **Pro**: Optimized for specific queries
-- **Pro**: No joins needed
-- **Pro**: Can have multiple projections for different use cases
-- **Con**: Eventual consistency (slight lag)
-- **Con**: Storage duplication
-
----
+## Projections
 
 ### TransactionProjection (Read Model)
 

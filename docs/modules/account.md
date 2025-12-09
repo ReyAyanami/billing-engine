@@ -15,10 +15,10 @@ src/modules/account/
 ├── account.module.ts               # Module definition
 ├── account.controller.ts           # REST endpoints
 ├── account.service.ts              # Orchestration layer
-├── account.entity.ts               # Write model (current state)
+├── account.types.ts                # Enums (AccountStatus, AccountType)
 │
 ├── aggregates/
-│   └── account.aggregate.ts        # Domain logic
+│   └── account.aggregate.ts        # Domain logic (write side)
 │
 ├── commands/
 │   ├── create-account.command.ts
@@ -38,11 +38,11 @@ src/modules/account/
 ├── handlers/
 │   ├── create-account.handler.ts   # Command handlers
 │   ├── update-balance.handler.ts
-│   ├── balance-changed.handler.ts  # Event handlers
+│   ├── balance-changed.handler.ts  # Event handlers (projection updates)
 │   └── ...
 │
 ├── projections/
-│   ├── account-projection.entity.ts    # Read model
+│   ├── account-projection.entity.ts    # Read model (PostgreSQL)
 │   └── account-projection.service.ts
 │
 └── dto/
@@ -112,11 +112,11 @@ await eventStore.append('Account', accountId, newEvents);
 
 ---
 
-### Account Entity
+### AccountAggregate (Write Model)
 
-**Purpose**: Database entity for current account state (write model).
+**Purpose**: Domain aggregate that encapsulates business logic and emits events. No direct database persistence - state is reconstructed from events.
 
-**Location**: `src/modules/account/account.entity.ts`
+**Location**: `src/modules/account/aggregates/account.aggregate.ts`
 
 **Schema**:
 
@@ -162,10 +162,11 @@ class Account {
 
 **Location**: `src/modules/account/projections/account-projection.entity.ts`
 
-**Differences from Account Entity**:
-- Denormalized (no foreign keys)
-- Simpler structure (only fields needed for queries)
-- Updated by event handlers (eventual consistency)
+**Key Points**:
+- This is the ONLY database table for accounts (no separate Account entity)
+- Updated by event handlers consuming events from Kafka
+- Provides fast, denormalized reads
+- Eventually consistent with the event stream
 
 **Schema**:
 
@@ -195,7 +196,7 @@ class AccountProjection {
 }
 ```
 
-**Usage**: Queries read from this, not from Account entity.
+**Usage**: All queries read from this projection. There is no separate `Account` entity - the system uses pure event sourcing where `AccountAggregate` handles writes and `AccountProjection` provides the read model.
 
 ---
 
@@ -323,7 +324,6 @@ class BalanceChangedEvent extends DomainEvent {
 
 **Subscribers**:
 - AccountProjectionService (updates balance in read model)
-- Account Entity Handler (updates write model)
 - AuditService (logs balance change)
 
 ---
@@ -402,7 +402,7 @@ CLOSED → any ✗ (terminal state)
 
 ### Add New Account Type
 
-1. Update `AccountType` enum in `account.entity.ts`
+1. Update `AccountType` enum in `account.types.ts`
 2. Add validation rules in `AccountAggregate`
 3. Update documentation
 

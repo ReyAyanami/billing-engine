@@ -10,8 +10,8 @@
 
 This is a **personal learning project** exploring how billing systems can be built using modern architectural patterns. It demonstrates:
 
-- **CQRS (Command Query Responsibility Segregation)** for separating reads and writes
-- **Event Sourcing** with Kafka for complete audit trails
+- **Pure Event Sourcing** with Kafka as the source of truth
+- **CQRS (Command Query Responsibility Segregation)** with complete read/write separation
 - **Double-Entry Bookkeeping** for financial accuracy
 - **Domain-Driven Design** with aggregates and bounded contexts
 

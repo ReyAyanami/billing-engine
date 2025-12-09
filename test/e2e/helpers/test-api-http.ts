@@ -21,7 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   AccountType,
   AccountStatus,
-} from '../../../src/modules/account/account.entity';
+} from '../../../src/modules/account/account.types';
 import { DataSource } from 'typeorm';
 
 export interface CreateAccountParams {

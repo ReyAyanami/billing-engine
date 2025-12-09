@@ -1,5 +1,5 @@
 import { AccountAggregate } from '../../src/modules/account/aggregates/account.aggregate';
-import { AccountType, AccountStatus } from '../../src/modules/account/account.entity';
+import { AccountType, AccountStatus } from '../../src/modules/account/account.types';
 
 describe('AccountAggregate - Balance Change Validation', () => {
   let aggregate: AccountAggregate;

@@ -15,10 +15,10 @@ src/modules/transaction/
 ├── transaction.module.ts           # Module definition
 ├── transaction.controller.ts       # REST endpoints
 ├── transaction.service.ts          # Orchestration
-├── transaction.entity.ts           # Write model
+├── transaction.types.ts            # Enums (TransactionType, TransactionStatus)
 │
 ├── aggregates/
-│   └── transaction.aggregate.ts    # Domain logic
+│   └── transaction.aggregate.ts    # Domain logic (write side)
 │
 ├── commands/                       # 11 command files
 │   ├── topup.command.ts
@@ -36,15 +36,14 @@ src/modules/transaction/
 │   ├── transaction-failed.event.ts
 │   └── transaction-compensated.event.ts
 │
-├── handlers/                       # 27+ handlers
+├── handlers/                       # 17 handlers
 │   ├── topup.handler.ts           # Command handlers (5)
 │   ├── complete-*.handler.ts      # Completion handlers (5)
 │   ├── *-requested.handler.ts     # Saga handlers (5)
-│   ├── *-entity.handler.ts        # Entity update handlers (10)
 │   └── projection/                # Projection handlers (12)
 │
 ├── projections/
-│   ├── transaction-projection.entity.ts
+│   ├── transaction-projection.entity.ts  # Read model (PostgreSQL)
 │   └── transaction-projection.service.ts
 │
 ├── queries/
@@ -115,9 +114,9 @@ Initial
 
 ---
 
-### Transaction Entity
+### TransactionAggregate (Write Model)
 
-**Purpose**: Database entity for transaction state (write model).
+**Purpose**: Domain aggregate that encapsulates transaction business logic and emits events. No direct database persistence - state is reconstructed from events.
 
 ```typescript
 @Entity('transactions')

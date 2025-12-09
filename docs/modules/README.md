@@ -11,16 +11,16 @@ This section provides deep dives into each module's internal implementation. For
 ### [Account Module](./account.md)
 Account lifecycle management, aggregates, projections, and commands/queries.
 - AccountAggregate (domain logic)
-- Account Entity (write model)
-- AccountProjection (read model)
+- Account Aggregate (write model - event sourced)
+- AccountProjection (read model - PostgreSQL)
 - Commands: CreateAccount, UpdateBalance
 - Queries: GetAccount, GetAccountsByOwner
 
 ### [Transaction Module](./transaction.md)
 Transaction processing with CQRS, sagas, and double-entry bookkeeping.
 - TransactionAggregate (domain logic)
-- Transaction Entity (write model)
-- TransactionProjection (read model)
+- Transaction Aggregate (write model - event sourced)
+- TransactionProjection (read model - PostgreSQL)
 - Commands: Topup, Withdrawal, Transfer, Payment, Refund
 - Sagas: Transfer coordination and compensation
 
@@ -52,7 +52,7 @@ src/modules/<module-name>/
 ├── <module>.module.ts          # Module definition
 ├── <module>.controller.ts      # REST API endpoints
 ├── <module>.service.ts         # Business logic orchestration
-├── <module>.entity.ts          # Database entity (write model)
+├── <module>.types.ts           # Type definitions and enums
 ├── dto/                        # Data transfer objects
 ├── commands/                   # CQRS commands
 ├── queries/                    # CQRS queries
