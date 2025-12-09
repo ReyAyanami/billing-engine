@@ -327,12 +327,12 @@ npm run env:psql
 -- Describe table
 \d accounts
 
--- Query accounts
-SELECT * FROM accounts LIMIT 10;
+-- Query account projections
+SELECT * FROM account_projections LIMIT 10;
 
 -- Check recent transactions
-SELECT * FROM transactions 
-ORDER BY created_at DESC 
+SELECT * FROM transaction_projections 
+ORDER BY requested_at DESC 
 LIMIT 10;
 
 -- Account balance summary
@@ -340,7 +340,7 @@ SELECT
   currency,
   SUM(balance) as total_balance,
   COUNT(*) as account_count
-FROM accounts
+FROM account_projections
 WHERE status = 'active'
 GROUP BY currency;
 ```

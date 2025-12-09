@@ -649,20 +649,27 @@ Financial regulations typically require:
 Double-entry provides all of this:
 
 ```sql
--- Audit query: Show all transactions affecting account
+-- Audit query: Show all transactions affecting account with signed amounts
 SELECT 
-  t.created_at,
+  t.requested_at as created_at,
   t.type,
   t.amount,
-  t.source_balance_before,
-  t.source_balance_after,
-  t.reference,
+  CASE 
+    WHEN t.source_account_id = 'account-123' THEN t.source_signed_amount
+    WHEN t.destination_account_id = 'account-123' THEN t.destination_signed_amount
+  END as balance_change,
+  CASE 
+    WHEN t.source_account_id = 'account-123' THEN t.source_new_balance
+    WHEN t.destination_account_id = 'account-123' THEN t.destination_new_balance
+  END as balance_after,
   t.metadata->>'actorId' as performed_by
-FROM transactions t
+FROM transaction_projections t
 WHERE t.source_account_id = 'account-123'
    OR t.destination_account_id = 'account-123'
-ORDER BY t.created_at;
+ORDER BY t.requested_at;
 ```
+
+**Note**: This queries the projection (read model). For authoritative audit trail, query Kafka events (`BalanceChangedEvent`) filtered by `aggregateId`.
 
 ### Audit Log
 
