@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
-import { AccountStatus } from './account.types';
+import { AccountStatus, AccountType } from './account.types';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { CreateAccountCommand } from './commands/create-account.command';
 import { UpdateAccountStatusCommand } from './commands/update-account-status.command';
@@ -11,13 +11,11 @@ import { AccountProjection } from './projections/account-projection.entity';
 import {
   AccountNotFoundException,
   AccountInactiveException,
-  InvalidOperationException,
 } from '../../common/exceptions/billing.exception';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
 import { OperationContext } from '../../common/types';
 import { AccountId, OwnerId } from '../../common/types/branded.types';
-import { assertNever } from '../../common/utils/exhaustive-check';
 
 @Injectable()
 export class AccountService {
@@ -49,7 +47,7 @@ export class AccountService {
       accountId,
       ownerId: createAccountDto.ownerId,
       ownerType: createAccountDto.ownerType,
-      accountType: createAccountDto.accountType,
+      accountType: createAccountDto.accountType || AccountType.USER,
       currency: createAccountDto.currency,
       maxBalance: createAccountDto.maxBalance,
       minBalance: createAccountDto.minBalance,
@@ -68,7 +66,7 @@ export class AccountService {
       {
         ownerId: createAccountDto.ownerId,
         ownerType: createAccountDto.ownerType,
-        accountType: createAccountDto.accountType,
+        accountType: createAccountDto.accountType || AccountType.USER,
         currency: createAccountDto.currency,
       },
       context,
@@ -78,7 +76,7 @@ export class AccountService {
     // In practice, give events a moment to propagate
     await this.waitForProjection(accountId);
     
-    return await this.findById(accountId);
+    return await this.findById(accountId as AccountId);
   }
 
   /**
@@ -98,7 +96,7 @@ export class AccountService {
   /**
    * Find accounts by owner (from projection/read model)
    */
-  async findByOwner(ownerId: OwnerId, ownerType: string): Promise<AccountProjection[]> {
+  async findByOwner(ownerId: OwnerId): Promise<AccountProjection[]> {
     const query = new GetAccountsByOwnerQuery({ ownerId });
     return await this.queryBus.execute<GetAccountsByOwnerQuery, AccountProjection[]>(query);
   }
@@ -172,7 +170,7 @@ export class AccountService {
   private async waitForProjection(accountId: string, maxAttempts = 10): Promise<void> {
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        await this.findById(accountId);
+        await this.findById(accountId as AccountId);
         return; // Found it!
       } catch (error) {
         if (i === maxAttempts - 1) throw error;

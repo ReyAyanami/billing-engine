@@ -308,7 +308,7 @@ export class TransactionService {
 
     // Load original transaction
     const originalTransaction = await this.transactionProjectionService.findById(
-      dto.originalTransactionId,
+      dto.originalTransactionId as TransactionId,
     );
 
     if (!originalTransaction) {
@@ -370,8 +370,8 @@ export class TransactionService {
       transactionId: transactionId,
       idempotencyKey: dto.idempotencyKey,
       type: TransactionType.REFUND,
-      sourceAccountId: originalTransaction.destinationAccountId, // Reverse direction
-      destinationAccountId: originalTransaction.sourceAccountId,
+      sourceAccountId: originalTransaction.destinationAccountId || '',
+      destinationAccountId: originalTransaction.sourceAccountId || '',
       amount: refundAmount.toString(),
       currency: originalTransaction.currency,
       sourceBalanceBefore: '0',
@@ -429,6 +429,13 @@ export class TransactionService {
 
     // Use complex filtering with all provided criteria
     return this.transactionProjectionService.findWithFilters(filters);
+  }
+
+  /**
+   * Find account by ID (helper for validation)
+   */
+  async findAccountById(accountId: string) {
+    return await this.accountService.findById(toAccountId(accountId));
   }
 
   // Note: All business logic has moved to CQRS aggregates and handlers

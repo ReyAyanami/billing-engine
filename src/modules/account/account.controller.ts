@@ -84,9 +84,8 @@ export class AccountController {
   @ApiResponse({ status: 200, description: 'Accounts found', type: [AccountProjection] })
   async findByOwner(
     @Query('ownerId') ownerId: string,
-    @Query('ownerType') ownerType: string,
   ): Promise<AccountProjection[]> {
-    return await this.accountService.findByOwner(toOwnerId(ownerId), ownerType);
+    return await this.accountService.findByOwner(toOwnerId(ownerId));
   }
 
   @Get(':id/balance')

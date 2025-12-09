@@ -21,7 +21,7 @@ export function IsPositiveAmount(validationOptions?: ValidationOptions) {
       propertyName: propertyName,
       options: validationOptions,
       validator: {
-        validate(value: unknown, args: ValidationArguments) {
+        validate(value: unknown) {
           // Must be a string
           if (typeof value !== 'string') {
             return false;
