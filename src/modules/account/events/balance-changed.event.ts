@@ -14,6 +14,7 @@ export class BalanceChangedEvent extends DomainEvent {
     public readonly newBalance: string,
     public readonly changeAmount: string,
     public readonly changeType: 'CREDIT' | 'DEBIT',
+    public readonly signedAmount: string,
     public readonly reason: string,
     props: {
       aggregateId: string;
@@ -41,6 +42,7 @@ export class BalanceChangedEvent extends DomainEvent {
       newBalance: this.newBalance ?? null,
       changeAmount: this.changeAmount ?? null,
       changeType: this.changeType ?? null,
+      signedAmount: this.signedAmount ?? null,
       reason: this.reason ?? null,
       transactionId: this.transactionId ?? null,
     };

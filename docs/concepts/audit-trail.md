@@ -69,6 +69,7 @@ Every state change is recorded as an event:
     "newBalance": "100.00",
     "changeAmount": "100.00",
     "changeType": "CREDIT",
+    "signedAmount": "100.00",
     "reason": "Topup from bank"
   }
 }
@@ -119,14 +120,22 @@ Partition 0:
 
 ### Kafka Configuration
 
-```typescript
-// In kafka.service.ts
-const kafkaConfig = {
-  retentionMs: 10 * 365 * 24 * 60 * 60 * 1000,  // 10 years
-  cleanupPolicy: 'compact',  // Keep latest per key
-  // Events never deleted!
-};
+Topics are created with retention settings:
+
+```bash
+# In scripts/init-services.sh
+kafka-topics.sh --create \
+  --topic "billing.account.events" \
+  --partitions 3 \
+  --replication-factor 1 \
+  --config retention.ms=-1 \               # Unlimited retention (never delete)
+  --config cleanup.policy=compact,delete   # Compact + delete policy
 ```
+
+**Configuration**:
+- `retention.ms=-1`: Unlimited retention (events never expire)
+- `cleanup.policy=compact,delete`: Keep latest per key + allow deletion
+- Events are effectively permanent for audit trail
 
 ---
 
@@ -135,51 +144,63 @@ const kafkaConfig = {
 ### 1. Get All Events for an Account
 
 ```typescript
-// Load account aggregate (replays all events)
-const aggregate = await eventStore.loadAggregate(
+// Retrieve all events from the event store
+const events = await eventStore.getEvents(
   'AccountAggregate',
   accountId
 );
 
-// Access events
-const events = aggregate.getUncommittedEvents();
+// Events returned in chronological order
+// Use these to replay state or audit history
 ```
 
-### 2. Query by Time Range
+### 2. Filter Events by Time Range
 
-```sql
--- Query event projections (PostgreSQL)
-SELECT *
-FROM account_events
-WHERE aggregate_id = 'acc-uuid'
-  AND timestamp BETWEEN '2025-01-01' AND '2025-01-31'
-ORDER BY timestamp ASC;
+```typescript
+// Get all events and filter by time range
+const allEvents = await eventStore.getEvents('AccountAggregate', accountId);
+
+const startDate = new Date('2025-01-01');
+const endDate = new Date('2025-01-31');
+
+const filteredEvents = allEvents.filter(event => {
+  const eventDate = new Date(event.timestamp);
+  return eventDate >= startDate && eventDate <= endDate;
+});
 ```
 
-### 3. Query by Event Type
+### 3. Filter by Event Type
 
-```sql
--- Find all balance changes
-SELECT *
-FROM account_events
-WHERE event_type = 'BalanceChanged'
-  AND aggregate_id = 'acc-uuid';
+```typescript
+// Get all events and filter by type
+const allEvents = await eventStore.getEvents('AccountAggregate', accountId);
+
+const balanceChanges = allEvents.filter(
+  event => event.eventType === 'BalanceChanged'
+);
+
+// Each balance change event contains:
+// - amount, previousBalance, newBalance, reason
 ```
 
-### 4. Track Transaction Flow
+### 4. Track Transaction Flow with Correlation ID
 
-```sql
--- Find all events for a transaction
-SELECT *
-FROM events
-WHERE correlation_id = 'corr-uuid'
-ORDER BY timestamp ASC;
+```typescript
+// Get events for all related aggregates
+const accountEvents = await eventStore.getEvents('AccountAggregate', sourceAccountId);
+const transactionEvents = await eventStore.getEvents('TransactionAggregate', transactionId);
 
--- Shows complete saga:
--- 1. TransferRequested
--- 2. BalanceChanged (source account)
--- 3. BalanceChanged (dest account)
--- 4. TransferCompleted
+// Filter by correlation ID to trace the complete flow
+const correlationId = 'corr-uuid';
+const relatedEvents = [...accountEvents, ...transactionEvents]
+  .filter(event => event.correlationId === correlationId)
+  .sort((a, b) => a.timestamp - b.timestamp);
+
+// Shows complete saga:
+// 1. TransferRequested
+// 2. BalanceChanged (source account)
+// 3. BalanceChanged (destination account)
+// 4. TransferCompleted
 ```
 
 ---
@@ -193,18 +214,24 @@ Replay events up to a specific date:
 ```typescript
 async function getBalanceAtDate(
   accountId: string,
-  date: Date
+  targetDate: Date
 ): Promise<string> {
-  // Load all events up to date
-  const events = await eventStore.getEventsUntil(accountId, date);
+  // Load all events for the account
+  const allEvents = await eventStore.getEvents('Account', accountId);
   
-  // Replay to reconstruct state
-  const aggregate = new AccountAggregate();
-  for (const event of events) {
-    aggregate.applyEvent(event);
+  // Filter events up to the target date
+  const eventsUntilDate = allEvents.filter(event => {
+    return new Date(event.timestamp) <= targetDate;
+  });
+  
+  if (eventsUntilDate.length === 0) {
+    return '0'; // Account didn't exist yet
   }
   
-  return aggregate.getBalance();
+  // Reconstruct aggregate from filtered events
+  const aggregate = AccountAggregate.fromEvents(eventsUntilDate);
+  
+  return aggregate.getBalance().toString();
 }
 
 // Example usage
@@ -301,14 +328,22 @@ Event 4: TransferCompleted (time: 10:00:00.150)
 Ensure projection matches event history:
 
 ```typescript
-async function verifyBalance(accountId: string): Promise<boolean> {
+async function verifyBalance(
+  accountId: string,
+  accountRepo: Repository<Account>,
+  eventStore: IEventStore
+): Promise<boolean> {
   // Get current balance from projection (read model)
-  const projection = await accountRepo.findOne({ id: accountId });
+  const projection = await accountRepo.findOne({ where: { id: accountId } });
+  if (!projection) {
+    throw new Error('Account not found');
+  }
   const projectedBalance = projection.balance;
   
   // Replay events to calculate actual balance
-  const events = await eventStore.getEvents(accountId);
-  const actualBalance = replayEvents(events);
+  const events = await eventStore.getEvents('Account', accountId);
+  const aggregate = AccountAggregate.fromEvents(events);
+  const actualBalance = aggregate.getBalance().toString();
   
   // Compare
   if (projectedBalance !== actualBalance) {
@@ -333,20 +368,31 @@ async function verifyBalance(accountId: string): Promise<boolean> {
 Double-entry bookkeeping validation:
 
 ```typescript
-async function verifyTransaction(transactionId: string): Promise<boolean> {
-  const events = await getTransactionEvents(transactionId);
+async function verifyTransaction(
+  sourceAccountId: string,
+  destAccountId: string,
+  correlationId: string,
+  eventStore: IEventStore
+): Promise<boolean> {
+  // Get events for both accounts involved in the transaction
+  const sourceEvents = await eventStore.getEvents('Account', sourceAccountId);
+  const destEvents = await eventStore.getEvents('Account', destAccountId);
   
-  // Sum all balance changes
-  let sum = 0;
-  for (const event of events) {
-    if (event.eventType === 'BalanceChanged') {
-      sum += parseFloat(event.data.changeAmount);
-    }
+  // Filter by correlation ID to get transaction-specific events
+  const relatedEvents = [...sourceEvents, ...destEvents]
+    .filter(e => e.correlationId === correlationId && e.eventType === 'BalanceChanged');
+  
+  // Sum all balance changes using Decimal.js for precision (should be zero for double-entry)
+  // signedAmount is already signed (positive for CREDIT, negative for DEBIT)
+  let sum = new Decimal(0);
+  for (const event of relatedEvents) {
+    const signedAmount = new Decimal(event.data.signedAmount);
+    sum = sum.plus(signedAmount);
   }
   
-  // Sum must be zero (double-entry)
-  if (sum !== 0) {
-    console.error('Double-entry violation!', { sum });
+  // Sum must be exactly zero (double-entry)
+  if (!sum.isZero()) {
+    console.error('Double-entry violation!', { sum: sum.toString(), correlationId });
     return false;
   }
   
@@ -366,28 +412,30 @@ Generate account statement for any period:
 async function generateStatement(
   accountId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  eventStore: IEventStore
 ): Promise<Statement> {
-  const events = await eventStore.getEventsBetween(
-    accountId,
-    startDate,
-    endDate
-  );
+  // Get all events and filter by date range
+  const allEvents = await eventStore.getEvents('Account', accountId);
+  const eventsInPeriod = allEvents.filter(event => {
+    const eventDate = new Date(event.timestamp);
+    return eventDate >= startDate && eventDate <= endDate;
+  });
   
   const statement = {
     accountId,
     period: { start: startDate, end: endDate },
-    openingBalance: await getBalanceAtDate(accountId, startDate),
-    closingBalance: await getBalanceAtDate(accountId, endDate),
+    openingBalance: await getBalanceAtDate(accountId, startDate, eventStore),
+    closingBalance: await getBalanceAtDate(accountId, endDate, eventStore),
     transactions: []
   };
   
-  for (const event of events) {
+  for (const event of eventsInPeriod) {
     if (event.eventType === 'BalanceChanged') {
       statement.transactions.push({
         date: event.timestamp,
         description: event.data.reason,
-        amount: event.data.changeAmount,
+        amount: event.data.signedAmount,  // Already signed (+ for CREDIT, - for DEBIT)
         balance: event.data.newBalance
       });
     }
@@ -419,20 +467,41 @@ Export for compliance:
 
 ```typescript
 async function exportTransactionHistory(
+  accountId: string,
   startDate: Date,
   endDate: Date,
+  eventStore: IEventStore,
   format: 'csv' | 'json'
 ): Promise<string> {
-  const events = await eventStore.getAllEvents(startDate, endDate);
+  // Get all events for the account
+  const allEvents = await eventStore.getEvents('Account', accountId);
+  
+  // Filter by date range
+  const filteredEvents = allEvents.filter(event => {
+    const eventDate = new Date(event.timestamp);
+    return eventDate >= startDate && eventDate <= endDate;
+  });
   
   // Format as CSV/JSON
-  return formatEvents(events, format);
+  if (format === 'json') {
+    return JSON.stringify(filteredEvents, null, 2);
+  } else {
+    // Simple CSV format
+    const header = 'timestamp,eventType,amount,balance,reason\n';
+    const rows = filteredEvents
+      .filter(e => e.eventType === 'BalanceChanged')
+      .map(e => `${e.timestamp},${e.eventType},${e.data.signedAmount},${e.data.newBalance},${e.data.reason}`)
+      .join('\n');
+    return header + rows;
+  }
 }
 
 // Usage
 const csv = await exportTransactionHistory(
+  'acc-uuid',
   new Date('2025-01-01'),
   new Date('2025-12-31'),
+  eventStore,
   'csv'
 );
 // Save to file for auditor
@@ -447,9 +516,13 @@ const csv = await exportTransactionHistory(
 Users can request their data:
 
 ```typescript
-async function exportUserData(userId: string): Promise<object> {
+async function exportUserData(
+  userId: string,
+  accountService: AccountService,
+  eventStore: IEventStore
+): Promise<object> {
   // Get all accounts owned by user
-  const accounts = await getAccountsByOwner(userId);
+  const accounts = await accountService.findByOwner(userId, 'user');
   
   // Get all events for each account
   const data = {
@@ -458,10 +531,12 @@ async function exportUserData(userId: string): Promise<object> {
   };
   
   for (const account of accounts) {
-    const events = await eventStore.getEvents(account.id);
+    const events = await eventStore.getEvents('Account', account.id);
     data.accounts.push({
       accountId: account.id,
       balance: account.balance,
+      currency: account.currency,
+      status: account.status,
       history: events
     });
   }
@@ -490,21 +565,30 @@ async function exportUserData(userId: string): Promise<object> {
 ```typescript
 // Customer claims: "My balance is wrong"
 
-// 1. Get current balance
-const account = await getAccount(accountId);
+// 1. Get current balance from projection
+const account = await accountService.findById(accountId);
 console.log('Current balance:', account.balance);
 
 // 2. Replay events to verify
-const events = await eventStore.getEvents(accountId);
+const events = await eventStore.getEvents('Account', accountId);
 console.log('Event count:', events.length);
 
-// 3. Examine recent changes
+const aggregate = AccountAggregate.fromEvents(events);
+const replayedBalance = aggregate.getBalance().toString();
+console.log('Replayed balance:', replayedBalance);
+
+// 3. Compare
+if (account.balance !== replayedBalance) {
+  console.error('MISMATCH! Projection is out of sync');
+}
+
+// 4. Examine recent changes
 const recent = events.slice(-10);
 for (const event of recent) {
   console.log(`${event.timestamp}: ${event.eventType}`, event.data);
 }
 
-// 4. Identify suspicious event
+// 5. Identify suspicious event
 // Example: BalanceChanged with unusual reason
 ```
 
@@ -513,22 +597,29 @@ for (const event of recent) {
 ```typescript
 // Customer claims: "My transfer failed but money is missing"
 
-// 1. Find transaction events
-const events = await getEventsByCorrelationId(correlationId);
+// 1. Find transaction events by correlation ID
+const sourceEvents = await eventStore.getEvents('Account', sourceAccountId);
+const destEvents = await eventStore.getEvents('Account', destAccountId);
+const transactionEvents = await eventStore.getEvents('Transaction', transactionId);
+
+// Combine and filter by correlation ID
+const allEvents = [...sourceEvents, ...destEvents, ...transactionEvents]
+  .filter(e => e.correlationId === correlationId)
+  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
 // 2. Analyze saga flow
-for (const event of events) {
-  console.log(`${event.timestamp}: ${event.eventType}`);
+for (const event of allEvents) {
+  console.log(`${event.timestamp}: ${event.eventType}`, event.data);
 }
 
-// Expected:
+// Expected output for compensated transfer:
 // TransferRequested
 // BalanceChanged (source: -$50) ✓
-// BalanceChanged (dest: +$50) ✗ Missing!
+// BalanceChanged (dest: +$50) ✗ Failed!
 // TransactionFailed
 // BalanceChanged (source: +$50) ← Compensation
 
-// Conclusion: Transfer compensated correctly
+// Conclusion: Transfer compensated correctly, money restored
 ```
 
 ---

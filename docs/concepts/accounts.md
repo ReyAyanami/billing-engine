@@ -129,31 +129,29 @@ enum AccountStatus {
 ### Status Transitions
 
 ```
-┌─────────┐
-│ ACTIVE  │──────────────────┐
-└────┬────┘                  │
-     │                       │
-     │ suspend               │ close
-     │                       │
-     ▼                       │
-┌─────────┐                  │
-│SUSPENDED│                  │
-└────┬────┘                  │
-     │                       │
-     │ reactivate            │
-     │                       │
-     └──────────┐            │
-                ▼            ▼
-              ┌─────────────────┐
-              │     CLOSED      │
-              │   (terminal)    │
-              └─────────────────┘
+              suspend
+    ┌─────────────────────────┐
+    │                         │
+    │    reactivate           ▼
+┌───┴─────┐              ┌──────────┐
+│ ACTIVE  │◄─────────────│SUSPENDED │
+└────┬────┘              └────┬─────┘
+     │                        │
+     │ close            close │
+     │                        │
+     └────────┐     ┌─────────┘
+              │     │
+              ▼     ▼
+         ┌────────────┐
+         │   CLOSED   │
+         │ (terminal) │
+         └────────────┘
 ```
 
 **Valid Transitions**:
 - `active` → `suspended` ✓
 - `active` → `closed` ✓
-- `suspended` → `active` ✓
+- `suspended` → `active` ✓ (reactivate)
 - `suspended` → `closed` ✓
 - `closed` → any ✗ (terminal state, cannot reopen)
 

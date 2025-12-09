@@ -19,7 +19,7 @@ export class BalanceChangedHandler implements IEventHandler<BalanceChangedEvent>
     );
     this.logger.log(`   Previous: ${event.previousBalance}`);
     this.logger.log(`   New: ${event.newBalance}`);
-    this.logger.log(`   Change: ${event.changeType} ${event.changeAmount}`);
+    this.logger.log(`   Change: ${event.changeType} ${event.changeAmount} (${event.signedAmount})`);
     this.logger.log(`   Reason: ${event.reason}`);
     if (event.transactionId) {
       this.logger.log(`   Transaction: ${event.transactionId}`);

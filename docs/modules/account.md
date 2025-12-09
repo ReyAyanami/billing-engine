@@ -304,8 +304,9 @@ class BalanceChangedEvent extends DomainEvent {
   constructor(
     public readonly previousBalance: string,
     public readonly newBalance: string,
-    public readonly changeAmount: string,
-    public readonly changeType: 'CREDIT' | 'DEBIT',
+    public readonly changeAmount: string,      // Always positive
+    public readonly changeType: 'CREDIT' | 'DEBIT',  // Direction
+    public readonly signedAmount: string,      // Signed for convenience
     public readonly reason: string,
     eventMetadata: EventMetadata,
     public readonly transactionId?: string,
@@ -314,6 +315,11 @@ class BalanceChangedEvent extends DomainEvent {
   }
 }
 ```
+
+**Fields**:
+- `changeAmount`: Always positive (e.g., "100.00")
+- `changeType`: Semantic direction (CREDIT = money in, DEBIT = money out)
+- `signedAmount`: Computed signed amount (e.g., "100.00" for CREDIT, "-100.00" for DEBIT)
 
 **Subscribers**:
 - AccountProjectionService (updates balance in read model)

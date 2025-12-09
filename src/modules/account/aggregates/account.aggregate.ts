@@ -193,12 +193,19 @@ export class AccountAggregate extends AggregateRoot {
       );
     }
 
+    // Calculate signed amount for convenience (positive for CREDIT, negative for DEBIT)
+    const signedAmount =
+      params.changeType === 'CREDIT'
+        ? changeAmount.toString()
+        : changeAmount.neg().toString();
+
     // Create and apply the event
     const event = new BalanceChangedEvent(
       previousBalance.toString(),
       newBalance.toString(),
       changeAmount.toString(),
       params.changeType,
+      signedAmount,
       params.reason,
       {
         aggregateId: this.aggregateId,
