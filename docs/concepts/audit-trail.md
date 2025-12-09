@@ -304,12 +304,16 @@ Event 1: TransferRequested (time: 10:00:00.000)
 
 Event 2: BalanceChanged (time: 10:00:00.050)
   - accountId: acc-001
-  - changeAmount: -$50
+  - changeAmount: $50 (always positive)
+  - changeType: DEBIT
+  - signedAmount: -$50
   - correlationId: "corr-123"
 
 Event 3: BalanceChanged (time: 10:00:00.100)
   - accountId: acc-002
-  - changeAmount: +$50
+  - changeAmount: $50 (always positive)
+  - changeType: CREDIT
+  - signedAmount: +$50
   - correlationId: "corr-123"
 
 Event 4: TransferCompleted (time: 10:00:00.150)

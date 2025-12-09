@@ -342,30 +342,40 @@ CREATE INDEX idx_transaction_projection_account
 
 ---
 
-### 6. Write Store (PostgreSQL Entities)
+### 6. Event Store (Kafka) and Projections (PostgreSQL)
 
-**Purpose**: Store current state for write operations.
+**Purpose**: Pure event sourcing architecture with separate read/write models.
 
-**Entities**:
-- `Account` - Current account state with pessimistic locking
-- `Transaction` - Transaction state and idempotency tracking
+**Write Side (Event Store in Kafka)**:
+- `AccountAggregate` - Domain logic, emits events
+- `TransactionAggregate` - Transaction coordination, emits events
+- Events are the authoritative source of truth
+- No direct database writes for aggregates
+
+**Read Side (Projections in PostgreSQL)**:
+- `AccountProjection` - Denormalized account state for fast queries
+- `TransactionProjection` - Denormalized transaction history with signed amounts
 - `Currency` - Currency configuration
 - `AuditLog` - Compliance and debugging
 
-**Pessimistic Locking**:
+**Pessimistic Locking** (on Projections Only):
 ```typescript
-// Lock account row during transaction
-const account = await this.accountRepository.findOne({
+// Lock account projection during update (not the aggregate!)
+const accountProjection = await this.projectionRepository.findOne({
   where: { id: accountId },
   lock: { mode: 'pessimistic_write' }  // SELECT FOR UPDATE
 });
+
+// Update projection from event
+accountProjection.balance = newBalance;
+await this.projectionRepository.save(accountProjection);
 ```
 
-**Why Pessimistic Locking?**
-- **Pro**: Prevents race conditions on balance updates
-- **Pro**: Simpler than optimistic locking for financial operations
-- **Con**: Lower throughput (serialized writes)
-- **Alternative**: Optimistic locking with version numbers (higher throughput, retry complexity)
+**Why Pessimistic Locking on Projections?**
+- **Purpose**: Prevents race conditions when multiple events update the same projection
+- **Scope**: Only for projection updates, not for aggregates
+- **Note**: Aggregates are event-sourced and reconstructed from Kafka events
+- **Alternative**: Eventually consistent projections without locks (acceptable delay)
 
 ---
 
@@ -376,8 +386,9 @@ const account = await this.accountRepository.findOne({
 **Principle**: Separate read and write models.
 
 **Implementation**:
-- **Commands** modify state → Write to PostgreSQL + Kafka
-- **Queries** read state → Read from optimized projections
+- **Commands** modify state → Aggregates emit events → Events to Kafka
+- **Event Handlers** update projections → Write to PostgreSQL
+- **Queries** read state → Read from optimized projections in PostgreSQL
 
 **Benefits**:
 - Independent scaling of reads and writes
