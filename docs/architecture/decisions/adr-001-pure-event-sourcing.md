@@ -1,10 +1,31 @@
-# Refactoring to Pure Event Sourcing
+# ADR-001: Adopt Pure Event Sourcing Architecture
 
-## Status: ✅ **COMPLETED**
+**Date**: December 2025  
+**Status**: ✅ Accepted and Implemented
 
-## Overview
+## Context
 
-This document describes the architectural refactoring from a **hybrid CQRS/traditional database** approach to **pure event sourcing**.
+The billing engine initially used a **hybrid CQRS/traditional database** approach where:
+- Entity tables (`accounts`, `transactions`) served as the write model
+- Projection tables (`account_projections`, `transaction_projections`) served as the read model
+- Aggregates existed in-memory but weren't the primary source of truth
+- Events were published to Kafka for audit trail
+
+This created several problems:
+1. **Data Duplication**: Both entity and projection tables stored similar data
+2. **Inconsistent Patterns**: Account creation bypassed event sourcing
+3. **Maintenance Burden**: Two entity handlers for the same events
+4. **Architectural Confusion**: Mixed paradigms (traditional DB + event sourcing)
+5. **No Single Source of Truth**: Unclear whether events or database was authoritative
+
+## Decision
+
+We will adopt **pure event sourcing** where:
+- **Kafka events are the single source of truth** for all domain state
+- **Aggregates** (`AccountAggregate`, `TransactionAggregate`) handle all writes and emit events
+- **No entity tables** for aggregates (removed `accounts` and `transactions` tables)
+- **Only projection tables** remain in PostgreSQL for optimized reads
+- All state is reconstructed from events when needed
 
 **Completed for:**
 - ✅ Account entity → AccountProjection
@@ -46,6 +67,8 @@ This document describes the architectural refactoring from a **hybrid CQRS/tradi
 5. **No Single Source of Truth**: Events vs. database
 
 ## New Architecture (Pure Event Sourcing)
+
+This is the architecture we decided to implement:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -413,6 +436,32 @@ const aggregate = AccountAggregate.fromSnapshot(snapshot, recentEvents);
 - [Event Sourcing](./event-sourcing.md)
 - [Account Module](../modules/account.md)
 - [Locking Concepts](../concepts/locking.md) - Event-based lock-free operations
+
+## Consequences
+
+### Positive
+
+1. **Single Source of Truth**: Kafka events are the authoritative source; no database conflicts
+2. **True CQRS**: Clean separation between write (aggregates) and read (projections) models
+3. **Eliminated Duplication**: Removed redundant entity tables and handlers
+4. **Better Auditability**: Complete event history in Kafka for any point-in-time reconstruction
+5. **Simpler Mental Model**: One pattern throughout (event sourcing), not mixed paradigms
+6. **Scalability**: Read models can be rebuilt or optimized independently
+
+### Negative
+
+1. **Eventual Consistency**: Small delay between command execution and projection updates
+2. **Complexity**: Requires understanding of event sourcing patterns
+3. **Migration Effort**: Required database migrations to drop old tables
+4. **Kafka Dependency**: System cannot function without Kafka (acceptable trade-off)
+5. **Debugging**: Requires event inspection tools rather than simple SQL queries
+
+### Migration Impact
+
+- **Database Migrations**: Added migrations to drop `accounts` and `transactions` tables
+- **Test Updates**: Updated test imports to use `.types.ts` files
+- **Documentation**: Comprehensive updates to reflect new architecture
+- **Breaking Changes**: None for external API consumers (API contracts unchanged)
 
 ## Summary
 
