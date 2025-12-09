@@ -58,23 +58,21 @@ export class AccountAggregate extends AggregateRoot {
     }
 
     // Create and apply the event
-    const event = new AccountCreatedEvent(
-      params.ownerId,
-      params.ownerType,
-      params.accountType,
-      params.currency,
-      AccountStatus.ACTIVE,
-      '0.00', // Initial balance
-      {
-        aggregateId: params.accountId,
-        aggregateVersion: 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-      params.maxBalance,
-      params.minBalance,
-    );
+    const event = new AccountCreatedEvent({
+      ownerId: params.ownerId,
+      ownerType: params.ownerType,
+      accountType: params.accountType,
+      currency: params.currency,
+      status: AccountStatus.ACTIVE,
+      balance: '0.00', // Initial balance
+      aggregateId: params.accountId,
+      aggregateVersion: 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      maxBalance: params.maxBalance,
+      minBalance: params.minBalance,
+    });
 
     this.apply(event);
   }
@@ -211,22 +209,20 @@ export class AccountAggregate extends AggregateRoot {
     }
 
     // Create and apply the event
-    const event = new BalanceChangedEvent(
-      previousBalance.toString(),
-      newBalance.toString(),
-      changeAmount.toString(),
-      params.changeType,
-      signedAmount.toString(),
-      params.reason,
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-      params.transactionId,
-    );
+    const event = new BalanceChangedEvent({
+      previousBalance: previousBalance.toString(),
+      newBalance: newBalance.toString(),
+      changeAmount: changeAmount.toString(),
+      changeType: params.changeType,
+      signedAmount: signedAmount.toString(),
+      reason: params.reason,
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      transactionId: params.transactionId,
+    });
 
     this.apply(event);
   }
@@ -265,18 +261,16 @@ export class AccountAggregate extends AggregateRoot {
     this.validateStatusTransition(this.status, params.newStatus);
 
     // Create and apply the event
-    const event = new AccountStatusChangedEvent(
-      this.status,
-      params.newStatus,
-      params.reason,
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new AccountStatusChangedEvent({
+      previousStatus: this.status,
+      newStatus: params.newStatus,
+      reason: params.reason,
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -341,20 +335,18 @@ export class AccountAggregate extends AggregateRoot {
     }
 
     // Create and apply the event
-    const event = new AccountLimitsChangedEvent(
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-      this.maxBalance?.toString(),
-      params.newMaxBalance,
-      this.minBalance?.toString(),
-      params.newMinBalance,
-      params.reason,
-    );
+    const event = new AccountLimitsChangedEvent({
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      previousMaxBalance: this.maxBalance?.toString(),
+      newMaxBalance: params.newMaxBalance,
+      previousMinBalance: this.minBalance?.toString(),
+      newMinBalance: params.newMinBalance,
+      reason: params.reason,
+    });
 
     this.apply(event);
   }
