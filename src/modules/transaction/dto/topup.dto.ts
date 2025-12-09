@@ -7,6 +7,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsPositiveAmount } from '../../../common/validation/amount.validator';
 
 export class TopupDto {
   @ApiProperty({
@@ -43,6 +44,7 @@ export class TopupDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsPositiveAmount()
   @Transform(({ value }) => String(value))
   amount!: string;
 

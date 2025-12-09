@@ -9,6 +9,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import type { RefundMetadata } from '../../../common/types/metadata.types';
+import { IsPositiveAmount } from '../../../common/validation/amount.validator';
 
 /**
  * DTO for creating a refund transaction.
@@ -30,6 +31,7 @@ export class CreateRefundDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsPositiveAmount()
   refundAmount!: string;
 
   @ApiProperty({

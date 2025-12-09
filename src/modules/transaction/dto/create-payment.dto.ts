@@ -9,6 +9,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import type { PaymentMetadata } from '../../../common/types/metadata.types';
+import { IsPositiveAmount } from '../../../common/validation/amount.validator';
 
 /**
  * DTO for creating a payment transaction.
@@ -37,6 +38,7 @@ export class CreatePaymentDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsPositiveAmount()
   amount!: string;
 
   @ApiProperty({

@@ -169,13 +169,30 @@ export class AccountAggregate extends AggregateRoot {
       );
     }
 
-    // Calculate new balance
+    // Step 1: Validate changeAmount is positive
     const changeAmount = new Decimal(params.changeAmount);
+    if (changeAmount.lessThanOrEqualTo(0)) {
+      throw new Error(
+        `Change amount must be positive, got: ${params.changeAmount}`,
+      );
+    }
+
+    // Step 2: Calculate signed amount based on changeType
+    let signedAmount: Decimal;
+    switch (params.changeType) {
+      case 'CREDIT':
+        signedAmount = changeAmount; // Positive for money in
+        break;
+      case 'DEBIT':
+        signedAmount = changeAmount.neg(); // Negative for money out
+        break;
+      default:
+        throw new Error(`Unknown changeType: ${params.changeType}`);
+    }
+
+    // Step 3: Calculate new balance using verified signedAmount
     const previousBalance = this.balance;
-    const newBalance =
-      params.changeType === 'CREDIT'
-        ? previousBalance.plus(changeAmount)
-        : previousBalance.minus(changeAmount);
+    const newBalance = previousBalance.plus(signedAmount);
 
     // Validate: Check limits
     if (this.maxBalance && newBalance.greaterThan(this.maxBalance)) {
@@ -193,26 +210,13 @@ export class AccountAggregate extends AggregateRoot {
       );
     }
 
-    // Calculate signed amount for convenience (positive for CREDIT, negative for DEBIT)
-    let signedAmount: string;
-    switch (params.changeType) {
-      case 'CREDIT':
-        signedAmount = changeAmount.toString();
-        break;
-      case 'DEBIT':
-        signedAmount = changeAmount.neg().toString();
-        break;
-      default:
-        throw new Error(`Unknown changeType: ${params.changeType}`);
-    }
-
     // Create and apply the event
     const event = new BalanceChangedEvent(
       previousBalance.toString(),
       newBalance.toString(),
       changeAmount.toString(),
       params.changeType,
-      signedAmount,
+      signedAmount.toString(),
       params.reason,
       {
         aggregateId: this.aggregateId,
