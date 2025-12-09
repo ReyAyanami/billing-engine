@@ -308,7 +308,5 @@ docs/
 
 ## License
 
-MIT License - See [LICENSE](./LICENSE) for details.
-
-This project is provided as-is for educational purposes. Use at your own risk.
+No open-source license is currently provided for this project. All rights reserved. This project is shared for educational purposes only; use it at your own risk.
 

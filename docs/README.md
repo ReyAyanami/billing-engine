@@ -53,8 +53,6 @@ Deep dives into each module:
 
 - **[Account Module](./modules/account.md)** - Account management implementation
 - **[Transaction Module](./modules/transaction.md)** - Transaction processing logic
-- **[Currency Module](./modules/currency.md)** - Multi-currency support
-- **[Audit Module](./modules/audit.md)** - Audit logging and compliance
 - **[CQRS Infrastructure](./modules/cqrs.md)** - CQRS implementation details
 
 ### 💰 Operations

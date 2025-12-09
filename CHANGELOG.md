@@ -54,10 +54,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Multi-currency support (one currency per account)
 
 #### Infrastructure
-- Docker Compose setup (PostgreSQL, Kafka, Zookeeper)
+- Docker Compose setup (PostgreSQL, Kafka with KRaft)
 - Database migrations with TypeORM
 - Event versioning support
-- Tenant-based schema isolation
+- Tenant-based schema isolation (for testing)
 - Health checks and monitoring endpoints
 
 #### Testing
@@ -149,5 +149,5 @@ Note: This is primarily a personal learning project. Contributions that enhance 
 
 ## License
 
-MIT License - See [LICENSE](./LICENSE)
+This project does not have an open-source license. All rights reserved for educational purposes.
 

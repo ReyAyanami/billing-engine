@@ -2,7 +2,7 @@
 
 ## Overview
 
-Infrastructure documentation for the billing engine's supporting services: PostgreSQL, Kafka, Zookeeper, and Docker Compose orchestration.
+Infrastructure documentation for the billing engine's supporting services: PostgreSQL, Kafka (with KRaft), and Docker Compose orchestration.
 
 ---
 
@@ -46,16 +46,10 @@ Relational database for projections.
              ▼                    ▼
      ┌──────────────┐     ┌──────────────┐
      │  PostgreSQL  │     │    Kafka     │
-     │              │     │              │
+     │              │     │  (KRaft)     │
      │  Projections │     │ Event Store  │
      │  Read Models │     │  (Events)    │
-     └──────────────┘     └──────┬───────┘
-                                 │
-                          ┌──────▼───────┐
-                          │  Zookeeper   │
-                          │              │
-                          │ Coordination │
-                          └──────────────┘
+     └──────────────┘     └──────────────┘
 ```
 
 ---
@@ -107,22 +101,6 @@ docker exec -it billing-engine-kafka kafka-topics.sh \
   --bootstrap-server localhost:9092 \
   --list
 ```
-
----
-
-### Zookeeper
-
-**Purpose**: Kafka cluster coordination
-
-**Port**: `2181`
-
-**Features**:
-- Leader election
-- Configuration management
-- Service discovery
-- Metadata storage
-
-**Note**: Required by Kafka (in this setup)
 
 ---
 
@@ -183,18 +161,16 @@ npm run env:clean
 | Service | CPU | Memory | Disk |
 |---------|-----|--------|------|
 | PostgreSQL | 0.5 | 512 MB | 1 GB |
-| Kafka | 0.5 | 1 GB | 2 GB |
-| Zookeeper | 0.25 | 256 MB | 1 GB |
-| **Total** | **1.25** | **~2 GB** | **4 GB** |
+| Kafka (KRaft) | 0.5 | 1 GB | 2 GB |
+| **Total** | **1** | **~1.5 GB** | **3 GB** |
 
 ### Recommended
 
 | Service | CPU | Memory | Disk |
 |---------|-----|--------|------|
 | PostgreSQL | 1 | 1 GB | 5 GB |
-| Kafka | 1 | 2 GB | 10 GB |
-| Zookeeper | 0.5 | 512 MB | 2 GB |
-| **Total** | **2.5** | **~4 GB** | **17 GB** |
+| Kafka (KRaft) | 1 | 2 GB | 10 GB |
+| **Total** | **2** | **~3 GB** | **15 GB** |
 
 ---
 
@@ -221,9 +197,7 @@ networks:
 | Service | Internal Port | External Port |
 |---------|---------------|---------------|
 | PostgreSQL | 5432 | 5432 |
-| Kafka (internal) | 9092 | - |
-| Kafka (external) | - | 29092 |
-| Zookeeper | 2181 | 2181 |
+| Kafka | 9092 | 9092 |
 | Application | 3000 | 3000 |
 
 ---
@@ -235,8 +209,7 @@ Persistent data storage:
 ```yaml
 volumes:
   postgres-data:     # PostgreSQL data
-  kafka-data:        # Kafka logs/data
-  zookeeper-data:    # Zookeeper state
+  kafka-data:        # Kafka logs/data (KRaft metadata)
 ```
 
 **Location**: Docker managed volumes
@@ -288,8 +261,7 @@ For production, you would need:
 
 ### High Availability
 - PostgreSQL replication (master-slave)
-- Kafka cluster (multiple brokers)
-- Zookeeper ensemble (3-5 nodes)
+- Kafka cluster (multiple brokers with KRaft quorum)
 - Load balancing
 - Failover mechanisms
 
