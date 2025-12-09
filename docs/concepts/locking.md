@@ -284,6 +284,175 @@ try {
 
 ---
 
+## Event-Based Lock-Free Operations
+
+### Overview
+
+This project uses **event sourcing**, which provides lock-free alternatives for certain operations. Events are immutable and append-only, eliminating the need for locks in many scenarios.
+
+### When Events Don't Need Locks
+
+#### 1. Event Appending (Kafka)
+
+Events are written to Kafka without locks:
+
+```typescript
+// No locks needed - Kafka handles serialization per partition
+await this.eventStore.saveEvents(aggregateId, events);
+```
+
+**Why it works:**
+- Kafka guarantees ordering within a partition
+- Events for the same aggregate go to the same partition (by aggregate ID)
+- Append-only = no update conflicts
+
+#### 2. Event Handlers (Read Side)
+
+Event handlers update projections based on events:
+
+```typescript
+@EventsHandler(BalanceChangedEvent)
+export class BalanceChangedHandler {
+  async handle(event: BalanceChangedEvent) {
+    // This CAN use locks if updating projections
+    await this.accountProjectionRepo.update(
+      { id: event.aggregateId },
+      { balance: event.newBalance }
+    );
+  }
+}
+```
+
+**Lock considerations:**
+- ✅ **Lock-free**: Reading events from Kafka
+- ⚠️ **May need locks**: Updating PostgreSQL projections (see below)
+
+#### 3. Command Validation (Aggregate State)
+
+Aggregates rebuild state from events without database locks:
+
+```typescript
+// Load events from Kafka (no locks)
+const events = await this.eventStore.getEvents('Account', accountId);
+
+// Rebuild aggregate state (in-memory)
+const account = AccountAggregate.fromEvents(events);
+
+// Validate business rules (no database involved)
+if (account.getBalance() < amount) {
+  throw new InsufficientBalanceException();
+}
+```
+
+**Why it works:**
+- Aggregate state is derived from events
+- No database reads = no locks needed
+- Optimistic concurrency at event store level
+
+### When Locks Are Still Needed
+
+#### ❌ Updating Projections (PostgreSQL)
+
+Even with events, projection updates need locks:
+
+```typescript
+// Event handler updating projection
+await this.dataSource.transaction(async (manager) => {
+  // Lock needed here!
+  const projection = await manager.findOne(AccountProjection, {
+    where: { accountId: event.aggregateId },
+    lock: { mode: 'pessimistic_write' }
+  });
+  
+  projection.balance = event.newBalance;
+  await manager.save(projection);
+});
+```
+
+**Why locks are needed:**
+- Multiple events can arrive out of order
+- Projection updates are not idempotent
+- PostgreSQL doesn't guarantee event ordering
+
+#### ❌ Multi-Account Operations (Saga Coordinators)
+
+Sagas orchestrating multi-account transfers still need locks:
+
+```typescript
+// Transfer saga still locks both accounts
+await this.lockAccounts(manager, sourceId, destId);
+```
+
+**Why locks are needed:**
+- Validating balances across multiple accounts
+- Ensuring atomicity of multi-account operations
+- Preventing race conditions between sagas
+
+### Architectural Pattern: CQRS Benefits
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     COMMAND SIDE                             │
+│                                                               │
+│  ┌──────────────┐         ┌──────────────┐                  │
+│  │  Command     │────────▶│  Aggregate   │                  │
+│  │  Handler     │         │  (in-memory) │                  │
+│  └──────────────┘         └──────────────┘                  │
+│         │                        │                           │
+│         │                        ▼                           │
+│         │              ┌──────────────────┐                  │
+│         │              │ Events → Kafka   │  ✅ Lock-free   │
+│         │              │ (append-only)    │                  │
+│         │              └──────────────────┘                  │
+│         │                                                     │
+│         │  If validation needs current state from projection:│
+│         ▼                                                     │
+│  ┌──────────────────┐                                        │
+│  │  Read Projection │   ⚠️  May need lock if reading        │
+│  │  (PostgreSQL)    │       for write validation            │
+│  └──────────────────┘                                        │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                      QUERY SIDE                              │
+│                                                               │
+│  ┌──────────────────┐                                        │
+│  │ Events (Kafka)   │────┐                                   │
+│  └──────────────────┘    │                                   │
+│                           ▼                                   │
+│                 ┌──────────────────┐                         │
+│                 │  Event Handler   │                         │
+│                 └──────────────────┘                         │
+│                           │                                   │
+│                           ▼                                   │
+│                 ┌──────────────────┐                         │
+│                 │  Update Projection│  ⚠️  Lock needed       │
+│                 │  (PostgreSQL)     │     for updates        │
+│                 └──────────────────┘                         │
+│                           │                                   │
+│                           ▼                                   │
+│                 ┌──────────────────┐                         │
+│                 │  Read Projection │  ✅  Lock-free reads    │
+│                 │  (Queries)       │                         │
+│                 └──────────────────┘                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Summary: Lock Usage in Event-Sourced Architecture
+
+| Operation | Locks Needed? | Reason |
+|-----------|---------------|--------|
+| **Append events to Kafka** | ✅ No | Kafka handles partitioning |
+| **Read events from Kafka** | ✅ No | Immutable, append-only |
+| **Rebuild aggregate from events** | ✅ No | In-memory operation |
+| **Update PostgreSQL projection** | ❌ Yes | Multiple events, order matters |
+| **Read projection (query)** | ✅ No | Read-only operations |
+| **Multi-account saga** | ❌ Yes | Cross-aggregate consistency |
+
+**Key Insight**: Event sourcing reduces but doesn't eliminate the need for locks. Locks are still required when updating projections or coordinating multi-aggregate operations.
+
+---
+
 ## Alternative: Optimistic Locking
 
 **Not used in this project**, but worth understanding:
