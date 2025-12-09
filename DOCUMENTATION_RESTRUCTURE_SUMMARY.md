@@ -5,6 +5,33 @@
 
 ---
 
+## Project Context & Philosophy
+
+### 📚 Educational Study Project
+
+This project is a **study on how billing systems can be built**, not a prescription for how they should be built. Key points:
+
+**Purpose**:
+- 🎓 Personal exploration and learning exercise
+- 💡 Demonstration of concepts (CQRS, Event Sourcing, Double-Entry)
+- 📖 Study material for others learning similar concepts
+- 🧪 Experimentation with architectural patterns
+
+**Important Disclaimers**:
+- ⚠️ **Not for production use** - This is study material
+- ⚠️ **No support or updates** - Use at your own risk
+- ⚠️ **No license restrictions** - Use as inspiration, draft, or however you wish
+- ✅ **Constructive criticism welcomed** - I'm learning too!
+
+**Documentation Focus**:
+The documentation emphasizes **WHY** decisions were made, not just WHAT or HOW. Every major architectural choice includes:
+- Reasoning and problem it solves
+- Alternatives considered
+- Trade-offs made
+- Limitations and simplifications
+
+---
+
 ## What Was Done
 
 ### 1. Archived Old Documentation ✅
@@ -243,11 +270,14 @@ Infrastructure and advanced topics:
 ## Success Criteria
 
 ### Documentation Quality
-- [ ] New developer can set up in < 10 minutes
+- [ ] Learner can understand concepts and reasoning
+- [ ] WHY is explained for major decisions
+- [ ] Trade-offs and alternatives discussed
 - [ ] All REST endpoints documented with examples
-- [ ] All major features have guides
+- [ ] All major features have guides with explanations
+- [ ] Limitations and simplifications acknowledged
 - [ ] No broken internal links
-- [ ] All code examples are working
+- [ ] All code examples are working and explained
 
 ### Completeness
 - [ ] All 5 modules documented

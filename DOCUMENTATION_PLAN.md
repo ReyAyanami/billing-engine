@@ -9,12 +9,26 @@ This document outlines the new documentation structure for the Billing Engine pr
 ## Analysis of Current State
 
 ### Project Overview
-- **Type**: Production-grade billing system
+- **Type**: Educational study project on billing system architecture
+- **Purpose**: Demonstrate concepts, not production-ready software
 - **Architecture**: CQRS + Event Sourcing with Kafka
 - **Framework**: NestJS 11 + TypeScript 5
 - **Database**: PostgreSQL with TypeORM
 - **Event Store**: Kafka for event sourcing
 - **Pattern**: Double-entry bookkeeping
+
+### Project Philosophy
+This is a **study project** exploring how billing systems can be built, not prescribing how they should be built. It represents personal exploration and learning, intended as:
+- 📚 **Study material** for understanding billing system concepts
+- 💡 **Inspiration** for those building similar systems
+- 🧪 **Experimentation** with architectural patterns
+- 🎓 **Learning resource** with detailed explanations of WHY, not just HOW
+
+**Important Disclaimers**:
+- ⚠️ Not intended for production use
+- ⚠️ No support or updates guaranteed
+- ⚠️ No license restrictions - use as you wish
+- ✅ Constructive criticism welcomed
 
 ### Core Components
 1. **Account Module**: Account lifecycle, aggregates, projections
@@ -122,17 +136,24 @@ This document outlines the new documentation structure for the Billing Engine pr
 ## Documentation Goals
 
 ### Primary Goals
-1. **Clarity**: Easy to understand for new developers
-2. **Completeness**: Cover all major features and patterns
-3. **Current**: Reflect actual codebase, not development history
-4. **Actionable**: Provide concrete examples and code snippets
-5. **Navigable**: Clear structure with cross-references
+1. **Educational**: Explain WHY decisions were made, not just WHAT/HOW
+2. **Clarity**: Easy to understand concepts and reasoning
+3. **Transparency**: Acknowledge trade-offs, alternatives, and limitations
+4. **Practical**: Working examples to learn from
+5. **Inviting**: Encourage exploration, experimentation, and feedback
 
 ### Target Audiences
-1. **New Developers**: Quick onboarding and orientation
-2. **API Consumers**: Clear API documentation with examples
-3. **Contributors**: Development guidelines and patterns
-4. **Operators**: Deployment and monitoring guides
+1. **Students/Learners**: Understanding billing system architecture
+2. **Developers**: Learning CQRS, Event Sourcing, Double-Entry patterns
+3. **Architects**: Exploring design decisions and trade-offs
+4. **Hobbyists**: Inspiration for personal projects
+
+### Documentation Philosophy
+- **Focus on WHY**: Every major decision includes reasoning
+- **Show Trade-offs**: Discuss alternatives and their pros/cons
+- **Encourage Learning**: Explain concepts thoroughly
+- **Be Honest**: Acknowledge what's simplified or not production-ready
+- **Invite Discussion**: Welcome constructive criticism and questions
 
 ---
 
@@ -202,39 +223,52 @@ This document outlines the new documentation structure for the Billing Engine pr
 ## Documentation Standards
 
 ### Writing Style
-- **Concise**: Get to the point quickly
-- **Practical**: Include code examples
-- **Visual**: Use diagrams where helpful
-- **Consistent**: Follow same structure across docs
+- **Educational**: Explain concepts thoroughly with reasoning
+- **Conversational**: Approachable tone, like teaching a colleague
+- **Honest**: Acknowledge limitations and learning moments
+- **Practical**: Include code examples with explanations
+- **Visual**: Use diagrams to explain concepts
+- **Reflective**: Discuss "why this approach" and alternatives
 
 ### Document Structure (Template)
 ```markdown
 # Title
 
 ## Overview
-Brief description (2-3 sentences)
+Brief description of what and why
+
+## Why This Approach?
+Reasoning behind design decisions
+- What problem does it solve?
+- What alternatives were considered?
+- What trade-offs were made?
 
 ## Key Concepts
-Core ideas and terminology
+Core ideas and terminology explained
 
 ## How It Works
-Technical explanation
+Technical explanation with diagrams
 
 ## Usage/Examples
-Practical examples with code
+Practical examples with code and explanations
 
-## Common Patterns/Pitfalls
-Best practices and gotchas
+## Limitations & Considerations
+What's simplified, what's missing, what to consider for production
+
+## Learning Resources
+Related concepts, patterns, and further reading
 
 ## Related Documentation
-Links to related docs
+Links to related docs in this project
 ```
 
 ### Code Examples
 - Always use TypeScript
-- Include imports
+- Include imports and full context
+- Explain WHY the code is structured this way
 - Show both HTTP and programmatic usage where applicable
-- Include error handling
+- Include error handling with explanations
+- Add comments explaining key decisions
 
 ### Diagrams
 - Use ASCII art for simple flows
