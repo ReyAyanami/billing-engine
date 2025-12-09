@@ -12,20 +12,23 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * This migration drops the redundant 'accounts' table.
  * All account data is now in 'account_projections' (read model) and Kafka events (source of truth).
  */
-export class DropAccountsTableEventSourced1735000000000
-  implements MigrationInterface
-{
+export class DropAccountsTableEventSourced1735000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Drop foreign key constraints from transactions table first
-    await queryRunner.query(`
-      ALTER TABLE transactions 
-      DROP CONSTRAINT IF EXISTS "FK_transactions_source_account"
-    `);
+    // Check if transactions table exists before dropping constraints
+    const transactionsTableExists = await queryRunner.hasTable('transactions');
 
-    await queryRunner.query(`
-      ALTER TABLE transactions 
-      DROP CONSTRAINT IF EXISTS "FK_transactions_destination_account"
-    `);
+    if (transactionsTableExists) {
+      // Drop foreign key constraints from transactions table first
+      await queryRunner.query(`
+        ALTER TABLE transactions 
+        DROP CONSTRAINT IF EXISTS "FK_transactions_source_account"
+      `);
+
+      await queryRunner.query(`
+        ALTER TABLE transactions 
+        DROP CONSTRAINT IF EXISTS "FK_transactions_destination_account"
+      `);
+    }
 
     // Drop the accounts table
     await queryRunner.query(`
@@ -89,8 +92,9 @@ export class DropAccountsTableEventSourced1735000000000
       ON DELETE RESTRICT ON UPDATE CASCADE
     `);
 
-    console.log('⚠️  Rolled back to hybrid architecture - accounts table restored');
+    console.log(
+      '⚠️  Rolled back to hybrid architecture - accounts table restored',
+    );
     console.log('   Note: Data in accounts table will be empty after rollback');
   }
 }
-

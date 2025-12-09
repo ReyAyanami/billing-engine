@@ -57,7 +57,7 @@ services:
 
   # Init container - Sets up Kafka topics and runs migrations
   init:
-    image: node:18-alpine
+    image: node:20-alpine
     container_name: billing_init
     working_dir: /app
     depends_on:
@@ -75,14 +75,13 @@ services:
       NODE_ENV: development
       KAFKA_BROKERS: kafka:9092
     volumes:
-      - ./package*.json:/app/
-      - ./tsconfig*.json:/app/
-      - ./nest-cli.json:/app/
-      - ./src:/app/src
-      - ./scripts/init-services.sh:/app/init-services.sh
+      # Mount entire project directory to avoid file mounting issues on Mac
+      - .:/app
+      # Use separate volume for node_modules to avoid conflicts
       - init_node_modules:/app/node_modules
-      - /var/run/docker.sock:/var/run/docker.sock  # Allow docker commands
-    command: /bin/sh -c "chmod +x /app/init-services.sh && /app/init-services.sh"
+      # Allow docker commands for Kafka topic creation
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: /bin/sh -c "chmod +x /app/scripts/init-services.sh && /app/scripts/init-services.sh"
     restart: "no"
 
   # Optional: Kafka UI for debugging

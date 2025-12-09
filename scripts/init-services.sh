@@ -76,7 +76,7 @@ create_topic() {
   echo "📝 Creating topic: $topic_name (partitions: $partitions)"
   
   # Create topic using docker exec
-  docker exec billing_kafka kafka-topics.sh --create \
+  docker exec billing_kafka /opt/kafka/bin/kafka-topics.sh --create \
     --bootstrap-server localhost:9092 \
     --topic "$topic_name" \
     --partitions "$partitions" \
