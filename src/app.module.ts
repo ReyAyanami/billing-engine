@@ -8,6 +8,7 @@ import { TransactionModule } from './modules/transaction/transaction.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { KafkaModule } from './cqrs/kafka/kafka.module';
+import { CqrsSagaModule } from './cqrs/cqrs-saga.module';
 import { EventsModule } from './modules/events/events.module';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -21,6 +22,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     TypeOrmModule.forRoot(getDatabaseConfig()),
     CqrsModule.forRoot(), // CQRS support for commands, queries, and events
     KafkaModule, // Kafka event store for event sourcing
+    CqrsSagaModule, // Saga orchestration and outbox pattern
     AccountModule,
     TransactionModule,
     CurrencyModule,

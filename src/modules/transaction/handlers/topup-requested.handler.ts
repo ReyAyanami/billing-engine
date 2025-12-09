@@ -1,38 +1,51 @@
-import { EventsHandler, IEventHandler, CommandBus } from '@nestjs/cqrs';
-import { Logger } from '@nestjs/common';
+import { IEventHandler, CommandBus } from '@nestjs/cqrs';
+import { Injectable, Logger } from '@nestjs/common';
+import { SagaHandler } from '../../../cqrs/decorators/saga-handler.decorator';
+import { SagaCoordinator } from '../../../cqrs/saga/saga-coordinator.service';
 import { TopupRequestedEvent } from '../events/topup-requested.event';
 import { UpdateBalanceCommand } from '../../account/commands/update-balance.command';
 import { CompleteTopupCommand } from '../commands/complete-topup.command';
 import { FailTransactionCommand } from '../commands/fail-transaction.command';
 
 /**
- * Event handler for TopupRequestedEvent (Saga Coordinator).
+ * Saga Coordinator for Topup transactions
  *
- * This implements the Transaction Saga pattern:
- * 1. Listen for TopupRequested
+ * Orchestrates the topup business process:
+ * 1. Listen for TopupRequested event
  * 2. Update account balance (via UpdateBalanceCommand)
  * 3. On success: Complete transaction (via CompleteTopupCommand)
  * 4. On failure: Fail transaction (via FailTransactionCommand)
  *
  * This ensures consistency across Transaction and Account aggregates.
+ * Runs synchronously and tracks saga state for monitoring.
  */
-@EventsHandler(TopupRequestedEvent)
+@Injectable()
+@SagaHandler(TopupRequestedEvent)
 export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent> {
   private readonly logger = new Logger(TopupRequestedHandler.name);
 
-  constructor(private commandBus: CommandBus) {}
+  constructor(
+    private commandBus: CommandBus,
+    private sagaCoordinator: SagaCoordinator,
+  ) {}
 
   async handle(event: TopupRequestedEvent): Promise<void> {
+    // Start saga tracking
+    await this.sagaCoordinator.startSaga({
+      sagaId: event.aggregateId,
+      sagaType: 'topup',
+      correlationId: event.correlationId,
+      steps: ['update_balance', 'complete_transaction'],
+      metadata: event.metadata,
+    });
+
     this.logger.log(
-      `🔷 SAGA START: Topup [txId=${event.aggregateId}, accountId=${event.accountId}, ` +
-        `amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
+      `SAGA: Topup initiated [txId=${event.aggregateId}, accountId=${event.accountId}, ` +
+        `amt=${event.amount} ${event.currency}]`,
     );
 
     try {
       // Step 1: Update account balance
-      this.logger.log(
-        `🔷 SAGA STEP 1: Updating account balance [accountId=${event.accountId}]`,
-      );
       const updateBalanceCommand = new UpdateBalanceCommand({
         accountId: event.accountId,
         changeAmount: event.amount,
@@ -48,9 +61,12 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
         string
       >(updateBalanceCommand);
 
-      this.logger.log(
-        `🔷 SAGA STEP 2: Account balance updated, completing transaction [newBalance=${newBalance}]`,
-      );
+      // Mark step complete
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'update_balance',
+        result: { newBalance },
+      });
 
       // Step 2: Complete the transaction
       const completeCommand = new CompleteTopupCommand(
@@ -62,25 +78,39 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
 
       await this.commandBus.execute(completeCommand);
 
+      // Mark saga complete
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'complete_transaction',
+        result: { newBalance },
+      });
+
       this.logger.log(
-        `✅ SAGA COMPLETE: Topup finished [txId=${event.aggregateId}, balance=${newBalance}]`,
+        `SAGA: Topup completed [txId=${event.aggregateId}, balance=${newBalance}]`,
       );
     } catch (error: unknown) {
-      // Step 3 (on failure): Fail the transaction
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
+      // Saga failed - mark as failed and fail the transaction
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
       const errorCode = (error as { code?: string })?.code ?? undefined;
 
       this.logger.error(
-        `SAGA: Topup failed [txId=${event.aggregateId}, corr=${event.correlationId}]`,
-        errorStack,
+        `SAGA: Topup failed [txId=${event.aggregateId}]`,
+        errorObj.stack,
       );
+
+      // Mark saga as failed
+      await this.sagaCoordinator.failSaga({
+        sagaId: event.aggregateId,
+        step: 'update_balance', // Failed during this step
+        error: errorObj,
+        canCompensate: false, // Topup doesn't need compensation
+      });
 
       try {
         const failCommand = new FailTransactionCommand(
           event.aggregateId,
-          errorMessage,
+          errorObj.message,
           errorCode ?? 'TOPUP_FAILED',
           event.correlationId,
           event.metadata?.actorId,
