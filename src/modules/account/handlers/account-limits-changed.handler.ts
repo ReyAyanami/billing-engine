@@ -2,6 +2,7 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { AccountLimitsChangedEvent } from '../events/account-limits-changed.event';
 import { AccountProjectionService } from '../projections/account-projection.service';
+import { AuditService } from '../../audit/audit.service';
 
 /**
  * Event handler for AccountLimitsChangedEvent.
@@ -11,7 +12,10 @@ import { AccountProjectionService } from '../projections/account-projection.serv
 export class AccountLimitsChangedHandler implements IEventHandler<AccountLimitsChangedEvent> {
   private readonly logger = new Logger(AccountLimitsChangedHandler.name);
 
-  constructor(private readonly projectionService: AccountProjectionService) {}
+  constructor(
+    private readonly projectionService: AccountProjectionService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async handle(event: AccountLimitsChangedEvent): Promise<void> {
     this.logger.log(
@@ -36,9 +40,29 @@ export class AccountLimitsChangedHandler implements IEventHandler<AccountLimitsC
 
     try {
       // Update read model projection
-      await this.projectionService.handleAccountLimitsChanged(event);
+      const projection = await this.projectionService.handleAccountLimitsChanged(event);
 
-      // TODO: Audit log for compliance
+      // Audit log for compliance
+      await this.auditService.log(
+        'Account',
+        event.aggregateId,
+        'LIMITS_CHANGED',
+        {
+          previousMaxBalance: event.previousMaxBalance,
+          newMaxBalance: event.newMaxBalance,
+          previousMinBalance: event.previousMinBalance,
+          newMinBalance: event.newMinBalance,
+          reason: event.reason,
+          ownerId: projection.ownerId,
+          ownerType: projection.ownerType,
+        },
+        {
+          correlationId: event.correlationId,
+          actorId: event.metadata?.actorId as string | undefined,
+          actorType: 'system',
+          timestamp: event.timestamp,
+        },
+      );
 
       this.logger.log(`✅ AccountLimitsChangedEvent processed successfully`);
     } catch (error) {

@@ -50,7 +50,7 @@ export class AccountProjectionService {
   /**
    * Updates projection balance from BalanceChangedEvent
    */
-  async handleBalanceChanged(event: BalanceChangedEvent): Promise<void> {
+  async handleBalanceChanged(event: BalanceChangedEvent): Promise<AccountProjection> {
     this.logger.log(`Updating balance for account: ${event.aggregateId}`);
 
     const projection = await this.projectionRepository.findOne({
@@ -69,7 +69,7 @@ export class AccountProjectionService {
       this.logger.warn(
         `Skipping BalanceChanged event (already processed): ${event.eventId}`,
       );
-      return;
+      return projection;
     }
 
     projection.balance = event.newBalance;
@@ -77,11 +77,13 @@ export class AccountProjectionService {
     projection.lastEventId = event.eventId;
     projection.lastEventTimestamp = event.timestamp;
 
-    await this.projectionRepository.save(projection);
+    const updated = await this.projectionRepository.save(projection);
 
     this.logger.log(
       `✅ Balance updated for account: ${event.aggregateId} (${event.newBalance})`,
     );
+
+    return updated;
   }
 
   /**
@@ -89,7 +91,7 @@ export class AccountProjectionService {
    */
   async handleAccountStatusChanged(
     event: AccountStatusChangedEvent,
-  ): Promise<void> {
+  ): Promise<AccountProjection> {
     this.logger.log(`Updating status for account: ${event.aggregateId}`);
 
     const projection = await this.projectionRepository.findOne({
@@ -108,7 +110,7 @@ export class AccountProjectionService {
       this.logger.warn(
         `Skipping AccountStatusChanged event (already processed): ${event.eventId}`,
       );
-      return;
+      return projection;
     }
 
     projection.status = event.newStatus;
@@ -116,11 +118,13 @@ export class AccountProjectionService {
     projection.lastEventId = event.eventId;
     projection.lastEventTimestamp = event.timestamp;
 
-    await this.projectionRepository.save(projection);
+    const updated = await this.projectionRepository.save(projection);
 
     this.logger.log(
       `✅ Status updated for account: ${event.aggregateId} (${event.newStatus})`,
     );
+
+    return updated;
   }
 
   /**
@@ -128,7 +132,7 @@ export class AccountProjectionService {
    */
   async handleAccountLimitsChanged(
     event: AccountLimitsChangedEvent,
-  ): Promise<void> {
+  ): Promise<AccountProjection> {
     this.logger.log(`Updating limits for account: ${event.aggregateId}`);
 
     const projection = await this.projectionRepository.findOne({
@@ -147,7 +151,7 @@ export class AccountProjectionService {
       this.logger.warn(
         `Skipping AccountLimitsChanged event (already processed): ${event.eventId}`,
       );
-      return;
+      return projection;
     }
 
     if (event.newMaxBalance !== undefined) {
@@ -161,9 +165,11 @@ export class AccountProjectionService {
     projection.lastEventId = event.eventId;
     projection.lastEventTimestamp = event.timestamp;
 
-    await this.projectionRepository.save(projection);
+    const updated = await this.projectionRepository.save(projection);
 
     this.logger.log(`✅ Limits updated for account: ${event.aggregateId}`);
+
+    return updated;
   }
 
   /**

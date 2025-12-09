@@ -26,8 +26,7 @@ export class KafkaEventStore implements IEventStore {
     aggregateType: string,
     aggregateId: string,
     events: DomainEvent[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _expectedVersion?: number,
+    expectedVersion?: number,
   ): Promise<void> {
     if (events.length === 0) {
       return;
@@ -37,8 +36,14 @@ export class KafkaEventStore implements IEventStore {
     const producer = this.kafkaService.getProducer();
 
     try {
-      // TODO: Implement optimistic concurrency check with expectedVersion
-      // For now, we'll skip version checking and implement it later
+      // Optimistic concurrency check
+      if (expectedVersion !== undefined) {
+        await this.verifyExpectedVersion(
+          aggregateType,
+          aggregateId,
+          expectedVersion,
+        );
+      }
 
       const messages = events.map((event) => {
         const eventJson = event.toJSON();
@@ -319,6 +324,40 @@ export class KafkaEventStore implements IEventStore {
       );
       throw error;
     }
+  }
+
+  /**
+   * Verifies that the current aggregate version matches the expected version.
+   * This implements optimistic concurrency control to prevent concurrent modifications.
+   * 
+   * @throws Error if version mismatch detected
+   */
+  private async verifyExpectedVersion(
+    aggregateType: string,
+    aggregateId: string,
+    expectedVersion: number,
+  ): Promise<void> {
+    this.logger.debug(
+      `Verifying expected version ${expectedVersion} for ${aggregateType}/${aggregateId}`,
+    );
+
+    // Get current events to determine actual version
+    const existingEvents = await this.getEvents(aggregateType, aggregateId);
+    const currentVersion = existingEvents.length;
+
+    if (currentVersion !== expectedVersion) {
+      const error = new Error(
+        `Concurrency conflict detected for ${aggregateType}/${aggregateId}. ` +
+          `Expected version: ${expectedVersion}, Current version: ${currentVersion}. ` +
+          `This aggregate was modified by another process. Please retry the operation.`,
+      );
+      this.logger.error(error.message);
+      throw error;
+    }
+
+    this.logger.debug(
+      `✅ Version check passed for ${aggregateType}/${aggregateId} (version ${currentVersion})`,
+    );
   }
 
   /**

@@ -2,6 +2,7 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { AccountStatusChangedEvent } from '../events/account-status-changed.event';
 import { AccountProjectionService } from '../projections/account-projection.service';
+import { NotificationService } from '../../notification/notification.service';
 
 /**
  * Event handler for AccountStatusChangedEvent.
@@ -11,7 +12,10 @@ import { AccountProjectionService } from '../projections/account-projection.serv
 export class AccountStatusChangedHandler implements IEventHandler<AccountStatusChangedEvent> {
   private readonly logger = new Logger(AccountStatusChangedHandler.name);
 
-  constructor(private readonly projectionService: AccountProjectionService) {}
+  constructor(
+    private readonly projectionService: AccountProjectionService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async handle(event: AccountStatusChangedEvent): Promise<void> {
     this.logger.log(
@@ -23,10 +27,17 @@ export class AccountStatusChangedHandler implements IEventHandler<AccountStatusC
 
     try {
       // Update read model projection
-      await this.projectionService.handleAccountStatusChanged(event);
+      const projection = await this.projectionService.handleAccountStatusChanged(event);
 
-      // TODO: Send notification if account frozen/closed
-      // TODO: Trigger compliance checks
+      // Send notifications and trigger compliance checks
+      await this.notificationService.notifyAccountStatusChanged({
+        accountId: event.aggregateId,
+        ownerId: projection.ownerId,
+        ownerType: projection.ownerType,
+        previousStatus: event.previousStatus,
+        newStatus: event.newStatus,
+        reason: event.reason,
+      });
 
       this.logger.log(`✅ AccountStatusChangedEvent processed successfully`);
     } catch (error) {

@@ -215,4 +215,175 @@ export class TransactionProjectionService {
       order: { requestedAt: 'DESC' },
     });
   }
+
+  /**
+   * Complex filtering for transactions with multiple criteria
+   */
+  async findWithFilters(filters: {
+    accountId?: string;
+    type?: TransactionType;
+    status?: TransactionStatus;
+    currency?: string;
+    minAmount?: string;
+    maxAmount?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<TransactionProjection[]> {
+    const query = this.projectionRepository.createQueryBuilder('t');
+
+    // Filter by account (source or destination)
+    if (filters.accountId) {
+      query.andWhere(
+        '(t.sourceAccountId = :accountId OR t.destinationAccountId = :accountId)',
+        { accountId: filters.accountId },
+      );
+    }
+
+    // Filter by transaction type
+    if (filters.type) {
+      query.andWhere('t.type = :type', { type: filters.type });
+    }
+
+    // Filter by status
+    if (filters.status) {
+      query.andWhere('t.status = :status', { status: filters.status });
+    }
+
+    // Filter by currency
+    if (filters.currency) {
+      query.andWhere('t.currency = :currency', { currency: filters.currency });
+    }
+
+    // Filter by amount range
+    if (filters.minAmount) {
+      query.andWhere('CAST(t.amount AS DECIMAL) >= :minAmount', {
+        minAmount: parseFloat(filters.minAmount),
+      });
+    }
+    if (filters.maxAmount) {
+      query.andWhere('CAST(t.amount AS DECIMAL) <= :maxAmount', {
+        maxAmount: parseFloat(filters.maxAmount),
+      });
+    }
+
+    // Filter by date range
+    if (filters.startDate) {
+      query.andWhere('t.requestedAt >= :startDate', {
+        startDate: filters.startDate,
+      });
+    }
+    if (filters.endDate) {
+      query.andWhere('t.requestedAt <= :endDate', {
+        endDate: filters.endDate,
+      });
+    }
+
+    // Pagination
+    if (filters.limit) {
+      query.limit(filters.limit);
+    }
+    if (filters.offset) {
+      query.offset(filters.offset);
+    }
+
+    // Order by most recent first
+    query.orderBy('t.requestedAt', 'DESC');
+
+    return query.getMany();
+  }
+
+  /**
+   * Count transactions matching filters
+   */
+  async countWithFilters(filters: {
+    accountId?: string;
+    type?: TransactionType;
+    status?: TransactionStatus;
+    currency?: string;
+    minAmount?: string;
+    maxAmount?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<number> {
+    const query = this.projectionRepository.createQueryBuilder('t');
+
+    // Apply same filters as findWithFilters
+    if (filters.accountId) {
+      query.andWhere(
+        '(t.sourceAccountId = :accountId OR t.destinationAccountId = :accountId)',
+        { accountId: filters.accountId },
+      );
+    }
+    if (filters.type) {
+      query.andWhere('t.type = :type', { type: filters.type });
+    }
+    if (filters.status) {
+      query.andWhere('t.status = :status', { status: filters.status });
+    }
+    if (filters.currency) {
+      query.andWhere('t.currency = :currency', { currency: filters.currency });
+    }
+    if (filters.minAmount) {
+      query.andWhere('CAST(t.amount AS DECIMAL) >= :minAmount', {
+        minAmount: parseFloat(filters.minAmount),
+      });
+    }
+    if (filters.maxAmount) {
+      query.andWhere('CAST(t.amount AS DECIMAL) <= :maxAmount', {
+        maxAmount: parseFloat(filters.maxAmount),
+      });
+    }
+    if (filters.startDate) {
+      query.andWhere('t.requestedAt >= :startDate', {
+        startDate: filters.startDate,
+      });
+    }
+    if (filters.endDate) {
+      query.andWhere('t.requestedAt <= :endDate', {
+        endDate: filters.endDate,
+      });
+    }
+
+    return query.getCount();
+  }
+
+  /**
+   * Get transaction statistics for an account
+   */
+  async getAccountStatistics(accountId: string): Promise<{
+    totalTransactions: number;
+    completedTransactions: number;
+    failedTransactions: number;
+    totalVolume: string;
+    averageAmount: string;
+  }> {
+    const result = await this.projectionRepository
+      .createQueryBuilder('t')
+      .select('COUNT(*)', 'totalTransactions')
+      .addSelect(
+        "COUNT(CASE WHEN t.status = 'completed' THEN 1 END)",
+        'completedTransactions',
+      )
+      .addSelect(
+        "COUNT(CASE WHEN t.status = 'failed' THEN 1 END)",
+        'failedTransactions',
+      )
+      .addSelect('COALESCE(SUM(CAST(t.amount AS DECIMAL)), 0)', 'totalVolume')
+      .addSelect('COALESCE(AVG(CAST(t.amount AS DECIMAL)), 0)', 'averageAmount')
+      .where(
+        't.sourceAccountId = :accountId OR t.destinationAccountId = :accountId',
+        { accountId },
+      )
+      .getRawOne();
+
+    return {
+      totalTransactions: parseInt(result.totalTransactions) || 0,
+      completedTransactions: parseInt(result.completedTransactions) || 0,
+      failedTransactions: parseInt(result.failedTransactions) || 0,
+      totalVolume: result.totalVolume?.toString() || '0',
+      averageAmount: result.averageAmount?.toString() || '0',
+    };
+  }
 }

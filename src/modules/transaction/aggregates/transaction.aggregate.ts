@@ -64,7 +64,15 @@ export class TransactionAggregate extends AggregateRoot {
   private sourceNewBalance?: string;
   private destinationNewBalance?: string;
 
-  // TODO: Add compensation tracking for saga rollbacks in future
+  // Compensation tracking for saga rollbacks
+  private compensationReason?: string;
+  private compensationActions?: Array<{
+    action: string;
+    accountId: string;
+    amount: string;
+    timestamp: string;
+  }>;
+  private compensatedAt?: Date;
 
   protected getAggregateType(): string {
     return 'Transaction';
@@ -653,12 +661,14 @@ export class TransactionAggregate extends AggregateRoot {
 
   /**
    * Event handler for TransactionCompensatedEvent
+   * Stores compensation details for saga rollback tracking
    */
   onTransactionCompensated(event: TransactionCompensatedEvent): void {
     this.status = TransactionStatus.COMPENSATED;
-    // TODO: Store compensation details when implementing saga rollbacks
-    // Reason and actions available in event.reason and event.compensationActions
-    void event; // Suppress unused warning
+    this.compensationReason = event.reason;
+    this.compensationActions = event.compensationActions;
+    this.compensatedAt = event.timestamp;
+    this.updatedAt = event.timestamp;
   }
 
   /**
@@ -758,6 +768,23 @@ export class TransactionAggregate extends AggregateRoot {
     return this.failureReason;
   }
 
+  getCompensationReason(): string | undefined {
+    return this.compensationReason;
+  }
+
+  getCompensationActions(): Array<{
+    action: string;
+    accountId: string;
+    amount: string;
+    timestamp: string;
+  }> | undefined {
+    return this.compensationActions;
+  }
+
+  getCompensatedAt(): Date | undefined {
+    return this.compensatedAt;
+  }
+
   /**
    * Gets a human-readable label for the transaction type.
    * Uses exhaustive checking to ensure all TransactionType values are handled.
@@ -802,6 +829,9 @@ export class TransactionAggregate extends AggregateRoot {
       destinationAccountId: this.destinationAccountId ?? null,
       idempotencyKey: this.idempotencyKey,
       newBalance: this.newBalance ?? null,
+      compensationReason: this.compensationReason ?? null,
+      compensationActions: this.compensationActions ?? null,
+      compensatedAt: this.compensatedAt?.toISOString() ?? null,
       sourceNewBalance: this.sourceNewBalance ?? null,
       destinationNewBalance: this.destinationNewBalance ?? null,
       failureReason: this.failureReason ?? null,

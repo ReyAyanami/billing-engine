@@ -427,14 +427,8 @@ export class TransactionService {
       );
     }
 
-    if (filters.status) {
-      return this.transactionProjectionService.findByStatus(filters.status);
-    }
-
-    // For more complex queries, could add methods to projection service
-    // For now, return empty array as placeholder
-    // TODO: Implement complex filtering in TransactionProjectionService
-    return [];
+    // Use complex filtering with all provided criteria
+    return this.transactionProjectionService.findWithFilters(filters);
   }
 
   // Note: All business logic has moved to CQRS aggregates and handlers

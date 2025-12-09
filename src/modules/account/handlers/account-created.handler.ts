@@ -2,6 +2,7 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { AccountCreatedEvent } from '../events/account-created.event';
 import { AccountProjectionService } from '../projections/account-projection.service';
+import { NotificationService } from '../../notification/notification.service';
 
 /**
  * Event handler for AccountCreatedEvent.
@@ -11,7 +12,10 @@ import { AccountProjectionService } from '../projections/account-projection.serv
 export class AccountCreatedHandler implements IEventHandler<AccountCreatedEvent> {
   private readonly logger = new Logger(AccountCreatedHandler.name);
 
-  constructor(private readonly projectionService: AccountProjectionService) {}
+  constructor(
+    private readonly projectionService: AccountProjectionService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async handle(event: AccountCreatedEvent): Promise<void> {
     this.logger.log(
@@ -28,7 +32,14 @@ export class AccountCreatedHandler implements IEventHandler<AccountCreatedEvent>
       // Update read model projection
       await this.projectionService.handleAccountCreated(event);
 
-      // TODO: Send notifications, webhooks, etc.
+      // Send notifications and webhooks
+      await this.notificationService.notifyAccountCreated({
+        accountId: event.aggregateId,
+        ownerId: event.ownerId,
+        ownerType: event.ownerType,
+        currency: event.currency,
+        accountType: event.accountType,
+      });
 
       this.logger.log(`✅ AccountCreatedEvent processed successfully`);
     } catch (error) {

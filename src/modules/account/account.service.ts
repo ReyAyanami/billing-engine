@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AccountStatus } from './account.types';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { CreateAccountCommand } from './commands/create-account.command';
+import { UpdateAccountStatusCommand } from './commands/update-account-status.command';
 import { GetAccountQuery } from './queries/get-account.query';
 import { GetAccountsByOwnerQuery } from './queries/get-accounts-by-owner.query';
 import { AccountProjection } from './projections/account-projection.entity';
@@ -117,39 +118,41 @@ export class AccountService {
   }
 
   /**
-   * Update account status (should use CQRS command in future)
-   * TODO: Create UpdateAccountStatusCommand for proper event sourcing
+   * Update account status using CQRS/Event Sourcing.
+   * Command → Aggregate → Events → Projection
    */
   async updateStatus(
     id: AccountId,
     status: AccountStatus,
     context: OperationContext,
   ): Promise<AccountProjection> {
-    const account = await this.findById(id);
+    this.logger.log(`Updating status for account ${id} to ${status}`);
 
-    // Validate status transition
-    this.validateStatusTransition(account.status, status);
+    // Create and execute command
+    const command = new UpdateAccountStatusCommand({
+      accountId: id,
+      newStatus: status,
+      reason: `Status update requested via API`,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
 
-    this.logger.warn(
-      `updateStatus currently bypasses event sourcing - TODO: implement UpdateAccountStatusCommand`
-    );
+    await this.commandBus.execute(command);
 
-    // TODO: Send UpdateAccountStatusCommand instead of direct update
-    // For now, this is a known gap in the implementation
+    // Wait for projection to be updated (eventual consistency)
+    await this.waitForProjection(id);
 
     // Audit log
     await this.auditService.log(
       'Account',
-      account.id,
+      id,
       'UPDATE_STATUS',
       {
-        oldStatus: account.status,
         newStatus: status,
       },
       context,
     );
 
-    // Return updated projection
     return await this.findById(id);
   }
 
@@ -178,40 +181,4 @@ export class AccountService {
     }
   }
 
-  private validateStatusTransition(
-    currentStatus: AccountStatus,
-    newStatus: AccountStatus,
-  ): void {
-    // Get valid transitions based on current status
-    const validTransitions = this.getValidStatusTransitions(currentStatus);
-
-    if (!validTransitions.includes(newStatus)) {
-      throw new InvalidOperationException(
-        `Cannot transition account from ${currentStatus} to ${newStatus}`,
-        { currentStatus, newStatus },
-      );
-    }
-  }
-
-  /**
-   * Returns valid status transitions for a given status.
-   * Uses exhaustive checking to ensure all enum values are handled.
-   */
-  private getValidStatusTransitions(status: AccountStatus): AccountStatus[] {
-    switch (status) {
-      case AccountStatus.ACTIVE:
-        return [AccountStatus.SUSPENDED, AccountStatus.CLOSED];
-
-      case AccountStatus.SUSPENDED:
-        return [AccountStatus.ACTIVE, AccountStatus.CLOSED];
-
-      case AccountStatus.CLOSED:
-        return []; // Terminal state - no transitions allowed
-
-      default:
-        // Compile-time exhaustiveness check
-        // If a new AccountStatus is added, this will cause a type error
-        return assertNever(status);
-    }
-  }
 }
