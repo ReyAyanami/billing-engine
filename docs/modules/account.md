@@ -22,7 +22,8 @@ src/modules/account/
 │
 ├── commands/
 │   ├── create-account.command.ts
-│   └── update-balance.command.ts
+│   ├── update-balance.command.ts
+│   └── update-account-status.command.ts
 │
 ├── queries/
 │   ├── get-account.query.ts
@@ -36,9 +37,10 @@ src/modules/account/
 │   └── account-limits-changed.event.ts
 │
 ├── handlers/
-│   ├── create-account.handler.ts   # Command handlers
+│   ├── create-account.handler.ts         # Command handlers
 │   ├── update-balance.handler.ts
-│   ├── balance-changed.handler.ts  # Event handlers (projection updates)
+│   ├── update-account-status.handler.ts
+│   ├── balance-changed.handler.ts        # Event handlers (projection updates)
 │   └── ...
 │
 ├── projections/
@@ -244,6 +246,33 @@ class UpdateBalanceCommand extends Command {
 ```
 
 **Usage**: Called by transaction sagas to update balances.
+
+### UpdateAccountStatusCommand
+
+**Purpose**: Update account status (active, suspended, closed) with proper event sourcing.
+
+```typescript
+class UpdateAccountStatusCommand extends Command {
+  constructor(
+    public readonly accountId: string,
+    public readonly newStatus: AccountStatus,
+    public readonly reason: string,
+    public readonly correlationId: string,
+    public readonly actorId?: string,
+  ) {}
+}
+```
+
+**Handler Flow**:
+1. Load AccountAggregate from event history
+2. aggregate.changeStatus(params) - validates status transitions
+3. Persist events to Kafka
+4. Publish events to EventBus (triggers notifications & projections)
+
+**Valid Transitions**:
+- ACTIVE → SUSPENDED | CLOSED
+- SUSPENDED → ACTIVE | CLOSED
+- CLOSED → (terminal state, no transitions)
 
 ---
 

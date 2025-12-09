@@ -322,7 +322,7 @@ This project intentionally simplifies:
 - Currency conversion (not implemented)
 - Transaction fees (not implemented)
 - Snapshots (event replay not optimized)
-- Webhooks (no outbound notifications)
+- External notification delivery (NotificationService exists but needs integration with email/SMS/webhook providers)
 
 These are left out to focus on core patterns: CQRS, Event Sourcing, and Double-Entry Bookkeeping.
 

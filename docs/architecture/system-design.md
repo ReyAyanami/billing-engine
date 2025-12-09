@@ -597,7 +597,7 @@ For educational focus, these are excluded:
 - ✗ Currency conversion
 - ✗ Transaction fees
 - ✗ Scheduled transactions
-- ✗ Webhooks for notifications
+- ✅ **Notification infrastructure** (NotificationService for webhooks/email/SMS - needs external provider integration)
 - ✗ Event schema versioning
 - ✗ Snapshot strategy
 - ✗ Production-grade monitoring

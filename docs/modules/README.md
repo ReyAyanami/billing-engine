@@ -13,7 +13,7 @@ Account lifecycle management, aggregates, projections, and commands/queries.
 - AccountAggregate (domain logic)
 - Account Aggregate (write model - event sourced)
 - AccountProjection (read model - PostgreSQL)
-- Commands: CreateAccount, UpdateBalance
+- Commands: CreateAccount, UpdateBalance, UpdateAccountStatus
 - Queries: GetAccount, GetAccountsByOwner
 
 ### [Transaction Module](./transaction.md)
@@ -40,6 +40,13 @@ Audit logging for compliance (see [Audit Trail concept](../concepts/audit-trail.
 
 ### Events Module
 Server-Sent Events (SSE) for real-time updates (see [Events API](../api/events.md)).
+
+### Notification Module
+Notification and webhook infrastructure for account and transaction events.
+- NotificationService for sending notifications
+- Supports: account creation, balance changes, status changes, compliance checks
+- Ready for integration with email/SMS/webhook providers (SendGrid, Twilio, etc.)
+- Integrated with account event handlers
 
 ---
 

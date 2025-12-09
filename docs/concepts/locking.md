@@ -347,7 +347,7 @@ if (account.getBalance() < amount) {
 **Why it works:**
 - Aggregate state is derived from events
 - No database reads = no locks needed
-- Optimistic concurrency at event store level
+- **Optimistic concurrency implemented at event store level** - version checks prevent conflicts
 
 ### When Locks Are Still Needed
 

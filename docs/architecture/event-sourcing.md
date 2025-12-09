@@ -689,12 +689,12 @@ For educational purposes, this implementation omits:
 
 - ✗ **Event Versioning**: No upcasting strategy
 - ✗ **Snapshots**: Full event replay every time
-- ✗ **Optimistic Concurrency**: No version conflict detection
+- ✅ **Optimistic Concurrency**: ~~No version conflict detection~~ **NOW IMPLEMENTED** - Event store verifies expected version before appending
 - ✗ **Event Compaction**: All events kept forever
 - ✗ **Stream Processing**: No Kafka Streams for complex queries
 - ✗ **Schema Registry**: No centralized schema management
 
-A production system would need these!
+A production system would need most of these!
 
 ---
 

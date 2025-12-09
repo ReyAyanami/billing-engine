@@ -389,9 +389,9 @@ describe('Account Creation (E2E)', () => {
 
 ## Future Enhancements
 
-### 1. Status Change Command
+### 1. Status Change Command ✅ **IMPLEMENTED**
 
-Currently, `updateStatus()` bypasses event sourcing. Should create:
+~~Previously, `updateStatus()` bypassed event sourcing.~~ Now implemented with proper event sourcing:
 
 ```typescript
 class UpdateAccountStatusCommand extends Command {
