@@ -12,7 +12,7 @@ import {
 import {
   TransactionStatus,
   TransactionType,
-} from '../../modules/transaction/transaction.entity';
+} from '../../modules/transaction/transaction.types';
 
 /**
  * Basic type guards

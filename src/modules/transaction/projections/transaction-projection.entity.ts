@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
-import { TransactionType, TransactionStatus } from '../transaction.entity';
+import { TransactionType, TransactionStatus } from '../transaction.types';
 
 /**
  * Transaction Projection (Read Model)

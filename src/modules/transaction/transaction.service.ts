@@ -1,13 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
 import { CommandBus } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  Transaction,
-  TransactionType,
-  TransactionStatus,
-} from './transaction.entity';
+import { TransactionType, TransactionStatus } from './transaction.types';
 import { AccountService } from '../account/account.service';
 import {
   toAccountId,
