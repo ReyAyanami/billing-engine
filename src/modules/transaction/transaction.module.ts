@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CqrsModule } from '@nestjs/cqrs';
-import { Transaction } from './transaction.entity';
 import { TransactionService } from './transaction.service';
 import { TransactionController } from './transaction.controller';
 import { AccountModule } from '../account/account.module';
@@ -29,19 +28,7 @@ import { TransferRequestedHandler } from './handlers/transfer-requested.handler'
 import { PaymentRequestedHandler } from './handlers/payment-requested.handler';
 import { RefundRequestedHandler } from './handlers/refund-requested.handler';
 
-// CQRS Components - Events (Entity Handlers)
-import { TopupRequestedEntityHandler } from './handlers/topup-requested-entity.handler';
-import { TopupCompletedEntityHandler } from './handlers/topup-completed-entity.handler';
-import { WithdrawalRequestedEntityHandler } from './handlers/withdrawal-requested-entity.handler';
-import { WithdrawalCompletedEntityHandler } from './handlers/withdrawal-completed-entity.handler';
-import { TransferRequestedEntityHandler } from './handlers/transfer-requested-entity.handler';
-import { TransferCompletedEntityHandler } from './handlers/transfer-completed-entity.handler';
-import { PaymentRequestedEntityHandler } from './handlers/payment-requested-entity.handler';
-import { PaymentCompletedEntityHandler } from './handlers/payment-completed-entity.handler';
-import { RefundRequestedEntityHandler } from './handlers/refund-requested-entity.handler';
-import { RefundCompletedEntityHandler } from './handlers/refund-completed-entity.handler';
-
-// CQRS Components - Events (Projections)
+// CQRS Components - Events (Projections only - pure event sourcing)
 import { TopupRequestedProjectionHandler } from './handlers/projection/topup-requested-projection.handler';
 import { TopupCompletedProjectionHandler } from './handlers/projection/topup-completed-projection.handler';
 import { WithdrawalRequestedProjectionHandler } from './handlers/projection/withdrawal-requested-projection.handler';
@@ -85,18 +72,7 @@ const EventHandlers = [
   TransferRequestedHandler,
   PaymentRequestedHandler,
   RefundRequestedHandler,
-  // Entity handlers (write model - transactions table)
-  TopupRequestedEntityHandler,
-  TopupCompletedEntityHandler,
-  WithdrawalRequestedEntityHandler,
-  WithdrawalCompletedEntityHandler,
-  TransferRequestedEntityHandler,
-  TransferCompletedEntityHandler,
-  PaymentRequestedEntityHandler,
-  PaymentCompletedEntityHandler,
-  RefundRequestedEntityHandler,
-  RefundCompletedEntityHandler,
-  // Projection updaters (read model - transaction_projections table)
+  // Projection updaters only (pure event sourcing)
   TopupRequestedProjectionHandler,
   TopupCompletedProjectionHandler,
   WithdrawalRequestedProjectionHandler,
@@ -115,7 +91,7 @@ const QueryHandlers = [GetTransactionHandler, GetTransactionsByAccountHandler];
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Transaction, TransactionProjection]),
+    TypeOrmModule.forFeature([TransactionProjection]), // Projection only - pure event sourcing
     CqrsModule,
     AccountModule,
     CurrencyModule,

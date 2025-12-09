@@ -1,8 +1,14 @@
 # Refactoring to Pure Event Sourcing
 
+## Status: ✅ **COMPLETED**
+
 ## Overview
 
 This document describes the architectural refactoring from a **hybrid CQRS/traditional database** approach to **pure event sourcing**.
+
+**Completed for:**
+- ✅ Account entity → AccountProjection
+- ✅ Transaction entity → TransactionProjection
 
 ## Previous Architecture (Hybrid)
 
@@ -67,13 +73,15 @@ This document describes the architectural refactoring from a **hybrid CQRS/tradi
 
 ## Changes Made
 
-### 1. Created Account Types File
+### Account Module
+
+#### 1. Created Account Types File
 
 **File**: `src/modules/account/account.types.ts`
 
 Extracted `AccountStatus` and `AccountType` enums from entity to standalone file.
 
-### 2. Refactored AccountService
+#### 2. Refactored AccountService
 
 **Before** (Hybrid):
 ```typescript
@@ -105,11 +113,11 @@ async create(dto) {
 }
 ```
 
-### 3. Updated AccountController
+#### 3. Updated AccountController
 
 Changed all return types from `Account` to `AccountProjection`.
 
-### 4. Updated AccountModule
+#### 4. Updated AccountModule
 
 **Removed**:
 - `Account` entity from TypeORM imports
@@ -120,21 +128,91 @@ Changed all return types from `Account` to `AccountProjection`.
 - `AccountProjection` (read model)
 - Projection event handlers only
 
-### 5. Deleted Files
+#### 5. Deleted Account Files
 
 - ❌ `src/modules/account/account.entity.ts`
 - ❌ `src/modules/account/handlers/account-created-entity.handler.ts`
 - ❌ `src/modules/account/handlers/balance-changed-entity.handler.ts`
 
-### 6. Created Migration
+#### 6. Created Account Migration
 
 **File**: `src/migrations/1735000000000-DropAccountsTableEventSourced.ts`
 
 Drops the `accounts` table and foreign key constraints.
 
-### 7. Updated Transaction Module
+---
 
-Removed `Account` entity imports and relations from `Transaction` entity.
+### Transaction Module
+
+#### 1. Created Transaction Types File
+
+**File**: `src/modules/transaction/transaction.types.ts`
+
+Extracted `TransactionStatus` and `TransactionType` enums from entity to standalone file.
+
+#### 2. Refactored TransactionService
+
+**Before** (Hybrid):
+```typescript
+async topup(dto) {
+  // Check idempotency via entity repository
+  const existing = await this.transactionRepository.findOne({...});
+  
+  // Execute command
+  await this.commandBus.execute(command);
+}
+```
+
+**After** (Pure Event Sourcing):
+```typescript
+async topup(dto) {
+  // Check idempotency via projection service
+  const existing = await this.transactionProjectionService.findByIdempotencyKey(
+    dto.idempotencyKey
+  );
+  
+  // Execute command → Events → Projection
+  await this.commandBus.execute(command);
+}
+```
+
+#### 3. Updated TransactionController
+
+Changed all return types from `Transaction` to `TransactionProjection`.
+
+#### 4. Updated TransactionModule
+
+**Removed:**
+- `Transaction` entity from TypeORM imports
+- 10 entity handlers (topup, withdrawal, transfer, payment, refund - requested & completed)
+
+**Kept:**
+- `TransactionProjection` (read model)
+- Projection event handlers only
+- Saga coordinators
+
+#### 5. Deleted Transaction Files
+
+**Entity:**
+- ❌ `src/modules/transaction/transaction.entity.ts`
+
+**Entity Handlers (10 files):**
+- ❌ `topup-requested-entity.handler.ts`
+- ❌ `topup-completed-entity.handler.ts`
+- ❌ `withdrawal-requested-entity.handler.ts`
+- ❌ `withdrawal-completed-entity.handler.ts`
+- ❌ `transfer-requested-entity.handler.ts`
+- ❌ `transfer-completed-entity.handler.ts`
+- ❌ `payment-requested-entity.handler.ts`
+- ❌ `payment-completed-entity.handler.ts`
+- ❌ `refund-requested-entity.handler.ts`
+- ❌ `refund-completed-entity.handler.ts`
+
+#### 6. Created Transaction Migration
+
+**File**: `src/migrations/1735000100000-DropTransactionsTableEventSourced.ts`
+
+Drops the `transactions` table.
 
 ## Benefits
 

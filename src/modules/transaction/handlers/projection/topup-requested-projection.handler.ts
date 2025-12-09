@@ -2,7 +2,7 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { TopupRequestedEvent } from '../../events/topup-requested.event';
 import { TransactionProjectionService } from '../../projections/transaction-projection.service';
-import { TransactionType, TransactionStatus } from '../../transaction.entity';
+import { TransactionType, TransactionStatus } from '../../transaction.types';
 
 /**
  * Event handler to update transaction projection when topup is requested.

@@ -24,7 +24,7 @@ import { TransferDto } from './dto/transfer.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
 import { DuplicateTransactionException } from '../../common/exceptions/billing.exception';
-import { Transaction } from './transaction.entity';
+import { TransactionProjection } from './projections/transaction-projection.entity';
 import { TransactionResult, TransferResult } from '../../common/types';
 import { PaymentCommand } from './commands/payment.command';
 import { RefundCommand } from './commands/refund.command';
@@ -213,10 +213,10 @@ export class TransactionController {
   @ApiResponse({
     status: 200,
     description: 'Transaction found',
-    type: Transaction,
+    type: TransactionProjection,
   })
   @ApiResponse({ status: 404, description: 'Transaction not found' })
-  async findById(@Param('id') id: string): Promise<Transaction> {
+  async findById(@Param('id') id: string): Promise<TransactionProjection> {
     return await this.transactionService.findById(toTransactionId(id));
   }
 
@@ -239,13 +239,13 @@ export class TransactionController {
   @ApiResponse({
     status: 200,
     description: 'Transactions found',
-    type: [Transaction],
+    type: [TransactionProjection],
   })
   async findByAccount(
     @Query('accountId') accountId: string,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
-  ): Promise<Transaction[]> {
+  ): Promise<TransactionProjection[]> {
     return await this.transactionService.findAll({
       accountId,
       limit: limit || 50,

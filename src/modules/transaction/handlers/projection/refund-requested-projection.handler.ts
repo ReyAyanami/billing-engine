@@ -2,7 +2,7 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { RefundRequestedEvent } from '../../events/refund-requested.event';
 import { TransactionProjectionService } from '../../projections/transaction-projection.service';
-import { TransactionStatus, TransactionType } from '../../transaction.entity';
+import { TransactionStatus, TransactionType } from '../../transaction.types';
 
 /**
  * Event handler to create transaction projection when refund is requested.

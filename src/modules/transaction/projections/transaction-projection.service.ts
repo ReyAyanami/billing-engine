@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TransactionProjection } from './transaction-projection.entity';
-import { TransactionType, TransactionStatus } from '../transaction.entity';
+import { TransactionType, TransactionStatus } from '../transaction.types';
 import { TransactionId, AccountId } from '../../../common/types/branded.types';
 
 /**
