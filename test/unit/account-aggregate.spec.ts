@@ -1,5 +1,5 @@
 import { AccountAggregate } from '../../src/modules/account/aggregates/account.aggregate';
-import { AccountType, AccountStatus } from '../../src/modules/account/account.types';
+import { AccountType } from '../../src/modules/account/account.types';
 
 describe('AccountAggregate - Balance Change Validation', () => {
   let aggregate: AccountAggregate;
@@ -97,8 +97,10 @@ describe('AccountAggregate - Balance Change Validation', () => {
       });
 
       const events = aggregate.getUncommittedEvents();
-      const balanceEvent = events.find(e => e.getEventType() === 'BalanceChanged');
-      
+      const balanceEvent = events.find(
+        (e) => e.getEventType() === 'BalanceChanged',
+      );
+
       expect(balanceEvent).toBeDefined();
       if (balanceEvent && 'signedAmount' in balanceEvent) {
         expect(balanceEvent.signedAmount).toBe('100');
@@ -125,8 +127,10 @@ describe('AccountAggregate - Balance Change Validation', () => {
       });
 
       const events = aggregate.getUncommittedEvents();
-      const balanceEvent = events.find(e => e.getEventType() === 'BalanceChanged');
-      
+      const balanceEvent = events.find(
+        (e) => e.getEventType() === 'BalanceChanged',
+      );
+
       expect(balanceEvent).toBeDefined();
       if (balanceEvent && 'signedAmount' in balanceEvent) {
         expect(balanceEvent.signedAmount).toBe('-50');
@@ -166,4 +170,3 @@ describe('AccountAggregate - Balance Change Validation', () => {
     });
   });
 });
-

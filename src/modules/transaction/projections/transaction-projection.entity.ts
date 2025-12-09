@@ -27,14 +27,14 @@ export class TransactionProjection {
   @Index()
   status!: TransactionStatus;
 
-  @Column({ type: 'numeric', precision: 20, scale: 2 })
+  @Column({ type: 'numeric', precision: 20, scale: 8 })
   readonly amount!: string;
 
   @Column({
     name: 'source_signed_amount',
     type: 'numeric',
     precision: 20,
-    scale: 2,
+    scale: 8,
     nullable: true,
     comment: 'Signed amount from source account perspective (usually negative)',
   })
@@ -44,9 +44,10 @@ export class TransactionProjection {
     name: 'destination_signed_amount',
     type: 'numeric',
     precision: 20,
-    scale: 2,
+    scale: 8,
     nullable: true,
-    comment: 'Signed amount from destination account perspective (usually positive)',
+    comment:
+      'Signed amount from destination account perspective (usually positive)',
   })
   readonly destinationSignedAmount?: string;
 
@@ -79,7 +80,7 @@ export class TransactionProjection {
     name: 'source_new_balance',
     type: 'numeric',
     precision: 20,
-    scale: 2,
+    scale: 8,
     nullable: true,
   })
   sourceNewBalance?: string;
@@ -88,7 +89,7 @@ export class TransactionProjection {
     name: 'destination_new_balance',
     type: 'numeric',
     precision: 20,
-    scale: 2,
+    scale: 8,
     nullable: true,
   })
   destinationNewBalance?: string;

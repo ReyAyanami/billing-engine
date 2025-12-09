@@ -40,14 +40,14 @@ export class AccountProjection {
   @Column({ type: 'enum', enum: AccountStatus })
   status!: AccountStatus;
 
-  @Column({ type: 'decimal', precision: 20, scale: 2, default: 0 })
+  @Column({ type: 'decimal', precision: 20, scale: 8, default: 0 })
   balance!: string;
 
   @Column({
     name: 'max_balance',
     type: 'decimal',
     precision: 20,
-    scale: 2,
+    scale: 8,
     nullable: true,
   })
   maxBalance!: string | null;
@@ -56,7 +56,7 @@ export class AccountProjection {
     name: 'min_balance',
     type: 'decimal',
     precision: 20,
-    scale: 2,
+    scale: 8,
     nullable: true,
   })
   minBalance!: string | null;
