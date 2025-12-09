@@ -82,24 +82,40 @@ Commands represent **intent to change state**.
 
 ```typescript
 // Example: TopupCommand
+interface TopupCommandParams {
+  transactionId: string;
+  accountId: string;
+  amount: string;
+  currency: string;
+  sourceAccountId: string;
+  idempotencyKey: string;
+  correlationId?: string;
+  actorId?: string;
+}
+
 class TopupCommand extends Command {
-  constructor(
-    public readonly transactionId: string,      // Transaction ID
-    public readonly destinationAccountId: string, // Target account
-    public readonly sourceAccountId: string,     // External source
-    public readonly amount: string,              // Amount (string for precision)
-    public readonly currency: string,            // USD, EUR, etc.
-    public readonly idempotencyKey: string,      // Prevents duplicates
-    public readonly correlationId: string,       // For tracing
-    public readonly actorId: string,             // Who initiated
-  ) {
-    super(correlationId);
+  public readonly transactionId: string;
+  public readonly accountId: string;
+  public readonly amount: string;
+  public readonly currency: string;
+  public readonly sourceAccountId: string;
+  public readonly idempotencyKey: string;
+
+  constructor(params: TopupCommandParams) {
+    super(params.correlationId, params.actorId);
+    this.transactionId = params.transactionId;
+    this.accountId = params.accountId;
+    this.amount = params.amount;
+    this.currency = params.currency;
+    this.sourceAccountId = params.sourceAccountId;
+    this.idempotencyKey = params.idempotencyKey;
   }
 }
 ```
 
 **Key Properties**:
-- Immutable (fields are readonly)
+- **Immutable** (fields are readonly)
+- **Named parameters** (params object pattern for clarity and extensibility)
 - Contains all data needed for the operation
 - Includes tracing information (correlationId)
 - Idempotency key for duplicate prevention
@@ -215,17 +231,24 @@ Queries represent **intent to read data**.
 
 ```typescript
 // Example: GetAccountQuery
+interface GetAccountQueryParams {
+  accountId: AccountId;
+  correlationId?: string;
+}
+
 class GetAccountQuery extends Query {
-  constructor(
-    public readonly accountId: string,
-  ) {
-    super();
+  public readonly accountId: AccountId;
+
+  constructor(params: GetAccountQueryParams) {
+    super(params.correlationId);
+    this.accountId = params.accountId;
   }
 }
 ```
 
 **Key Properties**:
-- Immutable
+- **Immutable** (fields are readonly)
+- **Named parameters** (params object pattern)
 - Contains only what's needed to find data
 - No side effects
 
@@ -300,26 +323,57 @@ export class GetAccountHandler implements IQueryHandler<GetAccountQuery> {
 Events represent **something that happened in the past**:
 
 ```typescript
+interface BalanceChangedEventParams {
+  previousBalance: string;
+  newBalance: string;
+  changeAmount: string;
+  changeType: 'CREDIT' | 'DEBIT';
+  signedAmount: string;
+  reason: string;
+  aggregateId: string;
+  aggregateVersion: number;
+  correlationId: string;
+  causationId?: string;
+  metadata?: EventMetadata;
+  transactionId?: string;
+}
+
 class BalanceChangedEvent extends DomainEvent {
-  constructor(
-    public readonly previousBalance: string,
-    public readonly newBalance: string,
-    public readonly changeAmount: string,
-    public readonly changeType: 'CREDIT' | 'DEBIT',
-    public readonly reason: string,
-    eventMetadata: EventMetadata,
-    public readonly transactionId?: string,
-  ) {
-    super('BalanceChanged', eventMetadata);
+  public readonly previousBalance: string;
+  public readonly newBalance: string;
+  public readonly changeAmount: string;
+  public readonly changeType: 'CREDIT' | 'DEBIT';
+  public readonly signedAmount: string;
+  public readonly reason: string;
+  public readonly transactionId?: string;
+
+  constructor(params: BalanceChangedEventParams) {
+    super({
+      aggregateId: params.aggregateId,
+      aggregateVersion: params.aggregateVersion,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      aggregateType: 'Account',
+    });
+    this.previousBalance = params.previousBalance;
+    this.newBalance = params.newBalance;
+    this.changeAmount = params.changeAmount;
+    this.changeType = params.changeType;
+    this.signedAmount = params.signedAmount;
+    this.reason = params.reason;
+    this.transactionId = params.transactionId;
   }
 }
 ```
 
 **Event Properties**:
-- Immutable (past can't change)
-- Past tense names (`BalanceChanged`, not `ChangeBalance`)
+- **Immutable** (past can't change)
+- **Named parameters** (params object pattern for consistency)
+- **Past tense names** (`BalanceChanged`, not `ChangeBalance`)
 - Contains complete information about what happened
 - Includes metadata (who, when, why)
+- Includes `signedAmount` for simplified calculations (positive for CREDIT, negative for DEBIT)
 
 ---
 
