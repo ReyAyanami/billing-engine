@@ -49,9 +49,11 @@ System invariant: Total of all balances = $0
 **Invariant**: Sum of all account balances = 0
 
 ```sql
-SELECT SUM(balance) FROM accounts;
+SELECT SUM(balance) FROM account_projections;
 -- Expected: 0 (or close to 0 with EXTERNAL accounts)
 ```
+
+**Note**: This queries the projection (read model). For authoritative verification, replay all `BalanceChangedEvent` events from Kafka and sum the `signedAmount` fields.
 
 If this doesn't equal zero, something is wrong!
 
@@ -324,46 +326,70 @@ const balance = transactions
 account.balance += transaction.amount;
 ```
 
-**Current Balance Storage**:
+**Current Balance Storage** (Read Model):
 ```sql
-CREATE TABLE accounts (
+CREATE TABLE account_projections (
   id UUID PRIMARY KEY,
   balance DECIMAL(20, 8) NOT NULL DEFAULT 0,
   ...
 );
 ```
 
+**Note**: This is a projection (read model) updated by event handlers. The true source of truth is the event stream in Kafka.
+
 ### Balance History (Audit Trail)
 
-Every transaction stores before/after balances:
+**Event Sourcing** (Source of Truth):
+Every balance change is stored as an immutable event in Kafka:
+
+```typescript
+class BalanceChangedEvent {
+  aggregateId: string;        // Account ID
+  previousBalance: string;
+  newBalance: string;
+  changeAmount: string;       // Always positive
+  changeType: 'CREDIT' | 'DEBIT';
+  signedAmount: string;       // Negative for DEBIT, positive for CREDIT
+  reason: string;
+  transactionId?: string;
+  timestamp: Date;
+}
+```
+
+**Transaction Projections** (Read Model):
+Transaction projections store signed amounts for fast queries:
 
 ```sql
-CREATE TABLE transactions (
-  source_balance_before DECIMAL(20, 8),
-  source_balance_after DECIMAL(20, 8),
-  destination_balance_before DECIMAL(20, 8),
-  destination_balance_after DECIMAL(20, 8),
+CREATE TABLE transaction_projections (
+  id UUID PRIMARY KEY,
+  source_account_id UUID,
+  destination_account_id UUID,
+  amount DECIMAL(20, 8),
+  source_signed_amount DECIMAL(20, 8),      -- Usually negative
+  destination_signed_amount DECIMAL(20, 8), -- Usually positive
+  source_new_balance DECIMAL(20, 8),
+  destination_new_balance DECIMAL(20, 8),
   ...
 );
 ```
 
-**Example**:
+**Example** (Topup Transaction):
 ```json
 {
   "transactionId": "tx-001",
   "type": "topup",
   "amount": "100.00",
-  "sourceBalanceBefore": "0",       // External (ignored)
-  "sourceBalanceAfter": "0",
-  "destinationBalanceBefore": "0",  // User account
-  "destinationBalanceAfter": "100.00"
+  "sourceSignedAmount": "-100.00",    // External account debited
+  "destinationSignedAmount": "100.00", // User account credited
+  "sourceNewBalance": "0",             // External (not tracked)
+  "destinationNewBalance": "100.00"    // User balance after
 }
 ```
 
-**Why Store This?**
-- **Audit**: Prove balance was correct at transaction time
-- **Debugging**: Trace balance changes over time
-- **Reconciliation**: Verify calculations without replaying events
+**Why This Architecture?**
+- **Audit**: Complete event history in Kafka for point-in-time reconstruction
+- **Debugging**: Trace balance changes by replaying events
+- **Reconciliation**: Projections for fast queries, events for authoritative verification
 
 ---
 
@@ -375,10 +401,10 @@ CREATE TABLE transactions (
 -- All balances should sum to zero (approximately)
 SELECT 
   currency,
-  SUM(CASE WHEN type = 'USER' THEN balance ELSE 0 END) as user_balance,
-  SUM(CASE WHEN type = 'SYSTEM' THEN balance ELSE 0 END) as system_balance,
+  SUM(CASE WHEN account_type = 'user' THEN balance ELSE 0 END) as user_balance,
+  SUM(CASE WHEN account_type = 'system' THEN balance ELSE 0 END) as system_balance,
   SUM(balance) as total_balance
-FROM accounts
+FROM account_projections
 GROUP BY currency;
 ```
 
@@ -395,26 +421,31 @@ GROUP BY currency;
 - System fees (User → System): User -$10, System +$10 (sums to 0)
 - Withdrawals (User → External): User -$50, External not tracked
 
+**Note**: This queries the projection. For authoritative verification, use Kafka events.
+
 ### Transaction Integrity Check
 
 ```sql
--- Verify all transactions updated balances correctly
+-- Verify all transactions' signed amounts sum to zero (double-entry invariant)
 SELECT 
-  t.id,
-  t.type,
-  t.amount,
-  t.source_balance_after - t.source_balance_before as source_change,
-  t.destination_balance_after - t.destination_balance_before as dest_change,
+  id,
+  type,
+  amount,
+  source_signed_amount,
+  destination_signed_amount,
+  (COALESCE(source_signed_amount, 0) + COALESCE(destination_signed_amount, 0)) as sum_check,
   CASE 
-    WHEN ABS((source_balance_after - source_balance_before) + (destination_balance_after - destination_balance_before)) < 0.01 
+    WHEN ABS(COALESCE(source_signed_amount, 0) + COALESCE(destination_signed_amount, 0)) < 0.01 
     THEN 'OK' 
     ELSE 'ERROR' 
   END as status
-FROM transactions t
+FROM transaction_projections
 WHERE status = 'completed';
 ```
 
-**Expected**: All rows show 'OK'
+**Expected**: All rows show 'OK' and `sum_check` ≈ 0
+
+**Why?** Every transaction must have: `source_signed_amount + destination_signed_amount = 0`
 
 ---
 
