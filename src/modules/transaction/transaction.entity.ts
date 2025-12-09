@@ -3,11 +3,10 @@ import {
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
-  ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
-import { Account } from '../account/account.entity';
+// Note: Account relation removed - using event-sourced architecture
+// Accounts are in AccountProjection (read model)
 
 export enum TransactionType {
   TOPUP = 'topup',
@@ -51,22 +50,11 @@ export class Transaction {
   @Column({ name: 'source_account_id', type: 'uuid' })
   readonly sourceAccountId!: string;
 
-  @ManyToOne(() => Account, {
-    onDelete: 'RESTRICT',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'source_account_id' })
-  sourceAccount!: Account;
+  // Note: Account relations removed - using event-sourced architecture
+  // Use AccountService/AccountProjectionService to lookup accounts by ID
 
   @Column({ name: 'destination_account_id', type: 'uuid' })
   readonly destinationAccountId!: string;
-
-  @ManyToOne(() => Account, {
-    onDelete: 'RESTRICT',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'destination_account_id' })
-  destinationAccount!: Account;
 
   @Column({ type: 'decimal', precision: 20, scale: 8 })
   readonly amount!: string;

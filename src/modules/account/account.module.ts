@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CqrsModule } from '@nestjs/cqrs';
-import { Account } from './account.entity';
 import { AccountService } from './account.service';
 import { AccountController } from './account.controller';
 import { CurrencyModule } from '../currency/currency.module';
@@ -11,11 +10,9 @@ import { AuditModule } from '../audit/audit.module';
 import { CreateAccountHandler } from './handlers/create-account.handler';
 import { UpdateBalanceHandler } from './handlers/update-balance.handler';
 
-// CQRS Components - Events
+// CQRS Components - Events (Projection handlers only)
 import { AccountCreatedHandler } from './handlers/account-created.handler';
-import { AccountCreatedEntityHandler } from './handlers/account-created-entity.handler';
 import { BalanceChangedHandler } from './handlers/balance-changed.handler';
-import { BalanceChangedEntityHandler } from './handlers/balance-changed-entity.handler';
 import { AccountStatusChangedHandler } from './handlers/account-status-changed.handler';
 import { AccountLimitsChangedHandler } from './handlers/account-limits-changed.handler';
 
@@ -29,10 +26,8 @@ import { AccountProjectionService } from './projections/account-projection.servi
 
 const CommandHandlers = [CreateAccountHandler, UpdateBalanceHandler];
 const EventHandlers = [
-  AccountCreatedHandler,
-  AccountCreatedEntityHandler,
-  BalanceChangedHandler,
-  BalanceChangedEntityHandler,
+  AccountCreatedHandler, // Updates projection only
+  BalanceChangedHandler, // Updates projection only
   AccountStatusChangedHandler,
   AccountLimitsChangedHandler,
 ];
@@ -40,7 +35,7 @@ const QueryHandlers = [GetAccountHandler, GetAccountsByOwnerHandler];
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Account, AccountProjection]),
+    TypeOrmModule.forFeature([AccountProjection]), // Projection only - pure event sourcing
     CqrsModule,
     CurrencyModule,
     AuditModule,

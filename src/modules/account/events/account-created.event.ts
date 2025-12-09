@@ -1,7 +1,7 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
 import { JsonObject } from '../../../common/types/json.types';
-import { AccountType, AccountStatus } from '../account.entity';
+import { AccountType, AccountStatus } from '../account.types';
 
 /**
  * Parameters for AccountCreatedEvent

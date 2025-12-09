@@ -4,7 +4,7 @@ import { AccountCreatedEvent } from '../events/account-created.event';
 import { BalanceChangedEvent } from '../events/balance-changed.event';
 import { AccountStatusChangedEvent } from '../events/account-status-changed.event';
 import { AccountLimitsChangedEvent } from '../events/account-limits-changed.event';
-import { AccountType, AccountStatus } from '../account.entity';
+import { AccountType, AccountStatus } from '../account.types';
 import Decimal from 'decimal.js';
 import { assertNever } from '../../../common/utils/exhaustive-check';
 

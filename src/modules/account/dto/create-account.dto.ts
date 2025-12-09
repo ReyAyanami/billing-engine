@@ -7,7 +7,7 @@ import {
   IsNumberString,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { AccountType } from '../account.entity';
+import { AccountType } from '../account.types';
 
 export class CreateAccountDto {
   @ApiProperty({

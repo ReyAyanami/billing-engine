@@ -19,7 +19,7 @@ import {
 import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountStatusDto } from './dto/update-account-status.dto';
-import { Account } from './account.entity';
+import { AccountProjection } from './projections/account-projection.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { toAccountId, toOwnerId } from '../../common/types/branded.types';
 
@@ -37,13 +37,13 @@ export class AccountController {
   @ApiResponse({
     status: 201,
     description: 'Account created successfully',
-    type: Account,
+    type: AccountProjection,
   })
   @ApiResponse({
     status: 400,
     description: 'Invalid input or currency not supported',
   })
-  async create(@Body() createAccountDto: CreateAccountDto): Promise<Account> {
+  async create(@Body() createAccountDto: CreateAccountDto): Promise<AccountProjection> {
     const context = {
       correlationId: uuidv4(),
       actorId: 'system', // In production, get from auth context
@@ -60,9 +60,9 @@ export class AccountController {
     description: 'Retrieves account details including balance and status',
   })
   @ApiParam({ name: 'id', description: 'Account UUID' })
-  @ApiResponse({ status: 200, description: 'Account found', type: Account })
+  @ApiResponse({ status: 200, description: 'Account found', type: AccountProjection })
   @ApiResponse({ status: 404, description: 'Account not found' })
-  async findById(@Param('id') id: string): Promise<Account> {
+  async findById(@Param('id') id: string): Promise<AccountProjection> {
     return await this.accountService.findById(toAccountId(id));
   }
 
@@ -81,11 +81,11 @@ export class AccountController {
     description: 'Owner type (e.g., user, organization)',
     required: true,
   })
-  @ApiResponse({ status: 200, description: 'Accounts found', type: [Account] })
+  @ApiResponse({ status: 200, description: 'Accounts found', type: [AccountProjection] })
   async findByOwner(
     @Query('ownerId') ownerId: string,
     @Query('ownerType') ownerType: string,
-  ): Promise<Account[]> {
+  ): Promise<AccountProjection[]> {
     return await this.accountService.findByOwner(toOwnerId(ownerId), ownerType);
   }
 
@@ -112,14 +112,14 @@ export class AccountController {
   @ApiResponse({
     status: 200,
     description: 'Status updated successfully',
-    type: Account,
+    type: AccountProjection,
   })
   @ApiResponse({ status: 400, description: 'Invalid status transition' })
   @ApiResponse({ status: 404, description: 'Account not found' })
   async updateStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateAccountStatusDto,
-  ): Promise<Account> {
+  ): Promise<AccountProjection> {
     const context = {
       correlationId: uuidv4(),
       actorId: 'system',

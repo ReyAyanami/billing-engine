@@ -1,7 +1,7 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
 import { EventMetadata } from '../../../common/types/metadata.types';
 import { JsonObject } from '../../../common/types/json.types';
-import { AccountStatus } from '../account.entity';
+import { AccountStatus } from '../account.types';
 
 /**
  * Parameters for AccountStatusChangedEvent

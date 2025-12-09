@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
-import { AccountType, AccountStatus } from '../account.entity';
+import { AccountType, AccountStatus } from '../account.types';
 
 /**
  * Account Projection (Read Model)

@@ -1,5 +1,5 @@
 import { Command } from '../../../cqrs/base/command';
-import { AccountType } from '../account.entity';
+import { AccountType } from '../account.types';
 
 /**
  * Parameters for CreateAccountCommand

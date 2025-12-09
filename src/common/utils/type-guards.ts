@@ -8,7 +8,7 @@
 import {
   AccountStatus,
   AccountType,
-} from '../../modules/account/account.entity';
+} from '../../modules/account/account.types';
 import {
   TransactionStatus,
   TransactionType,

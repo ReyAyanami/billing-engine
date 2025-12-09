@@ -8,7 +8,6 @@ import {
   TransactionType,
   TransactionStatus,
 } from './transaction.entity';
-import { Account } from '../account/account.entity';
 import { AccountService } from '../account/account.service';
 import {
   toAccountId,
