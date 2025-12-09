@@ -110,10 +110,13 @@ Each outline includes:
 
 ### New Documentation Principles
 - ✅ Reflects **current state** of the system
+- ✅ **Educational focus**: explains WHY decisions were made
 - ✅ Clear hierarchy and navigation
-- ✅ Practical with code examples
+- ✅ Practical with explained code examples
+- ✅ Discusses trade-offs and alternatives
+- ✅ Honest about limitations
+- ✅ Invites learning and discussion
 - ✅ Separate concerns (API, Architecture, Guides, etc.)
-- ✅ Easy onboarding for new developers
 
 ---
 
