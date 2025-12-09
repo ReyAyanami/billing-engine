@@ -348,14 +348,16 @@ export class TestAPIHTTP {
   }
 
   /**
-   * Wait for transaction completion via SSE (real-time)
-   * If saga doesn't complete within 1 second, it's a BUG, not a timeout issue
-   */
-  /**
-   * Wait for transaction completion by polling
-   * In test environment, SSE doesn't work since app doesn't listen on HTTP
-   * Poll with short intervals - if saga doesn't complete in 3s, it's a BUG
-   * Increased timeout for parallel execution where CPU is under heavy load
+   * Wait for saga completion by polling saga state
+   *
+   * KEY ARCHITECTURAL CHANGE:
+   * - Tests query SAGA STATE (write model, immediate consistency)
+   * - NOT transaction projections (read model, eventual consistency)
+   *
+   * This eliminates race conditions because saga state is updated
+   * synchronously as part of saga execution.
+   *
+   * Projections are updated asynchronously and may lag behind.
    */
   private async pollTransactionCompletion(
     transactionId: string,
@@ -365,20 +367,21 @@ export class TestAPIHTTP {
     const pollInterval = 50; // Poll every 50ms
 
     while (Date.now() - start < maxWait) {
+      // Query saga state (immediate consistency)
       const response = await request(this.server).get(
-        `/api/v1/transactions/${transactionId}`,
+        `/api/v1/sagas/${transactionId}`,
       );
 
       if (response.status === 200) {
-        const status = response.body.status;
+        const sagaStatus = response.body.status;
 
-        // Check if reached final state
+        // Check if saga reached final state
         if (
-          status === 'completed' ||
-          status === 'failed' ||
-          status === 'compensated'
+          sagaStatus === 'completed' ||
+          sagaStatus === 'failed' ||
+          sagaStatus === 'cancelled'
         ) {
-          return; // Success!
+          return; // Saga complete!
         }
       }
 
@@ -388,7 +391,7 @@ export class TestAPIHTTP {
 
     // Timeout - this is a BUG
     throw new Error(
-      `❌ BUG: Transaction ${transactionId} did not complete within ${maxWait}ms. ` +
+      `❌ BUG: Saga ${transactionId} did not complete within ${maxWait}ms. ` +
         `Saga should complete in milliseconds. This indicates a processing failure.`,
     );
   }

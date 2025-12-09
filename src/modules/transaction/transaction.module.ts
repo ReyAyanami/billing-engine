@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CqrsModule } from '@nestjs/cqrs';
+import { CqrsSagaModule } from '../../cqrs/cqrs-saga.module';
 import { TransactionService } from './transaction.service';
 import { TransactionController } from './transaction.controller';
 import { AccountModule } from '../account/account.module';
@@ -93,6 +94,7 @@ const QueryHandlers = [GetTransactionHandler, GetTransactionsByAccountHandler];
   imports: [
     TypeOrmModule.forFeature([TransactionProjection]), // Projection only - pure event sourcing
     CqrsModule,
+    CqrsSagaModule, // Import saga infrastructure
     AccountModule,
     CurrencyModule,
     AuditModule,
