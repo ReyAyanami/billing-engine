@@ -15,15 +15,8 @@ export class BalanceChangedHandler implements IEventHandler<BalanceChangedEvent>
 
   async handle(event: BalanceChangedEvent): Promise<void> {
     this.logger.log(
-      `📨 Handling BalanceChangedEvent for account: ${event.aggregateId}`,
+      `📨 BalanceChanged: ${event.aggregateId} | ${event.previousBalance} → ${event.newBalance} (${event.signedAmount}) | ${event.reason}`,
     );
-    this.logger.log(`   Previous: ${event.previousBalance}`);
-    this.logger.log(`   New: ${event.newBalance}`);
-    this.logger.log(`   Change: ${event.changeType} ${event.changeAmount} (${event.signedAmount})`);
-    this.logger.log(`   Reason: ${event.reason}`);
-    if (event.transactionId) {
-      this.logger.log(`   Transaction: ${event.transactionId}`);
-    }
 
     try {
       // Update read model projection

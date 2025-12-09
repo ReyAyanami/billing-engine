@@ -194,10 +194,17 @@ export class AccountAggregate extends AggregateRoot {
     }
 
     // Calculate signed amount for convenience (positive for CREDIT, negative for DEBIT)
-    const signedAmount =
-      params.changeType === 'CREDIT'
-        ? changeAmount.toString()
-        : changeAmount.neg().toString();
+    let signedAmount: string;
+    switch (params.changeType) {
+      case 'CREDIT':
+        signedAmount = changeAmount.toString();
+        break;
+      case 'DEBIT':
+        signedAmount = changeAmount.neg().toString();
+        break;
+      default:
+        throw new Error(`Unknown changeType: ${params.changeType}`);
+    }
 
     // Create and apply the event
     const event = new BalanceChangedEvent(
