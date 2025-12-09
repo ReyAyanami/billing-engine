@@ -524,7 +524,7 @@ Query to verify all balances sum to zero:
 SELECT 
   SUM(balance::NUMERIC) as total_balance,
   currency
-FROM accounts
+FROM account_projections
 GROUP BY currency;
 ```
 
@@ -532,32 +532,34 @@ GROUP BY currency;
 
 **Why?** Double-entry bookkeeping guarantees: Σ(all balances) = 0
 
+**Note**: This queries the projection table. For the true source of truth, you should replay all `BalanceChangedEvent` events from Kafka and sum the `signedAmount` fields.
+
 ### Transaction Consistency Check
 
+Since the system uses pure event sourcing, transaction consistency is verified by:
+
+1. **Event Stream Validation**: Replay events from Kafka to ensure all `BalanceChangedEvent` entries sum to zero per transaction
+2. **Projection Queries**: Check that account balances in projections match expected states
+
 ```sql
--- Verify all completed transactions updated balances correctly
+-- Verify completed transactions in projections
 SELECT 
   t.id,
   t.type,
-  t.source_balance_before,
-  t.source_balance_after,
-  t.destination_balance_before,
-  t.destination_balance_after,
+  t.status,
+  t.source_account_id,
+  t.destination_account_id,
   t.amount,
-  a_src.balance as current_src_balance,
-  a_dst.balance as current_dst_balance
-FROM transactions t
-JOIN accounts a_src ON t.source_account_id = a_src.id
-JOIN accounts a_dst ON t.destination_account_id = a_dst.id
+  t.source_new_balance,
+  t.destination_new_balance
+FROM transaction_projections t
 WHERE t.status = 'completed'
-  AND (
-    t.source_balance_after != (t.source_balance_before - t.amount)
-    OR
-    t.destination_balance_after != (t.destination_balance_before + t.amount)
-  );
+  AND t.requested_at > NOW() - INTERVAL '1 day'
+ORDER BY t.requested_at DESC
+LIMIT 100;
 ```
 
-**Expected Result**: 0 rows (all transactions are consistent)
+**Note**: For true consistency verification, query the Kafka event store to ensure all `BalanceChangedEvent` records for each transaction have `signedAmount` values that sum to exactly zero (double-entry bookkeeping invariant).
 
 ---
 
