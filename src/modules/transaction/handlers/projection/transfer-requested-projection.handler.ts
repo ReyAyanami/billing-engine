@@ -26,6 +26,8 @@ export class TransferRequestedProjectionHandler implements IEventHandler<Transfe
         currency: event.currency,
         sourceAccountId: event.sourceAccountId,
         destinationAccountId: event.destinationAccountId,
+        sourceSignedAmount: `-${event.amount}`, // Source account debited
+        destinationSignedAmount: `${event.amount}`, // Destination account credited
         idempotencyKey: event.idempotencyKey,
         correlationId: event.correlationId,
         requestedAt: event.timestamp,

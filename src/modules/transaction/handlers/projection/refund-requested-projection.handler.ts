@@ -26,6 +26,8 @@ export class RefundRequestedProjectionHandler implements IEventHandler<RefundReq
         currency: event.currency,
         sourceAccountId: event.merchantAccountId,
         destinationAccountId: event.customerAccountId,
+        sourceSignedAmount: `-${event.refundAmount}`, // Merchant account debited
+        destinationSignedAmount: `${event.refundAmount}`, // Customer account credited
         idempotencyKey: event.idempotencyKey,
         correlationId: event.correlationId,
         requestedAt: event.timestamp,

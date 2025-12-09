@@ -26,6 +26,8 @@ export class PaymentRequestedProjectionHandler implements IEventHandler<PaymentR
         currency: event.currency,
         sourceAccountId: event.customerAccountId,
         destinationAccountId: event.merchantAccountId,
+        sourceSignedAmount: `-${event.amount}`, // Customer account debited
+        destinationSignedAmount: `${event.amount}`, // Merchant account credited
         idempotencyKey: event.idempotencyKey,
         correlationId: event.correlationId,
         requestedAt: event.timestamp,

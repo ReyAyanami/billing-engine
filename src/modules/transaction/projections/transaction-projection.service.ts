@@ -30,6 +30,8 @@ export class TransactionProjectionService {
     currency: string;
     sourceAccountId?: string;
     destinationAccountId?: string;
+    sourceSignedAmount?: string;
+    destinationSignedAmount?: string;
     idempotencyKey: string;
     correlationId?: string;
     requestedAt: Date;
@@ -46,6 +48,8 @@ export class TransactionProjectionService {
       currency: data.currency,
       sourceAccountId: data.sourceAccountId,
       destinationAccountId: data.destinationAccountId,
+      sourceSignedAmount: data.sourceSignedAmount,
+      destinationSignedAmount: data.destinationSignedAmount,
       idempotencyKey: data.idempotencyKey,
       correlationId: data.correlationId,
       requestedAt: data.requestedAt,

@@ -30,6 +30,26 @@ export class TransactionProjection {
   @Column({ type: 'numeric', precision: 20, scale: 2 })
   readonly amount!: string;
 
+  @Column({
+    name: 'source_signed_amount',
+    type: 'numeric',
+    precision: 20,
+    scale: 2,
+    nullable: true,
+    comment: 'Signed amount from source account perspective (usually negative)',
+  })
+  readonly sourceSignedAmount?: string;
+
+  @Column({
+    name: 'destination_signed_amount',
+    type: 'numeric',
+    precision: 20,
+    scale: 2,
+    nullable: true,
+    comment: 'Signed amount from destination account perspective (usually positive)',
+  })
+  readonly destinationSignedAmount?: string;
+
   @Column({ length: 3 })
   readonly currency!: string;
 

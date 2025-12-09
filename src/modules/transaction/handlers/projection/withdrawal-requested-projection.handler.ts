@@ -28,6 +28,8 @@ export class WithdrawalRequestedProjectionHandler implements IEventHandler<Withd
         currency: event.currency,
         sourceAccountId: event.accountId,
         destinationAccountId: event.destinationAccountId,
+        sourceSignedAmount: `-${event.amount}`, // User account debited
+        destinationSignedAmount: `${event.amount}`, // External account credited
         idempotencyKey: event.idempotencyKey,
         correlationId: event.correlationId,
         requestedAt: event.timestamp,

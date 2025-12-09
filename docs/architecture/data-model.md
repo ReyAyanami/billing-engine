@@ -249,18 +249,19 @@ CREATE INDEX idx_tx_proj_parent ON transaction_projections(parent_transaction_id
 - `id` - Unique transaction identifier (matches aggregate ID)
 - `idempotency_key` - UUID for duplicate prevention (unique)
 - `type` - Transaction type enum
-- `account_id` - Primary account involved
-- `related_account_id` - Related account (if applicable)
+- `source_account_id` - Account debited
+- `destination_account_id` - Account credited
 - `amount` - Transaction amount (always positive)
+- `source_signed_amount` - Signed amount from source perspective (usually negative)
+- `destination_signed_amount` - Signed amount from destination perspective (usually positive)
 - `currency` - Currency code
-- `balance_before` - Account balance before transaction
-- `balance_after` - Account balance after transaction
+- `source_new_balance` - Source account balance after transaction
+- `destination_new_balance` - Destination account balance after transaction
 - `status` - Transaction status enum
-- `reference` - Human-readable reference
+- `correlation_id` - Links related operations
 - `metadata` - Additional data (JSONB)
-- `parent_transaction_id` - For refunds/compensations
 - `compensation_details` - Details about compensation/rollback (JSONB)
-- `created_at` - When transaction was initiated
+- `requested_at` - When transaction was initiated
 - `completed_at` - When transaction completed
 
 **Transaction Types**:
@@ -542,24 +543,41 @@ Since the system uses pure event sourcing, transaction consistency is verified b
 2. **Projection Queries**: Check that account balances in projections match expected states
 
 ```sql
--- Verify completed transactions in projections
+-- Get transaction history for a specific account (simple with signed amounts!)
 SELECT 
   t.id,
   t.type,
   t.status,
-  t.source_account_id,
-  t.destination_account_id,
+  CASE 
+    WHEN t.source_account_id = 'account-uuid-here' THEN t.source_signed_amount
+    WHEN t.destination_account_id = 'account-uuid-here' THEN t.destination_signed_amount
+  END as balance_change,
   t.amount,
-  t.source_new_balance,
-  t.destination_new_balance
+  t.requested_at
 FROM transaction_projections t
-WHERE t.status = 'completed'
-  AND t.requested_at > NOW() - INTERVAL '1 day'
+WHERE (t.source_account_id = 'account-uuid-here' OR t.destination_account_id = 'account-uuid-here')
+  AND t.status = 'completed'
 ORDER BY t.requested_at DESC
 LIMIT 100;
 ```
 
-**Note**: For true consistency verification, query the Kafka event store to ensure all `BalanceChangedEvent` records for each transaction have `signedAmount` values that sum to exactly zero (double-entry bookkeeping invariant).
+```sql
+-- Verify double-entry bookkeeping: sum of signed amounts should be zero per transaction
+SELECT 
+  t.id,
+  t.type,
+  t.source_signed_amount,
+  t.destination_signed_amount,
+  (t.source_signed_amount + t.destination_signed_amount) as sum_check
+FROM transaction_projections t
+WHERE t.status = 'completed'
+  AND (t.source_signed_amount + t.destination_signed_amount) != 0
+LIMIT 10;
+```
+
+**Expected Result**: 0 rows (all transactions balance to zero)
+
+**Note**: For authoritative consistency verification, query the Kafka event store to ensure all `BalanceChangedEvent` records for each transaction have `signedAmount` values that sum to exactly zero (double-entry bookkeeping invariant).
 
 ---
 

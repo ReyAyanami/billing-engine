@@ -26,6 +26,8 @@ export class TopupRequestedProjectionHandler implements IEventHandler<TopupReque
         amount: event.amount,
         sourceAccountId: event.sourceAccountId,
         destinationAccountId: event.accountId,
+        sourceSignedAmount: `-${event.amount}`, // External account debited
+        destinationSignedAmount: `${event.amount}`, // User account credited
         idempotencyKey: event.idempotencyKey,
         correlationId: event.correlationId,
         requestedAt: event.timestamp,
