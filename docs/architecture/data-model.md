@@ -519,7 +519,7 @@ ALTER TABLE transactions
 
 ### Double-Entry Balance Verification
 
-Query to verify all balances sum to zero:
+#### 1. Verify All Account Balances Sum to Zero
 
 ```sql
 SELECT 
@@ -533,7 +533,60 @@ GROUP BY currency;
 
 **Why?** Double-entry bookkeeping guarantees: Σ(all balances) = 0
 
-**Note**: This queries the projection table. For the true source of truth, you should replay all `BalanceChangedEvent` events from Kafka and sum the `signedAmount` fields.
+#### 2. Verify Individual Transactions Balance to Zero
+
+```sql
+-- Each transaction's signed amounts should sum to zero
+SELECT 
+  id,
+  type,
+  amount,
+  source_signed_amount,
+  destination_signed_amount,
+  (COALESCE(source_signed_amount, 0) + COALESCE(destination_signed_amount, 0)) as sum_check
+FROM transaction_projections
+WHERE status = 'completed'
+  AND ABS(COALESCE(source_signed_amount, 0) + COALESCE(destination_signed_amount, 0)) > 0.01
+ORDER BY requested_at DESC
+LIMIT 10;
+```
+
+**Expected Result**: 0 rows (all transactions balance perfectly)
+
+**Why?** Every completed transaction must have `source_signed_amount + destination_signed_amount = 0`
+
+#### 3. Verify Account Balance Matches Transaction History
+
+```sql
+-- Reconstruct an account's balance from its transaction history
+WITH account_transactions AS (
+  SELECT 
+    CASE 
+      WHEN source_account_id = 'account-uuid-here' THEN source_signed_amount
+      WHEN destination_account_id = 'account-uuid-here' THEN destination_signed_amount
+    END as signed_amount
+  FROM transaction_projections
+  WHERE (source_account_id = 'account-uuid-here' OR destination_account_id = 'account-uuid-here')
+    AND status = 'completed'
+)
+SELECT 
+  SUM(signed_amount::NUMERIC) as calculated_balance,
+  (SELECT balance FROM account_projections WHERE id = 'account-uuid-here') as current_balance,
+  SUM(signed_amount::NUMERIC) - (SELECT balance FROM account_projections WHERE id = 'account-uuid-here')::NUMERIC as difference
+FROM account_transactions;
+```
+
+**Expected Result**: `difference` should be 0 (or very close due to rounding)
+
+**Why?** Account balance should equal the sum of all its transaction signed amounts
+
+#### 4. Source of Truth Verification
+
+**Note**: For authoritative verification, query the Kafka event store:
+- Replay all `BalanceChangedEvent` events
+- Sum the `signedAmount` fields per transaction
+- Each transaction's events must sum to exactly zero
+- This is the definitive proof of double-entry bookkeeping consistency
 
 ### Transaction Consistency Check
 
