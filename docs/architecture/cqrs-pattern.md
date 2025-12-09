@@ -577,33 +577,149 @@ export class BalanceChangedHandler implements IEventHandler<BalanceChangedEvent>
 
 ### What is a Saga?
 
-A **choreography-based saga** where each step is triggered by events:
+This system implements **orchestration-based sagas** where a coordinator manages the workflow:
 
 ```
 Transfer Flow:
 1. TransferRequested event
    ↓
-2. Saga: Debit source account
+2. SagaCoordinator: Start saga, track steps
    ↓
-3. Saga: Credit destination account
+3. Saga: Debit source account → completeStep()
    ↓
-4. On success: TransferCompleted
-   On failure: Compensate and mark as failed
+4. Saga: Credit destination account → completeStep()
+   ↓
+5. Saga: Complete transaction → completeStep()
+   ↓
+6. On success: Saga marked as "completed"
+   On failure: failSaga() + compensation
 ```
 
-### Transfer Saga Example
+### Saga Orchestration Architecture
+
+#### SagaCoordinator Service
+
+Tracks saga execution state with immediate consistency:
 
 ```typescript
-@EventsHandler(TransferRequestedEvent)
+@Injectable()
+export class SagaCoordinator {
+  constructor(
+    @InjectRepository(SagaState)
+    private repository: Repository<SagaState>,
+  ) {}
+  
+  // Start saga tracking
+  async startSaga(params: StartSagaParams): Promise<void> {
+    await this.repository.save({
+      sagaId: params.sagaId,
+      sagaType: params.sagaType,
+      status: 'in_progress',
+      steps: params.steps,
+      currentStep: 0,
+      totalSteps: params.steps.length,
+      metadata: params.metadata,
+    });
+  }
+  
+  // Mark step as complete
+  async completeStep(params: CompleteStepParams): Promise<void> {
+    const saga = await this.findById(params.sagaId);
+    saga.currentStep++;
+    saga.results = { ...saga.results, [params.step]: params.result };
+    
+    if (saga.currentStep === saga.totalSteps) {
+      saga.status = 'completed';
+    }
+    
+    await this.repository.save(saga);
+  }
+  
+  // Handle saga failure
+  async failSaga(params: FailSagaParams): Promise<void> {
+    const saga = await this.findById(params.sagaId);
+    saga.status = params.canCompensate ? 'compensating' : 'failed';
+    saga.errorMessage = params.error.message;
+    await this.repository.save(saga);
+  }
+  
+  // Record compensation action
+  async recordCompensation(sagaId, action, result): Promise<void> {
+    const saga = await this.findById(sagaId);
+    saga.compensationActions = [
+      ...saga.compensationActions,
+      { action, result, timestamp: new Date() }
+    ];
+    await this.repository.save(saga);
+  }
+}
+```
+
+#### SagaEventBus Service
+
+Provides ordered, synchronous event processing for saga coordination:
+
+```typescript
+@Injectable()
+export class SagaEventBus implements OnModuleInit {
+  private queue: DomainEvent[] = [];
+  private isProcessing = false;
+  private sagaHandlers: Map<string, IEventHandler[]>;
+  
+  onModuleInit(): void {
+    // Subscribe to domain events and filter for saga processing
+    this.eventBus.subscribe((event: unknown) => {
+      if (event && typeof event === 'object' && 'getEventType' in event) {
+        const domainEvent = event as DomainEvent;
+        const eventType = domainEvent.getEventType();
+        if (this.sagaHandlers.has(eventType)) {
+          void this.enqueue(domainEvent);
+        }
+      }
+    });
+  }
+  
+  // Process events sequentially (strict ordering)
+  private async processQueue(): Promise<void> {
+    if (this.isProcessing) return;
+    
+    this.isProcessing = true;
+    
+    while (this.queue.length > 0) {
+      const event = this.queue.shift()!;
+      await this.processEvent(event); // Synchronous!
+    }
+    
+    this.isProcessing = false;
+  }
+}
+```
+
+### Transfer Saga Example (Orchestration)
+
+```typescript
+@Injectable()
+@SagaHandler(TransferRequestedEvent)  // Saga coordination (immediate consistency)
 export class TransferRequestedHandler implements IEventHandler<TransferRequestedEvent> {
-  constructor(private commandBus: CommandBus) {}
+  constructor(
+    private commandBus: CommandBus,
+    private sagaCoordinator: SagaCoordinator,
+  ) {}
 
   async handle(event: TransferRequestedEvent): Promise<void> {
+    // Start saga tracking
+    await this.sagaCoordinator.startSaga({
+      sagaId: event.aggregateId,
+      sagaType: 'transfer',
+      steps: ['debit_source', 'credit_destination', 'complete_transaction'],
+      metadata: event.metadata,
+    });
+
     let sourceDebited = false;
 
     try {
       // Step 1: DEBIT source account
-      await this.commandBus.execute(
+      const sourceNewBalance = await this.commandBus.execute(
         new UpdateBalanceCommand({
           accountId: event.sourceAccountId,
           changeAmount: event.amount,
@@ -614,9 +730,15 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
         })
       );
       sourceDebited = true;
+      
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'debit_source',
+        result: { sourceNewBalance },
+      });
 
       // Step 2: CREDIT destination account
-      await this.commandBus.execute(
+      const destinationNewBalance = await this.commandBus.execute(
         new UpdateBalanceCommand({
           accountId: event.destinationAccountId,
           changeAmount: event.amount,
@@ -626,15 +748,34 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
           correlationId: event.correlationId,
         })
       );
+      
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'credit_destination',
+        result: { destinationNewBalance },
+      });
 
       // Step 3: Complete transfer
       await this.commandBus.execute(
         new CompleteTransferCommand(event.aggregateId, ...)
       );
+      
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'complete_transaction',
+        result: { sourceNewBalance, destinationNewBalance },
+      });
 
     } catch (error) {
       // COMPENSATION: If source was debited but destination credit failed
       if (sourceDebited) {
+        await this.sagaCoordinator.failSaga({
+          sagaId: event.aggregateId,
+          step: 'credit_destination',
+          error,
+          canCompensate: true,
+        });
+        
         // Reverse the debit
         await this.commandBus.execute(
           new UpdateBalanceCommand({
@@ -646,12 +787,27 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
             correlationId: event.correlationId,
           })
         );
+        
+        await this.sagaCoordinator.recordCompensation(
+          event.aggregateId,
+          'credit_source_rollback',
+          sourceNewBalance,
+        );
 
         // Mark as compensated
         await this.commandBus.execute(
           new CompensateTransactionCommand(event.aggregateId, ...)
         );
+        
+        await this.sagaCoordinator.completeCompensation(event.aggregateId);
       } else {
+        await this.sagaCoordinator.failSaga({
+          sagaId: event.aggregateId,
+          step: 'debit_source',
+          error,
+          canCompensate: false,
+        });
+        
         // No compensation needed, just fail
         await this.commandBus.execute(
           new FailTransactionCommand(event.aggregateId, ...)
@@ -662,30 +818,131 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
 }
 ```
 
-**Key Concepts**:
-- **Choreography**: Each service reacts to events
-- **Compensation**: Undo steps if later steps fail
-- **Idempotency**: Handlers must be idempotent
+### Saga State API
 
-**Alternative**: Orchestration-based saga (single coordinator, more control)
+Query saga status via REST API:
+
+```bash
+GET /api/v1/sagas/{sagaId}
+```
+
+Response:
+```json
+{
+  "sagaId": "uuid",
+  "sagaType": "transfer",
+  "status": "completed",
+  "currentStep": 3,
+  "totalSteps": 3,
+  "steps": ["debit_source", "credit_destination", "complete_transaction"],
+  "results": {
+    "debit_source": { "sourceNewBalance": "50.00" },
+    "credit_destination": { "destinationNewBalance": "150.00" }
+  },
+  "createdAt": "2025-12-09T12:00:00Z",
+  "updatedAt": "2025-12-09T12:00:01Z"
+}
+```
+
+### Transactional Outbox Pattern
+
+Guarantees event delivery with at-least-once semantics:
+
+```typescript
+@Injectable()
+export class OutboxProcessor {
+  async processPendingEvents(): Promise<void> {
+    const events = await this.outboxRepository.find({
+      where: { status: 'pending' },
+      order: { createdAt: 'ASC' },
+      take: 100,
+    });
+    
+    for (const event of events) {
+      try {
+        // Publish to event bus
+        this.eventBus.publish(event.payload);
+        
+        // Mark as delivered
+        await this.outboxRepository.update(event.id, {
+          status: 'delivered',
+          processedAt: new Date(),
+        });
+      } catch (error) {
+        // Retry with exponential backoff
+        await this.outboxRepository.update(event.id, {
+          retries: event.retries + 1,
+          lastError: error.message,
+        });
+      }
+    }
+  }
+}
+```
+
+**Key Concepts**:
+- **Orchestration**: Central coordinator manages workflow
+- **Immediate Consistency**: Saga state updated synchronously
+- **Compensation**: Tracked and observable rollback actions
+- **Guaranteed Delivery**: Outbox pattern ensures no lost events
+- **Observability**: Saga state API for monitoring and debugging
+
+**Benefits over Choreography**:
+- ✅ No race conditions (synchronous coordination)
+- ✅ Clear business process visibility
+- ✅ Easier testing (query saga state)
+- ✅ Built-in compensation tracking
+- ✅ Better error handling and monitoring
 
 ---
 
-## Eventual Consistency
+## Consistency Models
 
-CQRS with Event Sourcing means **eventual consistency**:
+This system uses **dual consistency models**:
+
+### 1. Saga State (Immediate Consistency)
+
+**Write Model** - Synchronously updated during business process execution:
+
+```
+Time: 0ms   - Command processed
+Time: 1ms   - Saga started (SagaCoordinator.startSaga)
+Time: 10ms  - Step 1 complete (SagaCoordinator.completeStep)
+Time: 20ms  - Step 2 complete (SagaCoordinator.completeStep)
+Time: 30ms  - Saga completed (status = "completed")
+```
+
+**Query Saga State**:
+```typescript
+// Query saga (immediate consistency)
+const saga = await fetch(`/api/v1/sagas/${transactionId}`);
+const { status } = await saga.json();
+// status === "completed" (immediately after saga finishes)
+```
+
+### 2. Projections (Eventual Consistency)
+
+**Read Model** - Asynchronously updated from events:
 
 ```
 Time: 0ms   - Command processed
 Time: 10ms  - Events persisted to Kafka
-Time: 20ms  - Event handlers process events
-Time: 30ms  - Projections updated
-Time: 40ms  - Client polls and sees "completed"
+Time: 20ms  - Event handlers process events (async)
+Time: 30ms  - Projections updated (async)
+Time: 40ms  - Client queries projection
 ```
 
-### Handling Eventual Consistency
+**Query Projection**:
+```typescript
+// Query projection (eventual consistency)
+const tx = await fetch(`/api/v1/transactions/${transactionId}`);
+const { status } = await tx.json();
+// status might still be "pending" (projection not yet updated)
+```
 
-**Client Pattern**:
+### Handling Dual Consistency
+
+**Recommended Client Pattern (Query Saga State)**:
 ```typescript
 // 1. Submit command
 const response = await fetch('/api/v1/transactions/topup', {
@@ -693,34 +950,66 @@ const response = await fetch('/api/v1/transactions/topup', {
   body: JSON.stringify(topupData)
 });
 
-const { transactionId, status } = await response.json();
-// status === "pending"
+const { transactionId } = await response.json();
 
-// 2. Poll for completion
+// 2. Poll saga state (immediate consistency)
 while (true) {
-  await sleep(100);  // Wait 100ms
+  await sleep(50);  // Short poll interval
   
-  const tx = await fetch(`/api/v1/transactions/${transactionId}`);
-  const data = await tx.json();
+  const saga = await fetch(`/api/v1/sagas/${transactionId}`);
+  const { status } = await saga.json();
   
-  if (data.status === 'completed') {
-    console.log('Success!');
+  if (status === 'completed') {
+    console.log('Success! Saga completed.');
     break;
   }
   
-  if (data.status === 'failed') {
-    console.log('Failed:', data.failureReason);
+  if (status === 'failed' || status === 'cancelled') {
+    console.log('Failed:', saga.errorMessage);
     break;
   }
 }
+
+// 3. (Optional) Wait for projection if needed for display
+const tx = await fetch(`/api/v1/transactions/${transactionId}`);
+const transactionDetails = await tx.json();
 ```
 
-**Why This Pattern?**
-- **Pro**: Separates request from result
-- **Pro**: Enables async processing
-- **Pro**: Better for high-throughput scenarios
-- **Con**: More complex client code
-- **Alternative**: Synchronous processing (simpler, slower)
+**Alternative Pattern (Query Projection Only)**:
+```typescript
+// For non-critical operations, query projection directly
+const tx = await fetch(`/api/v1/transactions/${transactionId}`);
+const { status } = await tx.json();
+
+// Accept eventual consistency (projection may lag)
+if (status === 'completed') {
+  console.log('Transaction completed');
+} else if (status === 'pending') {
+  console.log('Still processing...');
+}
+```
+
+### When to Use Each Model
+
+**Use Saga State (Immediate Consistency)** when:
+- ✅ Need to know business process completion immediately
+- ✅ Testing (no race conditions)
+- ✅ Workflows that depend on saga completion
+- ✅ Critical operations (payments, transfers)
+
+**Use Projections (Eventual Consistency)** when:
+- ✅ Displaying transaction history
+- ✅ Running analytics/reports
+- ✅ Non-critical queries
+- ✅ Optimized queries with complex filters
+
+**Key Insight**: Saga state is the **write model** (source of truth for process execution), projections are **read models** (optimized for queries).
+
+**Trade-offs**:
+- **Pro**: Clear separation of consistency guarantees
+- **Pro**: No race conditions in critical paths
+- **Pro**: Optimized read models remain async (fast queries)
+- **Con**: Clients must understand which API to query
 
 ---
 
@@ -815,11 +1104,20 @@ For learning purposes, this implementation simplifies:
 
 - ✗ No event versioning strategy (events assumed immutable)
 - ✗ No snapshot strategy (event replay could be slow)
-- ✗ No saga orchestrator (uses choreography)
 - ✗ No event upcasting (old events never migrated)
 - ✗ No event compaction (all events kept forever)
+- ✗ No saga timeout handling (sagas could hang indefinitely)
+- ✗ No distributed saga coordination (single-node coordinator)
 
 A production system would need these!
+
+**What's NOT Simplified** (Production-Grade Features):
+
+- ✅ Saga orchestration with state tracking
+- ✅ Transactional outbox pattern for guaranteed delivery
+- ✅ Projection idempotency checks
+- ✅ Compensation tracking for failed sagas
+- ✅ Clear separation of write/read model consistency
 
 ---
 

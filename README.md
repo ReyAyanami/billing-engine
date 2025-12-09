@@ -31,7 +31,9 @@ This is a **personal learning project** exploring how billing systems can be bui
 - 📝 **Event Sourcing**: Complete audit trail with event replay capability
 - ⚡ **CQRS Pattern**: Optimized read/write models with projections
 - 🔐 **Idempotency**: Duplicate transaction prevention with UUID keys
-- 🎯 **Saga Pattern**: Long-running transaction coordination with compensation
+- 🎯 **Saga Orchestration**: Production-grade transaction coordination with state tracking
+- 📦 **Outbox Pattern**: Guaranteed event delivery with at-least-once semantics
+- 🔄 **Dual Consistency**: Immediate (saga state) + eventual (projections)
 - 📊 **Real-time Events**: Server-Sent Events (SSE) for live updates
 
 ---
@@ -296,7 +298,12 @@ This project demonstrates:
 - **How**: UUID idempotency keys and pessimistic database locking
 - **Trade-offs**: Performance vs. correctness
 
-For detailed explanations of **WHY** each decision was made, see [Project Philosophy](./PROJECT_PHILOSOPHY.md).
+### 6. Saga Orchestration
+- **Why**: Coordinate multi-step transactions without race conditions
+- **How**: Saga coordinator with state tracking, outbox pattern for delivery
+- **Trade-offs**: Complexity vs. reliability and observability
+
+For detailed explanations of **WHY** each decision was made, see [Project Philosophy](./PROJECT_PHILOSOPHY.md) and [ADR-002: Saga Orchestration](./docs/architecture/decisions/adr-002-saga-orchestration.md).
 
 ---
 
@@ -360,13 +367,16 @@ Recommended resources:
 - CQRS architecture with commands and queries
 - Event sourcing with Kafka
 - Double-entry bookkeeping
+- **Saga orchestration with state tracking** ⚡ NEW
+- **Transactional outbox pattern** ⚡ NEW
+- **Projection idempotency** ⚡ NEW
 - Account management (USER, EXTERNAL, SYSTEM types)
 - Core transactions (Top-up, Withdrawal, Transfer)
-- Payment and Refund operations
+- Payment and Refund operations with compensation
 - Multi-currency support
 - Real-time SSE events
 - Comprehensive audit trail
-- E2E testing
+- E2E testing (61 tests passing)
 
 🚧 **What's Missing** (intentionally simplified):
 - Authentication and authorization
@@ -377,6 +387,8 @@ Recommended resources:
 - Scheduled transactions
 - Snapshots for event replay optimization
 - Multi-tenancy
+- Distributed saga coordination
+- Saga timeout handling
 - Production-grade monitoring
 
 See [CHANGELOG.md](./CHANGELOG.md) for version history.

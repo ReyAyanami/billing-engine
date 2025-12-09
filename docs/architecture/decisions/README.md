@@ -29,6 +29,25 @@ Migrated from hybrid CQRS/traditional database to pure event sourcing with Kafka
 - Kafka events became the authoritative source
 - PostgreSQL used only for read-optimized projections
 
+### ADR-002: [Saga Orchestration with Outbox Pattern](./adr-002-saga-orchestration.md)
+**Date**: December 9, 2025  
+**Status**: Accepted and Implemented
+
+Implemented production-grade saga orchestration to eliminate race conditions and provide clear consistency guarantees.
+
+**Key Changes**:
+- Added SagaCoordinator for state tracking (immediate consistency)
+- Implemented transactional outbox pattern for guaranteed delivery
+- Added projection idempotency checks
+- Separated saga coordination (synchronous) from projection updates (asynchronous)
+- Removed ~190 lines of temporary retry logic workarounds
+- Tests now query saga state instead of projections
+
+**Impact**: 
+- Zero race conditions in saga coordination
+- Clear separation: write model (sagas) vs read model (projections)
+- All 61 tests passing
+
 ---
 
 ## Contributing
