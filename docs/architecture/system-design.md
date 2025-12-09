@@ -94,17 +94,17 @@ The Billing Engine is built using **CQRS (Command Query Responsibility Segregati
               ▼                           ▼
 ┌──────────────────────────┐  ┌──────────────────────────┐
 │     PostgreSQL           │  │        Kafka             │
-│   (Read/Write Store)     │  │   (Event Store)          │
+│   (Read Models Only)     │  │   (Event Store)          │
 │                          │  │                          │
-│  • Accounts (Write)      │  │  • account-events        │
-│  • Transactions (Write)  │  │  • transaction-events    │
-│  • AccountProjections    │  │  • Append-only Log       │
-│  • TransactionProjections│  │  • Complete Audit Trail  │
-│  • AuditLogs             │  │  • Event Replay          │
-│  • Currencies            │  │                          │
-│                          │  │                          │
-│  ACID Guarantees         │  │  Event Sourcing Store    │
-│  Pessimistic Locking     │  │  Partitioned by ID       │
+│  • AccountProjections    │  │  • account-events        │
+│  • TransactionProjections│  │  • transaction-events    │
+│  • AuditLogs             │  │  • Append-only Log       │
+│  • Currencies            │  │  • Complete Audit Trail  │
+│                          │  │  • Event Replay          │
+│  Query optimization      │  │  • Source of Truth       │
+│  Eventually consistent   │  │                          │
+│                          │  │  Event Sourcing Store    │
+│  ACID for projections    │  │  Partitioned by ID       │
 └──────────────────────────┘  └──────────────────────────┘
 ```
 
