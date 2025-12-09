@@ -131,21 +131,29 @@ export class InMemoryEventStore implements IEventStore {
     // Convert events to plain objects if they have toJSON method
     const events = storedEvents.map((event) => {
       if (event && typeof event.toJSON === 'function') {
-        return event.toJSON();
+        const jsonEvent = event.toJSON();
+        // Ensure timestamp is a string for deserialized events
+        if (jsonEvent['timestamp'] instanceof Date) {
+          jsonEvent['timestamp'] = (
+            jsonEvent['timestamp'] as Date
+          ).toISOString();
+        }
+        return jsonEvent;
       }
       return event;
-    }) as DomainEvent[];
+    });
 
     // Apply version filter if specified
-    if (fromVersion !== undefined) {
-      return events.filter((e) => e.aggregateVersion >= fromVersion);
-    }
+    const filteredEvents =
+      fromVersion !== undefined
+        ? events.filter((e: any) => e.aggregateVersion >= fromVersion)
+        : events;
 
     this.logger.debug(
-      `📥 Retrieved ${events.length} event(s) for ${aggregateType}/${aggregateId}`,
+      `📥 Retrieved ${filteredEvents.length} event(s) for ${aggregateType}/${aggregateId}`,
     );
 
-    return events as any;
+    return filteredEvents as any;
   }
 
   /**

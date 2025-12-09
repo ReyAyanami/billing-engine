@@ -33,7 +33,7 @@ export class AccountCreatedHandler implements IEventHandler<AccountCreatedEvent>
       await this.projectionService.handleAccountCreated(event);
 
       // Send notifications and webhooks
-      await this.notificationService.notifyAccountCreated({
+      this.notificationService.notifyAccountCreated({
         accountId: event.aggregateId,
         ownerId: event.ownerId,
         ownerType: event.ownerType,

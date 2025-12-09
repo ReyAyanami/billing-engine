@@ -73,7 +73,7 @@ export class TransactionProjectionService {
     lastEventId: string,
     lastEventTimestamp: Date,
   ): Promise<void> {
-    await this.projectionRepository
+    const result = await this.projectionRepository
       .createQueryBuilder()
       .update(TransactionProjection)
       .set({
@@ -91,6 +91,25 @@ export class TransactionProjectionService {
         expectedVersion,
       })
       .execute();
+
+    if (result.affected === 0) {
+      // If no rows affected, either the transaction doesn't exist or version conflict
+      // Try to find the projection to give better error message
+      const existing = await this.projectionRepository.findOne({
+        where: { id },
+      });
+      if (!existing) {
+        throw new Error(`Transaction projection not found: ${id}`);
+      }
+      if (existing.aggregateVersion >= expectedVersion) {
+        // Already at this version or higher - this is OK (idempotent)
+        return;
+      }
+      throw new Error(
+        `Failed to update transaction ${id}: version conflict ` +
+          `(current: ${existing.aggregateVersion}, expected < ${expectedVersion})`,
+      );
+    }
   }
 
   /**
@@ -376,14 +395,23 @@ export class TransactionProjectionService {
         't.sourceAccountId = :accountId OR t.destinationAccountId = :accountId',
         { accountId },
       )
-      .getRawOne();
+      .getRawOne<{
+        totalTransactions: string;
+        completedTransactions: string;
+        failedTransactions: string;
+        totalVolume: number;
+        averageAmount: number;
+      }>();
 
     return {
-      totalTransactions: parseInt(result.totalTransactions) || 0,
-      completedTransactions: parseInt(result.completedTransactions) || 0,
-      failedTransactions: parseInt(result.failedTransactions) || 0,
-      totalVolume: result.totalVolume?.toString() || '0',
-      averageAmount: result.averageAmount?.toString() || '0',
+      totalTransactions:
+        parseInt(String(result?.totalTransactions ?? '0')) || 0,
+      completedTransactions:
+        parseInt(String(result?.completedTransactions ?? '0')) || 0,
+      failedTransactions:
+        parseInt(String(result?.failedTransactions ?? '0')) || 0,
+      totalVolume: String(result?.totalVolume ?? 0),
+      averageAmount: String(result?.averageAmount ?? 0),
     };
   }
 }

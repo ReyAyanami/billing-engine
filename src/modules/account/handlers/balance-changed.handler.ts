@@ -24,10 +24,11 @@ export class BalanceChangedHandler implements IEventHandler<BalanceChangedEvent>
 
     try {
       // Update read model projection
-      const projection = await this.projectionService.handleBalanceChanged(event);
+      const projection =
+        await this.projectionService.handleBalanceChanged(event);
 
       // Send balance change notifications (includes low/high balance alerts)
-      await this.notificationService.notifyBalanceChanged({
+      this.notificationService.notifyBalanceChanged({
         accountId: event.aggregateId,
         ownerId: projection.ownerId,
         ownerType: projection.ownerType,

@@ -50,7 +50,9 @@ export class AccountProjectionService {
   /**
    * Updates projection balance from BalanceChangedEvent
    */
-  async handleBalanceChanged(event: BalanceChangedEvent): Promise<AccountProjection> {
+  async handleBalanceChanged(
+    event: BalanceChangedEvent,
+  ): Promise<AccountProjection> {
     this.logger.log(`Updating balance for account: ${event.aggregateId}`);
 
     const projection = await this.projectionRepository.findOne({

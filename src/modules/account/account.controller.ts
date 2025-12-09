@@ -43,7 +43,9 @@ export class AccountController {
     status: 400,
     description: 'Invalid input or currency not supported',
   })
-  async create(@Body() createAccountDto: CreateAccountDto): Promise<AccountProjection> {
+  async create(
+    @Body() createAccountDto: CreateAccountDto,
+  ): Promise<AccountProjection> {
     const context = {
       correlationId: uuidv4(),
       actorId: 'system', // In production, get from auth context
@@ -60,7 +62,11 @@ export class AccountController {
     description: 'Retrieves account details including balance and status',
   })
   @ApiParam({ name: 'id', description: 'Account UUID' })
-  @ApiResponse({ status: 200, description: 'Account found', type: AccountProjection })
+  @ApiResponse({
+    status: 200,
+    description: 'Account found',
+    type: AccountProjection,
+  })
   @ApiResponse({ status: 404, description: 'Account not found' })
   async findById(@Param('id') id: string): Promise<AccountProjection> {
     return await this.accountService.findById(toAccountId(id));
@@ -81,7 +87,11 @@ export class AccountController {
     description: 'Owner type (e.g., user, organization)',
     required: true,
   })
-  @ApiResponse({ status: 200, description: 'Accounts found', type: [AccountProjection] })
+  @ApiResponse({
+    status: 200,
+    description: 'Accounts found',
+    type: [AccountProjection],
+  })
   async findByOwner(
     @Query('ownerId') ownerId: string,
   ): Promise<AccountProjection[]> {

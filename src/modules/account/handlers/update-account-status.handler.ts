@@ -7,7 +7,7 @@ import type { IEventStore } from '../../../cqrs/interfaces/event-store.interface
 /**
  * Handler for UpdateAccountStatusCommand.
  * Loads account aggregate from events, updates status, persists events.
- * 
+ *
  * This ensures status changes go through proper event sourcing flow.
  */
 @CommandHandler(UpdateAccountStatusCommand)
@@ -79,4 +79,3 @@ export class UpdateAccountStatusHandler implements ICommandHandler<UpdateAccount
     }
   }
 }
-

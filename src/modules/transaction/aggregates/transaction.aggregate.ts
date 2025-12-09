@@ -666,7 +666,7 @@ export class TransactionAggregate extends AggregateRoot {
   onTransactionCompensated(event: TransactionCompensatedEvent): void {
     this.status = TransactionStatus.COMPENSATED;
     this.compensationReason = event.reason;
-    this.compensationActions = event.compensationActions.map(action => ({
+    this.compensationActions = event.compensationActions.map((action) => ({
       ...action,
       timestamp: event.timestamp.toISOString(),
     }));
@@ -774,12 +774,14 @@ export class TransactionAggregate extends AggregateRoot {
     return this.compensationReason;
   }
 
-  getCompensationActions(): Array<{
-    action: string;
-    accountId: string;
-    amount: string;
-    timestamp: string;
-  }> | undefined {
+  getCompensationActions():
+    | Array<{
+        action: string;
+        accountId: string;
+        amount: string;
+        timestamp: string;
+      }>
+    | undefined {
     return this.compensationActions;
   }
 

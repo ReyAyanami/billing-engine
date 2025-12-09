@@ -13,12 +13,14 @@ import Decimal from 'decimal.js';
  * - Invalid decimal format
  * - Non-numeric strings
  */
-export function IsPositiveAmount(validationOptions?: ValidationOptions) {
-  return function (object: object, propertyName: string) {
+export function IsPositiveAmount(
+  validationOptions?: ValidationOptions,
+): PropertyDecorator {
+  return function (object: object, propertyName: string | symbol): void {
     registerDecorator({
       name: 'isPositiveAmount',
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName: String(propertyName),
       options: validationOptions,
       validator: {
         validate(value: unknown) {
@@ -29,7 +31,7 @@ export function IsPositiveAmount(validationOptions?: ValidationOptions) {
 
           try {
             const amount = new Decimal(value);
-            
+
             // Must be positive (greater than zero)
             return amount.greaterThan(0);
           } catch {
@@ -44,4 +46,3 @@ export function IsPositiveAmount(validationOptions?: ValidationOptions) {
     });
   };
 }
-

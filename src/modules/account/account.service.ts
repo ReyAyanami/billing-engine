@@ -75,7 +75,7 @@ export class AccountService {
     // Return projection (read side) - eventually consistent
     // In practice, give events a moment to propagate
     await this.waitForProjection(accountId);
-    
+
     return await this.findById(accountId as AccountId);
   }
 
@@ -84,7 +84,10 @@ export class AccountService {
    */
   async findById(id: AccountId): Promise<AccountProjection> {
     const query = new GetAccountQuery({ accountId: id });
-    const account = await this.queryBus.execute<GetAccountQuery, AccountProjection>(query);
+    const account = await this.queryBus.execute<
+      GetAccountQuery,
+      AccountProjection
+    >(query);
 
     if (!account) {
       throw new AccountNotFoundException(id);
@@ -98,7 +101,10 @@ export class AccountService {
    */
   async findByOwner(ownerId: OwnerId): Promise<AccountProjection[]> {
     const query = new GetAccountsByOwnerQuery({ ownerId });
-    return await this.queryBus.execute<GetAccountsByOwnerQuery, AccountProjection[]>(query);
+    return await this.queryBus.execute<
+      GetAccountsByOwnerQuery,
+      AccountProjection[]
+    >(query);
   }
 
   /**
@@ -167,16 +173,18 @@ export class AccountService {
    * Wait for projection to be created (eventual consistency)
    * In production, use a more sophisticated polling/subscription mechanism
    */
-  private async waitForProjection(accountId: string, maxAttempts = 10): Promise<void> {
+  private async waitForProjection(
+    accountId: string,
+    maxAttempts = 10,
+  ): Promise<void> {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         await this.findById(accountId as AccountId);
         return; // Found it!
       } catch (error) {
         if (i === maxAttempts - 1) throw error;
-        await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms
+        await new Promise((resolve) => setTimeout(resolve, 100)); // Wait 100ms
       }
     }
   }
-
 }

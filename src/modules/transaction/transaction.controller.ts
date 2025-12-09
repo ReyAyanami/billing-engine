@@ -303,6 +303,17 @@ export class TransactionController {
       dto.merchantAccountId,
     );
 
+    if (!customerAccount) {
+      throw new InvalidOperationException(
+        `Customer account not found: ${dto.customerAccountId}`,
+      );
+    }
+    if (!merchantAccount) {
+      throw new InvalidOperationException(
+        `Merchant account not found: ${dto.merchantAccountId}`,
+      );
+    }
+
     // Validate not same account
     if (dto.customerAccountId === dto.merchantAccountId) {
       throw new InvalidOperationException(

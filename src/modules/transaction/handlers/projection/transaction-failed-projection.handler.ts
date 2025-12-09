@@ -15,20 +15,34 @@ export class TransactionFailedProjectionHandler implements IEventHandler<Transac
   ) {}
 
   async handle(event: TransactionFailedEvent): Promise<void> {
-    try {
-      await this.projectionService.updateTransactionFailed(
-        event.aggregateId,
-        event.reason,
-        event.errorCode,
-        event.aggregateVersion,
-        event.eventId,
-        event.timestamp,
-      );
-    } catch (error: unknown) {
-      this.logger.error(
-        `[Projection] Failed to update transaction projection [txId=${event.aggregateId}]`,
-        error instanceof Error ? error.stack : String(error),
-      );
+    // Race condition mitigation: Retry if projection doesn't exist yet
+    const maxRetries = 10;
+    const retryDelay = 50;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        await this.projectionService.updateTransactionFailed(
+          event.aggregateId,
+          event.reason,
+          event.errorCode,
+          event.aggregateVersion,
+          event.eventId,
+          event.timestamp,
+        );
+        return;
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('not found') && attempt < maxRetries - 1) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        this.logger.error(
+          `[Projection] Failed to update transaction projection [txId=${event.aggregateId}]`,
+          error instanceof Error ? error.stack : String(error),
+        );
+        throw error;
+      }
     }
   }
 }

@@ -12,9 +12,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * This migration drops the redundant 'transactions' table.
  * All transaction data is now in 'transaction_projections' (read model) and Kafka events (source of truth).
  */
-export class DropTransactionsTableEventSourced1735000100000
-  implements MigrationInterface
-{
+export class DropTransactionsTableEventSourced1735000100000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Drop the transactions table (including self-referential foreign key)
     await queryRunner.query(`
@@ -79,9 +77,12 @@ export class DropTransactionsTableEventSourced1735000100000
       ON transactions (parent_transaction_id)
     `);
 
-    console.log('⚠️  Rolled back to hybrid architecture - transactions table restored');
-    console.log('   Note: Data in transactions table will be empty after rollback');
+    console.log(
+      '⚠️  Rolled back to hybrid architecture - transactions table restored',
+    );
+    console.log(
+      '   Note: Data in transactions table will be empty after rollback',
+    );
     console.log('   Note: Entity handlers would need to be restored manually');
   }
 }
-

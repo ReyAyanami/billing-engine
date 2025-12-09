@@ -45,6 +45,10 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
 
       // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
+      this.logger.log(
+        `[TopupHandler] Appending ${events.length} events to event store`,
+      );
+
       await this.eventStore.append(
         'Transaction',
         command.transactionId,
@@ -52,7 +56,11 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
       );
 
       // Publish events to the event bus for async processing
+      this.logger.log(
+        `[TopupHandler] Publishing ${events.length} events to event bus`,
+      );
       events.forEach((event) => {
+        this.logger.log(`[TopupHandler] Publishing: ${event.getEventType()}`);
         this.eventBus.publish(event);
       });
 

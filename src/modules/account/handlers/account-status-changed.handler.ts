@@ -27,10 +27,11 @@ export class AccountStatusChangedHandler implements IEventHandler<AccountStatusC
 
     try {
       // Update read model projection
-      const projection = await this.projectionService.handleAccountStatusChanged(event);
+      const projection =
+        await this.projectionService.handleAccountStatusChanged(event);
 
       // Send notifications and trigger compliance checks
-      await this.notificationService.notifyAccountStatusChanged({
+      this.notificationService.notifyAccountStatusChanged({
         accountId: event.aggregateId,
         ownerId: projection.ownerId,
         ownerType: projection.ownerType,

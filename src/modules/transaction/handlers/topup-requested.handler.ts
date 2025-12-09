@@ -24,12 +24,15 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
 
   async handle(event: TopupRequestedEvent): Promise<void> {
     this.logger.log(
-      `SAGA: Topup initiated [txId=${event.aggregateId}, accountId=${event.accountId}, ` +
+      `🔷 SAGA START: Topup [txId=${event.aggregateId}, accountId=${event.accountId}, ` +
         `amt=${event.amount} ${event.currency}, corr=${event.correlationId}]`,
     );
 
     try {
       // Step 1: Update account balance
+      this.logger.log(
+        `🔷 SAGA STEP 1: Updating account balance [accountId=${event.accountId}]`,
+      );
       const updateBalanceCommand = new UpdateBalanceCommand({
         accountId: event.accountId,
         changeAmount: event.amount,
@@ -45,6 +48,10 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
         string
       >(updateBalanceCommand);
 
+      this.logger.log(
+        `🔷 SAGA STEP 2: Account balance updated, completing transaction [newBalance=${newBalance}]`,
+      );
+
       // Step 2: Complete the transaction
       const completeCommand = new CompleteTopupCommand(
         event.aggregateId,
@@ -56,7 +63,7 @@ export class TopupRequestedHandler implements IEventHandler<TopupRequestedEvent>
       await this.commandBus.execute(completeCommand);
 
       this.logger.log(
-        `SAGA: Topup completed [txId=${event.aggregateId}, balance=${newBalance}]`,
+        `✅ SAGA COMPLETE: Topup finished [txId=${event.aggregateId}, balance=${newBalance}]`,
       );
     } catch (error: unknown) {
       // Step 3 (on failure): Fail the transaction

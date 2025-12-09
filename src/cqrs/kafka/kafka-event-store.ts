@@ -329,7 +329,7 @@ export class KafkaEventStore implements IEventStore {
   /**
    * Verifies that the current aggregate version matches the expected version.
    * This implements optimistic concurrency control to prevent concurrent modifications.
-   * 
+   *
    * @throws Error if version mismatch detected
    */
   private async verifyExpectedVersion(

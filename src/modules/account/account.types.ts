@@ -14,4 +14,3 @@ export enum AccountType {
   SYSTEM = 'system', // Internal system account
   EXTERNAL = 'external', // External financial service
 }
-

@@ -5,6 +5,7 @@ import { TransactionType, TransactionStatus } from './transaction.types';
 import { TransactionProjection } from './projections/transaction-projection.entity';
 import { TransactionProjectionService } from './projections/transaction-projection.service';
 import { AccountService } from '../account/account.service';
+import { AccountProjection } from '../account/projections/account-projection.entity';
 import {
   toAccountId,
   TransactionId,
@@ -65,9 +66,10 @@ export class TransactionService {
     context: OperationContext,
   ): Promise<TransactionResult> {
     // Check idempotency first (before CQRS)
-    const existing = await this.transactionProjectionService.findByIdempotencyKey(
-      dto.idempotencyKey,
-    );
+    const existing =
+      await this.transactionProjectionService.findByIdempotencyKey(
+        dto.idempotencyKey,
+      );
 
     if (existing) {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
@@ -123,9 +125,10 @@ export class TransactionService {
     context: OperationContext,
   ): Promise<TransactionResult> {
     // Check idempotency first
-    const existing = await this.transactionProjectionService.findByIdempotencyKey(
-      dto.idempotencyKey,
-    );
+    const existing =
+      await this.transactionProjectionService.findByIdempotencyKey(
+        dto.idempotencyKey,
+      );
 
     if (existing) {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
@@ -214,9 +217,10 @@ export class TransactionService {
     }
 
     // Check idempotency first
-    const existing = await this.transactionProjectionService.findByIdempotencyKey(
-      dto.idempotencyKey,
-    );
+    const existing =
+      await this.transactionProjectionService.findByIdempotencyKey(
+        dto.idempotencyKey,
+      );
 
     if (existing) {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
@@ -298,18 +302,20 @@ export class TransactionService {
     context: OperationContext,
   ): Promise<TransactionResult> {
     // Check idempotency first
-    const existing = await this.transactionProjectionService.findByIdempotencyKey(
-      dto.idempotencyKey,
-    );
+    const existing =
+      await this.transactionProjectionService.findByIdempotencyKey(
+        dto.idempotencyKey,
+      );
 
     if (existing) {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
     }
 
     // Load original transaction
-    const originalTransaction = await this.transactionProjectionService.findById(
-      dto.originalTransactionId as TransactionId,
-    );
+    const originalTransaction =
+      await this.transactionProjectionService.findById(
+        dto.originalTransactionId as TransactionId,
+      );
 
     if (!originalTransaction) {
       throw new TransactionNotFoundException(dto.originalTransactionId);
@@ -434,7 +440,7 @@ export class TransactionService {
   /**
    * Find account by ID (helper for validation)
    */
-  async findAccountById(accountId: string) {
+  async findAccountById(accountId: string): Promise<AccountProjection | null> {
     return await this.accountService.findById(toAccountId(accountId));
   }
 

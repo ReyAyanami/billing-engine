@@ -40,7 +40,8 @@ export class AccountLimitsChangedHandler implements IEventHandler<AccountLimitsC
 
     try {
       // Update read model projection
-      const projection = await this.projectionService.handleAccountLimitsChanged(event);
+      const projection =
+        await this.projectionService.handleAccountLimitsChanged(event);
 
       // Audit log for compliance
       await this.auditService.log(
@@ -58,7 +59,7 @@ export class AccountLimitsChangedHandler implements IEventHandler<AccountLimitsC
         },
         {
           correlationId: event.correlationId,
-          actorId: event.metadata?.actorId as string | undefined,
+          actorId: event.metadata?.actorId,
           actorType: 'system',
           timestamp: event.timestamp,
         },

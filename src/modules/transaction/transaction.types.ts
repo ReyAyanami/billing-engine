@@ -21,4 +21,3 @@ export enum TransactionStatus {
   REFUNDED = 'refunded',
   COMPENSATED = 'compensated', // Transaction was rolled back
 }
-

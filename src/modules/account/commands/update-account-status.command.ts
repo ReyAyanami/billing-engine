@@ -15,7 +15,7 @@ export interface UpdateAccountStatusCommandParams {
 /**
  * Command to update an account's status.
  * This represents the intention to change account status in the system.
- * 
+ *
  * Valid transitions:
  * - ACTIVE → SUSPENDED | CLOSED
  * - SUSPENDED → ACTIVE | CLOSED
@@ -33,4 +33,3 @@ export class UpdateAccountStatusCommand extends Command {
     this.reason = params.reason;
   }
 }
-
