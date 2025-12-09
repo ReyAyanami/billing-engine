@@ -275,7 +275,7 @@ class AccountAggregate {
 - **Pro**: Complete audit trail
 - **Con**: Storage overhead (keeps all events)
 - **Con**: Complexity compared to database storage
-- **Alternative**: EventStoreDB, PostgreSQL (simpler setup)
+- **Alternatives Not Used**: EventStoreDB (now Kurrent.io - restrictive licensing), PostgreSQL (simpler but less scalable)
 
 **What's Simplified**:
 - No event versioning strategy yet

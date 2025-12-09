@@ -368,14 +368,15 @@ This project builds on established patterns:
 
 ### Articles & Patterns
 - [Martin Fowler - CQRS](https://martinfowler.com/bliki/CQRS.html)
-- [Greg Young - Event Sourcing](https://www.eventstore.com/blog/what-is-event-sourcing)
+- [Greg Young - Event Sourcing](https://www.kurrent.io/blog/what-is-event-sourcing)
 - [Microsoft - CQRS Pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/cqrs)
 - [Saga Pattern](https://microservices.io/patterns/data/saga.html)
 
 ### Related Projects
 - [NestJS CQRS](https://docs.nestjs.com/recipes/cqrs)
-- [EventStoreDB](https://www.eventstore.com/)
 - [Apache Kafka](https://kafka.apache.org/documentation/)
+
+**Note**: EventStoreDB (now [Kurrent.io](https://www.kurrent.io/)) is not used in this project due to restrictive licensing. We use Apache Kafka as our event store instead.
 
 ---
 

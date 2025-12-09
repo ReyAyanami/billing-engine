@@ -109,7 +109,7 @@ We use **Apache Kafka** as our event store:
 - **Scalable**: Handle millions of events
 
 **Alternatives Considered**:
-- **EventStoreDB**: Purpose-built for event sourcing (simpler, less operational overhead)
+- **EventStoreDB** (now Kurrent.io): Purpose-built for event sourcing, but not used due to restrictive licensing
 - **PostgreSQL**: Simpler setup, but less scalable
 - **MongoDB**: Document storage, but ordering guarantees weaker
 

@@ -25,7 +25,7 @@ An event store needs:
 |----------|------|------|
 | **Kafka** ✓ | Durable, scalable, industry standard | Complex setup |
 | PostgreSQL | Simple, ACID | Not designed for event streaming |
-| EventStore | Purpose-built | Less common, smaller ecosystem |
+| EventStoreDB (Kurrent.io) | Purpose-built for event sourcing | Restrictive licensing, not used |
 | Redis Streams | Fast | Not durable enough |
 
 **Kafka chosen for**: Durability + Scalability + Ecosystem

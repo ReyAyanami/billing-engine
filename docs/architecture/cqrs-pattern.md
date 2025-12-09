@@ -452,7 +452,7 @@ Events are partitioned by `aggregateId`:
 - **Pro**: Built-in partitioning and replication
 - **Pro**: Can replay events from any point
 - **Con**: Operational complexity
-- **Alternative**: EventStoreDB, PostgreSQL (simpler)
+- **Alternatives Not Used**: EventStoreDB (now Kurrent.io - restrictive licensing), PostgreSQL (simpler but less scalable)
 
 ---
 
