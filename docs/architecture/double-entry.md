@@ -464,24 +464,28 @@ Expected: $20
 
 ### Solution: Pessimistic Locking
 
+**Note**: In pure event sourcing, locking is applied to **projections** during updates, not to aggregates.
+
 ```sql
--- Lock account row during transaction
-SELECT * FROM accounts 
+-- Lock account projection row during transaction
+SELECT * FROM account_projections 
 WHERE id = 'account-123' 
 FOR UPDATE;  -- Exclusive lock
 ```
 
-**TypeORM Implementation**:
+**TypeORM Implementation** (for projection updates):
 ```typescript
-const account = await accountRepository.findOne({
+const accountProjection = await projectionRepository.findOne({
   where: { id: accountId },
   lock: { mode: 'pessimistic_write' }  // SELECT ... FOR UPDATE
 });
 
-// No other transaction can modify this account until commit
-account.balance += amount;
-await accountRepository.save(account);
+// No other transaction can modify this projection until commit
+accountProjection.balance = newBalance;
+await projectionRepository.save(accountProjection);
 ```
+
+**Important**: The aggregate itself is event-sourced and doesn't use database locks. Locks are only used when updating projections to prevent race conditions in the read model.
 
 ### Lock Ordering (Prevent Deadlocks)
 
@@ -527,24 +531,32 @@ POST /api/v1/transactions/transfer
 
 // Server processing:
 
-1. Start database transaction
+1. **Command Phase** (Write Side)
+   - Dispatch `TransferCommand`
+   - Load `AccountAggregate` from events (Kafka)
+   - Validate business rules on aggregate
+   - Emit `TransferRequestedEvent` to Kafka
+
+2. **Saga Coordination**
+   - Saga listens to `TransferRequestedEvent`
+   - Dispatches `UpdateBalanceCommand` for source account
+   - Dispatches `UpdateBalanceCommand` for destination account
+
+3. **Balance Updates** (Event Sourcing)
+   - Source aggregate emits `BalanceChangedEvent` (signedAmount: -$50)
+   - Destination aggregate emits `BalanceChangedEvent` (signedAmount: +$50)
+   - Events persisted to Kafka
+
+4. **Projection Updates** (Read Side with Locking)
+   ```sql
    BEGIN;
-
-2. Lock source account
-   SELECT * FROM accounts WHERE id = 'alice' FOR UPDATE;
-   // Alice: balance = $100
-
-3. Lock destination account
-   SELECT * FROM accounts WHERE id = 'bob' FOR UPDATE;
-   // Bob: balance = $0
-
-4. Validate business rules
-   - Source has sufficient balance? ✓
-   - Currency matches? ✓
-   - Account active? ✓
-
-5. Create transaction record
-   INSERT INTO transactions (
+   SELECT * FROM account_projections WHERE id = 'alice' FOR UPDATE;
+   UPDATE account_projections SET balance = balance - 50 WHERE id = 'alice';
+   
+   SELECT * FROM account_projections WHERE id = 'bob' FOR UPDATE;
+   UPDATE account_projections SET balance = balance + 50 WHERE id = 'bob';
+   
+   INSERT INTO transaction_projections (
      type: 'transfer_debit',
      source_account_id: 'alice',
      destination_account_id: 'bob',
