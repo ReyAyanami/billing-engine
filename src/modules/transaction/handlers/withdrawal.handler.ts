@@ -24,10 +24,8 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
     );
 
     try {
-      // Create new transaction aggregate
       const transaction = new TransactionAggregate();
 
-      // Execute the withdrawal request
       transaction.requestWithdrawal({
         transactionId: command.transactionId,
         accountId: command.accountId,
@@ -43,7 +41,6 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
         },
       });
 
-      // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
       await this.eventStore.append(
         'Transaction',
@@ -51,12 +48,10 @@ export class WithdrawalHandler implements ICommandHandler<WithdrawalCommand> {
         events,
       );
 
-      // Publish events to the event bus for async processing (saga handlers)
       events.forEach((event) => {
         this.eventBus.publish(event);
       });
 
-      // Mark events as committed
       transaction.commit();
 
       this.logger.log(

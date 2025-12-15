@@ -24,10 +24,8 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
     );
 
     try {
-      // Create new transaction aggregate
       const transaction = new TransactionAggregate();
 
-      // Execute the topup request
       transaction.requestTopup({
         transactionId: command.transactionId,
         accountId: command.accountId,
@@ -43,7 +41,6 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
         },
       });
 
-      // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
       this.logger.log(
         `[TopupHandler] Appending ${events.length} events to event store`,
@@ -55,7 +52,6 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
         events,
       );
 
-      // Publish events to the event bus for async processing
       this.logger.log(
         `[TopupHandler] Publishing ${events.length} events to event bus`,
       );
@@ -64,7 +60,6 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
         this.eventBus.publish(event);
       });
 
-      // Mark events as committed
       transaction.commit();
 
       this.logger.log(

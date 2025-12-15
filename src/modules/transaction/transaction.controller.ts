@@ -174,7 +174,6 @@ export class TransactionController {
     const correlationId = uuidv4();
     const idempotencyKey = dto.idempotencyKey || uuidv4();
 
-    // Check idempotency first
     const existing = await this.transactionService.findByIdempotencyKey(
       toIdempotencyKey(idempotencyKey),
     );
@@ -194,9 +193,6 @@ export class TransactionController {
     });
 
     await this.commandBus.execute(command);
-
-    // Return immediately with refund ID
-    // Client should poll GET /api/v1/transactions/:refundId to check status
     return {
       refundId,
       originalPaymentId: dto.originalPaymentId,
@@ -287,7 +283,6 @@ export class TransactionController {
     const correlationId = uuidv4();
     const idempotencyKey = dto.idempotencyKey || uuidv4();
 
-    // Check idempotency first
     const existing = await this.transactionService.findByIdempotencyKey(
       toIdempotencyKey(idempotencyKey),
     );
@@ -295,7 +290,6 @@ export class TransactionController {
       throw new DuplicateTransactionException(idempotencyKey, existing.id);
     }
 
-    // Upfront validation: Check accounts exist and are valid
     const customerAccount = await this.transactionService.findAccountById(
       dto.customerAccountId,
     );
@@ -314,14 +308,12 @@ export class TransactionController {
       );
     }
 
-    // Validate not same account
     if (dto.customerAccountId === dto.merchantAccountId) {
       throw new InvalidOperationException(
         'Customer and merchant accounts must be different',
       );
     }
 
-    // Validate currency match
     if (customerAccount.currency !== dto.currency) {
       throw new CurrencyMismatchException(
         customerAccount.currency,
@@ -335,7 +327,6 @@ export class TransactionController {
       );
     }
 
-    // Validate sufficient balance
     const customerBalance = new Decimal(customerAccount.balance);
     const paymentAmount = new Decimal(dto.amount);
     if (customerBalance.lessThan(paymentAmount)) {
@@ -359,9 +350,6 @@ export class TransactionController {
     });
 
     await this.commandBus.execute(command);
-
-    // Return immediately with transaction ID
-    // Client should poll GET /api/v1/transactions/:transactionId to check status
     return {
       transactionId,
       status: 'pending',

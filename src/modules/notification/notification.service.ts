@@ -94,7 +94,6 @@ export class NotificationService {
 
     this.sendNotification(payload);
 
-    // Trigger compliance checks for specific status changes
     if (
       params.newStatus === AccountStatus.SUSPENDED ||
       params.newStatus === AccountStatus.CLOSED
@@ -129,7 +128,6 @@ export class NotificationService {
       ? parseFloat(params.maxBalance)
       : undefined;
 
-    // Check for low balance alert
     if (minBalanceNum !== undefined && newBalanceNum <= minBalanceNum * 1.1) {
       this.notifyLowBalance({
         accountId: params.accountId,
@@ -140,7 +138,6 @@ export class NotificationService {
       });
     }
 
-    // Check for high balance alert
     if (maxBalanceNum !== undefined && newBalanceNum >= maxBalanceNum * 0.9) {
       this.notifyHighBalance({
         accountId: params.accountId,
@@ -151,7 +148,6 @@ export class NotificationService {
       });
     }
 
-    // General balance change notification
     const notificationType =
       params.changeType === 'CREDIT'
         ? NotificationType.BALANCE_CREDITED
@@ -192,7 +188,7 @@ export class NotificationService {
       data: {
         balance: params.balance,
         minBalance: params.minBalance,
-        threshold: '10%', // Within 10% of min balance
+        threshold: '10%',
       },
       timestamp: new Date(),
     };
@@ -218,7 +214,7 @@ export class NotificationService {
       data: {
         balance: params.balance,
         maxBalance: params.maxBalance,
-        threshold: '90%', // Within 10% of max balance
+        threshold: '90%',
       },
       timestamp: new Date(),
     };
@@ -238,13 +234,6 @@ export class NotificationService {
     this.logger.log(
       `🔍 Triggering compliance check for account ${accountId} (status: ${newStatus}, reason: ${reason})`,
     );
-
-    // In production, this would:
-    // - Log to compliance monitoring system
-    // - Create audit trail entries
-    // - Notify compliance team if needed
-    // - Check against regulatory requirements
-    // - Generate compliance reports
   }
 
   /**
@@ -260,15 +249,8 @@ export class NotificationService {
       `📧 Notification: ${payload.type} for account ${payload.accountId} (owner: ${payload.ownerId})`,
     );
 
-    // Log notification details for demonstration
     this.logger.debug(
       `Notification payload: ${JSON.stringify(payload, null, 2)}`,
     );
-
-    // In production, implement actual notification delivery:
-    // - await this.emailService.send(...)
-    // - await this.smsService.send(...)
-    // - await this.webhookService.deliver(...)
-    // - await this.pushService.send(...)
   }
 }

@@ -66,7 +66,6 @@ export class AccountProjectionService {
       throw new Error(`Projection not found for account: ${event.aggregateId}`);
     }
 
-    // Idempotency check: Only apply if this event hasn't been processed yet
     if (projection.aggregateVersion >= event.aggregateVersion) {
       this.logger.warn(
         `Skipping BalanceChanged event (already processed): ${event.eventId}`,
@@ -107,7 +106,6 @@ export class AccountProjectionService {
       throw new Error(`Projection not found for account: ${event.aggregateId}`);
     }
 
-    // Idempotency check
     if (projection.aggregateVersion >= event.aggregateVersion) {
       this.logger.warn(
         `Skipping AccountStatusChanged event (already processed): ${event.eventId}`,
@@ -148,7 +146,6 @@ export class AccountProjectionService {
       throw new Error(`Projection not found for account: ${event.aggregateId}`);
     }
 
-    // Idempotency check
     if (projection.aggregateVersion >= event.aggregateVersion) {
       this.logger.warn(
         `Skipping AccountLimitsChanged event (already processed): ${event.eventId}`,

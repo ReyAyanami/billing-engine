@@ -65,7 +65,6 @@ export class TransactionService {
     dto: TopupDto,
     context: OperationContext,
   ): Promise<TransactionResult> {
-    // Check idempotency first (before CQRS)
     const existing =
       await this.transactionProjectionService.findByIdempotencyKey(
         dto.idempotencyKey,
@@ -75,10 +74,8 @@ export class TransactionService {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
     }
 
-    // Generate transaction ID
     const transactionId = uuidv4();
 
-    // Execute CQRS command
     const command = new TopupCommand({
       transactionId,
       accountId: dto.destinationAccountId,
@@ -91,9 +88,6 @@ export class TransactionService {
     });
 
     await this.commandBus.execute(command);
-
-    // Return immediately - transaction will be processed asynchronously by saga
-    // Client should poll GET /transactions/:id to check status
     return {
       transactionId: transactionId,
       idempotencyKey: dto.idempotencyKey,
@@ -124,7 +118,6 @@ export class TransactionService {
     dto: WithdrawalDto,
     context: OperationContext,
   ): Promise<TransactionResult> {
-    // Check idempotency first
     const existing =
       await this.transactionProjectionService.findByIdempotencyKey(
         dto.idempotencyKey,
@@ -134,25 +127,20 @@ export class TransactionService {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
     }
 
-    // Upfront validation: Check source account exists and is valid
     const sourceAccount = await this.accountService.findById(
       toAccountId(dto.sourceAccountId),
     );
 
-    // Validate account is active
     this.accountService.validateAccountActive(sourceAccount);
 
-    // Validate destination account exists (if provided)
     if (dto.destinationAccountId) {
       await this.accountService.findById(toAccountId(dto.destinationAccountId));
     }
 
-    // Validate currency match
     if (sourceAccount.currency !== dto.currency) {
       throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
     }
 
-    // Validate sufficient balance
     const balance = new Decimal(sourceAccount.balance);
     const withdrawalAmount = new Decimal(dto.amount);
     if (balance.lessThan(withdrawalAmount)) {
@@ -163,10 +151,8 @@ export class TransactionService {
       );
     }
 
-    // Generate transaction ID
     const transactionId = uuidv4();
 
-    // Execute CQRS command
     const command = new WithdrawalCommand({
       transactionId,
       accountId: dto.sourceAccountId,
@@ -179,9 +165,6 @@ export class TransactionService {
     });
 
     await this.commandBus.execute(command);
-
-    // Return immediately - transaction will be processed asynchronously by saga
-    // Client should poll GET /transactions/:id to check status
     return {
       transactionId: transactionId,
       idempotencyKey: dto.idempotencyKey,
@@ -211,12 +194,10 @@ export class TransactionService {
     dto: TransferDto,
     context: OperationContext,
   ): Promise<TransferResult> {
-    // Validate self-transfer
     if (dto.sourceAccountId === dto.destinationAccountId) {
       throw new InvalidOperationException('SELF_TRANSFER_NOT_ALLOWED');
     }
 
-    // Check idempotency first
     const existing =
       await this.transactionProjectionService.findByIdempotencyKey(
         dto.idempotencyKey,
@@ -226,7 +207,6 @@ export class TransactionService {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
     }
 
-    // Upfront validation: Check accounts exist and are valid
     const sourceAccount = await this.accountService.findById(
       toAccountId(dto.sourceAccountId),
     );
@@ -234,11 +214,9 @@ export class TransactionService {
       toAccountId(dto.destinationAccountId),
     );
 
-    // Validate accounts are active
     this.accountService.validateAccountActive(sourceAccount);
     this.accountService.validateAccountActive(destinationAccount);
 
-    // Validate currency match
     if (sourceAccount.currency !== dto.currency) {
       throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
     }
@@ -249,7 +227,6 @@ export class TransactionService {
       );
     }
 
-    // Validate sufficient balance
     const sourceBalance = new Decimal(sourceAccount.balance);
     const transferAmount = new Decimal(dto.amount);
     if (sourceBalance.lessThan(transferAmount)) {
@@ -260,10 +237,8 @@ export class TransactionService {
       );
     }
 
-    // Generate transaction ID
     const transactionId = uuidv4();
 
-    // Execute CQRS command
     const command = new TransferCommand({
       transactionId,
       sourceAccountId: dto.sourceAccountId,
@@ -276,9 +251,6 @@ export class TransactionService {
     });
 
     await this.commandBus.execute(command);
-
-    // Return immediately - transaction will be processed asynchronously by saga
-    // Client should poll GET /transactions/:id to check status
     return {
       debitTransactionId: transactionId,
       creditTransactionId: transactionId,
@@ -301,7 +273,6 @@ export class TransactionService {
     dto: RefundDto,
     context: OperationContext,
   ): Promise<TransactionResult> {
-    // Check idempotency first
     const existing =
       await this.transactionProjectionService.findByIdempotencyKey(
         dto.idempotencyKey,
@@ -311,7 +282,6 @@ export class TransactionService {
       throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
     }
 
-    // Load original transaction
     const originalTransaction =
       await this.transactionProjectionService.findById(
         dto.originalTransactionId as TransactionId,
@@ -321,7 +291,6 @@ export class TransactionService {
       throw new TransactionNotFoundException(dto.originalTransactionId);
     }
 
-    // Validate original transaction
     if (originalTransaction.status === TransactionStatus.REFUNDED) {
       throw new RefundException('Transaction already refunded');
     }
@@ -334,7 +303,6 @@ export class TransactionService {
       );
     }
 
-    // Determine refund amount
     const originalAmount = new Decimal(originalTransaction.amount);
     let refundAmount: Decimal;
 
@@ -344,15 +312,12 @@ export class TransactionService {
       refundAmount = originalAmount;
     }
 
-    // Validate refund amount
     if (refundAmount.greaterThan(originalAmount)) {
       throw new RefundException('Refund amount cannot exceed original amount');
     }
 
-    // Generate transaction ID
     const transactionId = uuidv4();
 
-    // Execute CQRS command
     const command = new RefundCommand({
       refundId: transactionId,
       originalPaymentId: dto.originalTransactionId,
@@ -369,9 +334,6 @@ export class TransactionService {
     });
 
     await this.commandBus.execute(command);
-
-    // Return immediately - transaction will be processed asynchronously by saga
-    // Client should poll GET /transactions/:id to check status
     return {
       transactionId: transactionId,
       idempotencyKey: dto.idempotencyKey,
@@ -426,14 +388,12 @@ export class TransactionService {
     limit?: number;
     offset?: number;
   }): Promise<TransactionProjection[]> {
-    // Use projection service for queries
     if (filters.accountId) {
       return this.transactionProjectionService.findByAccount(
         toAccountId(filters.accountId),
       );
     }
 
-    // Use complex filtering with all provided criteria
     return this.transactionProjectionService.findWithFilters(filters);
   }
 
@@ -443,7 +403,4 @@ export class TransactionService {
   async findAccountById(accountId: string): Promise<AccountProjection | null> {
     return await this.accountService.findById(toAccountId(accountId));
   }
-
-  // Note: All business logic has moved to CQRS aggregates and handlers
-  // This service is now a thin coordinator that dispatches commands
 }

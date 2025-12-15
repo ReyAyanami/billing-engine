@@ -35,10 +35,8 @@ export class CreateAccountHandler implements ICommandHandler<CreateAccountComman
     this.logger.log(`Creating account: ${command.accountId}`);
 
     try {
-      // Create new aggregate instance
       const account = new AccountAggregate();
 
-      // Execute the create command (this emits events)
       account.create({
         accountId: command.accountId,
         ownerId: command.ownerId,
@@ -55,36 +53,28 @@ export class CreateAccountHandler implements ICommandHandler<CreateAccountComman
         },
       });
 
-      // Get uncommitted events from the aggregate
       const events = account.getUncommittedEvents();
 
       this.logger.log(
         `Generated ${events.length} event(s) for account ${command.accountId}`,
       );
 
-      // Save events to the event store (Kafka)
       await this.eventStore.append('Account', command.accountId, events);
 
-      // Publish events to the event bus for async processing
-      // (projections, notifications, etc.)
       events.forEach((event) => {
         this.eventBus.publish(event);
       });
 
-      // Mark events as committed
       account.commit();
 
       this.logger.log(`✅ Account created successfully: ${command.accountId}`);
-
-      // Return aggregate state directly (write model, immediate consistency)
-      // This eliminates the need to wait for projections
       return {
         id: command.accountId,
         ownerId: account.getOwnerId(),
         ownerType: account.getOwnerType(),
         accountType: account.getAccountType(),
         currency: account.getCurrency(),
-        balance: account.getBalance().toFixed(8), // 8 decimal precision
+        balance: account.getBalance().toFixed(8),
         status: account.getStatus(),
         maxBalance: account.getMaxBalance()?.toFixed(8),
         minBalance: account.getMinBalance()?.toFixed(8),

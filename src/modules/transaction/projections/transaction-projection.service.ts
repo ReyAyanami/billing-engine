@@ -11,9 +11,6 @@ import { TransactionId, AccountId } from '../../../common/types/branded.types';
  */
 @Injectable()
 export class TransactionProjectionService {
-  // Logger available for future use
-  // private readonly logger = new Logger(TransactionProjectionService.name);
-
   constructor(
     @InjectRepository(TransactionProjection)
     private readonly projectionRepository: Repository<TransactionProjection>,
@@ -93,8 +90,6 @@ export class TransactionProjectionService {
       .execute();
 
     if (result.affected === 0) {
-      // If no rows affected, either the transaction doesn't exist or version conflict
-      // Try to find the projection to give better error message
       const existing = await this.projectionRepository.findOne({
         where: { id },
       });
@@ -102,7 +97,6 @@ export class TransactionProjectionService {
         throw new Error(`Transaction projection not found: ${id}`);
       }
       if (existing.aggregateVersion >= expectedVersion) {
-        // Already at this version or higher - this is OK (idempotent)
         return;
       }
       throw new Error(
@@ -249,10 +243,9 @@ export class TransactionProjectionService {
     endDate?: Date;
     limit?: number;
     offset?: number;
-  }): Promise<TransactionProjection[]> {
+  }  ): Promise<TransactionProjection[]> {
     const query = this.projectionRepository.createQueryBuilder('t');
 
-    // Filter by account (source or destination)
     if (filters.accountId) {
       query.andWhere(
         '(t.sourceAccountId = :accountId OR t.destinationAccountId = :accountId)',
@@ -260,22 +253,18 @@ export class TransactionProjectionService {
       );
     }
 
-    // Filter by transaction type
     if (filters.type) {
       query.andWhere('t.type = :type', { type: filters.type });
     }
 
-    // Filter by status
     if (filters.status) {
       query.andWhere('t.status = :status', { status: filters.status });
     }
 
-    // Filter by currency
     if (filters.currency) {
       query.andWhere('t.currency = :currency', { currency: filters.currency });
     }
 
-    // Filter by amount range
     if (filters.minAmount) {
       query.andWhere('CAST(t.amount AS DECIMAL) >= :minAmount', {
         minAmount: parseFloat(filters.minAmount),
@@ -287,7 +276,6 @@ export class TransactionProjectionService {
       });
     }
 
-    // Filter by date range
     if (filters.startDate) {
       query.andWhere('t.requestedAt >= :startDate', {
         startDate: filters.startDate,
@@ -299,7 +287,6 @@ export class TransactionProjectionService {
       });
     }
 
-    // Pagination
     if (filters.limit) {
       query.limit(filters.limit);
     }
@@ -307,7 +294,6 @@ export class TransactionProjectionService {
       query.offset(filters.offset);
     }
 
-    // Order by most recent first
     query.orderBy('t.requestedAt', 'DESC');
 
     return query.getMany();
@@ -328,7 +314,6 @@ export class TransactionProjectionService {
   }): Promise<number> {
     const query = this.projectionRepository.createQueryBuilder('t');
 
-    // Apply same filters as findWithFilters
     if (filters.accountId) {
       query.andWhere(
         '(t.sourceAccountId = :accountId OR t.destinationAccountId = :accountId)',

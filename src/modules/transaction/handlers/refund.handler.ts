@@ -28,7 +28,6 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
     );
 
     try {
-      // First, load the original payment to get merchant and customer account IDs
       const paymentEvents = await this.eventStore.getEvents(
         'Transaction',
         command.originalPaymentId,
@@ -40,20 +39,17 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
         );
       }
 
-      // Reconstruct payment aggregate to get account IDs
       const paymentAggregate = TransactionAggregate.fromEvents(paymentEvents);
 
-      const merchantAccountId = paymentAggregate.getDestinationAccountId(); // In payment, merchant is destination
-      const customerAccountId = paymentAggregate.getSourceAccountId(); // In payment, customer is source
+      const merchantAccountId = paymentAggregate.getDestinationAccountId();
+      const customerAccountId = paymentAggregate.getSourceAccountId();
 
       if (!merchantAccountId || !customerAccountId) {
         throw new Error(`Invalid payment transaction: missing account IDs`);
       }
 
-      // Create new refund transaction aggregate
       const refund = new TransactionAggregate();
 
-      // Request the refund
       refund.requestRefund({
         refundId: command.refundId,
         originalPaymentId: command.originalPaymentId,
@@ -71,11 +67,9 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
         },
       });
 
-      // Get uncommitted events and persist them
       const events = refund.getUncommittedEvents();
       await this.eventStore.append('Transaction', command.refundId, events);
 
-      // Publish events
       events.forEach((event) => {
         this.eventBus.publish(event);
       });

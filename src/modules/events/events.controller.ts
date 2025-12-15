@@ -42,7 +42,6 @@ export class EventsController {
       const subscription = this.eventBus
         .pipe(
           filter((event: unknown) => {
-            // Filter events related to this account
             if (!(event instanceof DomainEvent)) return false;
             const eventData = event.toJSON();
             return (
@@ -85,7 +84,6 @@ export class EventsController {
       const subscription = this.eventBus
         .pipe(
           filter((event: unknown) => {
-            // Filter events related to this transaction
             if (!(event instanceof DomainEvent)) return false;
             return event.aggregateId === transactionId;
           }),

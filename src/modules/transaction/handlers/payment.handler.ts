@@ -26,10 +26,8 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
     this.logger.log(`   Amount: ${command.amount} ${command.currency}`);
 
     try {
-      // Create new transaction aggregate
       const transaction = new TransactionAggregate();
 
-      // Request the payment
       transaction.requestPayment({
         transactionId: command.transactionId,
         customerAccountId: command.customerAccountId,
@@ -47,7 +45,6 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
         },
       });
 
-      // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
       await this.eventStore.append(
         'Transaction',
@@ -55,7 +52,6 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
         events,
       );
 
-      // Publish events
       events.forEach((event) => {
         this.eventBus.publish(event);
       });

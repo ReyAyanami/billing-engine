@@ -24,10 +24,8 @@ export class TransferHandler implements ICommandHandler<TransferCommand> {
     );
 
     try {
-      // Create new transaction aggregate
       const transaction = new TransactionAggregate();
 
-      // Execute the transfer request
       transaction.requestTransfer({
         transactionId: command.transactionId,
         sourceAccountId: command.sourceAccountId,
@@ -43,7 +41,6 @@ export class TransferHandler implements ICommandHandler<TransferCommand> {
         },
       });
 
-      // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
       await this.eventStore.append(
         'Transaction',
@@ -51,12 +48,10 @@ export class TransferHandler implements ICommandHandler<TransferCommand> {
         events,
       );
 
-      // Publish events to the event bus for async processing
       events.forEach((event) => {
         this.eventBus.publish(event);
       });
 
-      // Mark events as committed
       transaction.commit();
 
       this.logger.log(

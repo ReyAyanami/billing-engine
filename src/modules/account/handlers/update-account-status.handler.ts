@@ -35,7 +35,6 @@ export class UpdateAccountStatusHandler implements ICommandHandler<UpdateAccount
     );
 
     try {
-      // Load account aggregate from event history
       const events = await this.eventStore.getEvents(
         'Account',
         command.accountId,
@@ -45,10 +44,8 @@ export class UpdateAccountStatusHandler implements ICommandHandler<UpdateAccount
         throw new Error(`Account not found: ${command.accountId}`);
       }
 
-      // Reconstruct aggregate from events
       const account = AccountAggregate.fromEvents(events);
 
-      // Execute status change (validates transitions automatically)
       account.changeStatus({
         newStatus: command.newStatus,
         reason: command.reason,
@@ -60,35 +57,29 @@ export class UpdateAccountStatusHandler implements ICommandHandler<UpdateAccount
         },
       });
 
-      // Get uncommitted events
       const newEvents = account.getUncommittedEvents();
       this.logger.log(
         `Generated ${newEvents.length} event(s) for account ${command.accountId}`,
       );
 
-      // Save events to event store (Kafka)
       await this.eventStore.append('Account', command.accountId, newEvents);
 
-      // Publish events to event bus (triggers projection updates, notifications, etc.)
       newEvents.forEach((event) => {
         this.eventBus.publish(event);
       });
 
-      // Mark events as committed
       account.commit();
 
       this.logger.log(
         `✅ Status updated for account: ${command.accountId} (${command.newStatus})`,
       );
-
-      // Return aggregate state directly (write model, immediate consistency)
       return {
         id: command.accountId,
         ownerId: account.getOwnerId(),
         ownerType: account.getOwnerType(),
         accountType: account.getAccountType(),
         currency: account.getCurrency(),
-        balance: account.getBalance().toFixed(8), // 8 decimal precision
+        balance: account.getBalance().toFixed(8),
         status: account.getStatus(),
         maxBalance: account.getMaxBalance()?.toFixed(8),
         minBalance: account.getMinBalance()?.toFixed(8),

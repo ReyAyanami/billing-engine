@@ -37,13 +37,10 @@ export class AccountService {
     createAccountDto: CreateAccountDto,
     context: OperationContext,
   ): Promise<AccountProjection> {
-    // Validate currency
     await this.currencyService.validateCurrency(createAccountDto.currency);
 
-    // Generate account ID
     const accountId = uuidv4();
 
-    // Create command (write side)
     const command = new CreateAccountCommand({
       accountId,
       ownerId: createAccountDto.ownerId,
@@ -56,10 +53,8 @@ export class AccountService {
       actorId: context.actorId,
     });
 
-    // Execute command (emits events to Kafka) and get aggregate state
     const aggregateState = await this.commandBus.execute(command);
 
-    // Audit log
     await this.auditService.log(
       'Account',
       accountId,
@@ -73,8 +68,6 @@ export class AccountService {
       context,
     );
 
-    // Return aggregate state directly (write model, immediate consistency)
-    // Projections will be updated asynchronously, but we don't wait for them
     return aggregateState as AccountProjection;
   }
 
@@ -132,7 +125,6 @@ export class AccountService {
   ): Promise<AccountProjection> {
     this.logger.log(`Updating status for account ${id} to ${status}`);
 
-    // Create and execute command
     const command = new UpdateAccountStatusCommand({
       accountId: id,
       newStatus: status,
@@ -143,7 +135,6 @@ export class AccountService {
 
     const aggregateState = await this.commandBus.execute(command);
 
-    // Audit log
     await this.auditService.log(
       'Account',
       id,
@@ -154,8 +145,6 @@ export class AccountService {
       context,
     );
 
-    // Return aggregate state directly (write model, immediate consistency)
-    // Projections will be updated asynchronously, but we don't wait for them
     return aggregateState as AccountProjection;
   }
 
@@ -179,10 +168,10 @@ export class AccountService {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         await this.findById(accountId as AccountId);
-        return; // Found it!
+        return;
       } catch (error) {
         if (i === maxAttempts - 1) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 100)); // Wait 100ms
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
   }
