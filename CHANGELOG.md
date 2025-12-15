@@ -8,7 +8,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+#### Fault Tolerance Features
+- **Projection Rebuilding Services**: Reconstruct projections from event store
+  - `AccountProjectionRebuildService` - Rebuild account projections
+  - `TransactionProjectionRebuildService` - Rebuild transaction projections
+  - Support for single entity or bulk rebuilding
+- **Reconciliation Services**: Verify projection consistency with events
+  - `AccountReconciliationService` - Detect account inconsistencies
+  - `TransactionReconciliationService` - Detect transaction inconsistencies
+  - Stuck transaction detection (pending too long)
+  - Accounting equation verification
+- **Retry Utility**: Exponential backoff for transient failures
+  - Configurable retry attempts and delays
+  - Automatic detection of retryable errors (deadlocks, timeouts, etc.)
+- **Enhanced Exception Handling**:
+  - `OptimisticLockException` - Version conflict detection
+  - `InvariantViolationException` - State validation failures
+  - `ProjectionOutOfSyncException` - Projection inconsistency errors
+  - `InvalidCurrencyException` - Currency validation
+- **State Invariant Validation**: Business rule enforcement in aggregates
+  - Negative balance detection
+  - Max/min balance limit validation
+  - Consistency checks
+- **Admin API Module**: REST endpoints for operational maintenance
+  - `POST /api/v1/admin/accounts/:id/rebuild` - Rebuild account projection
+  - `POST /api/v1/admin/accounts/rebuild-all` - Rebuild all accounts
+  - `GET /api/v1/admin/accounts/:id/reconcile` - Verify account consistency
+  - `GET /api/v1/admin/accounts/reconcile-all` - Verify all accounts
+  - `GET /api/v1/admin/accounts/accounting-equation` - System integrity check
+  - `POST /api/v1/admin/transactions/:id/rebuild` - Rebuild transaction projection
+  - `POST /api/v1/admin/transactions/rebuild-all` - Rebuild all transactions
+  - `GET /api/v1/admin/transactions/:id/reconcile` - Verify transaction consistency
+  - `GET /api/v1/admin/transactions/reconcile-all` - Verify all transactions
+  - `GET /api/v1/admin/transactions/stuck` - Find stuck transactions
+
+### Changed
+- Removed redundant inline comments across codebase for better readability
+- Improved code clarity by eliminating obvious comments that duplicate code
+
 ### Documentation
+- Added comprehensive fault tolerance guide (`docs/operations/fault-tolerance.md`)
+- Updated operations README with fault tolerance section
 - Complete documentation restructure
 - Added comprehensive guides for all operations
 - Added architecture deep-dives
@@ -16,6 +58,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Added concept guides (accounts, transactions, idempotency)
 - Added development guides (testing, setup)
 - Added `PROJECT_PHILOSOPHY.md` explaining study project nature
+
+### Testing
+- Added fault tolerance unit tests (`test/unit/fault-tolerance.spec.ts`)
+- Tests for invariant validation
+- Tests for reconciliation detection
+- Tests for projection rebuilding
 
 ---
 
