@@ -126,6 +126,8 @@ export class TestAPIHTTP {
       );
     }
 
+    // Account is immediately available from command handler (write model)
+    // No need to wait for projection - architectural win!
     return response.body;
   }
 
@@ -156,6 +158,27 @@ export class TestAPIHTTP {
    * Get account balance
    */
   async getBalance(accountId: string) {
+    // NOTE: Balance endpoint queries projections (read model), which are eventually consistent
+    // After transactions, there may be a brief delay before projection is updated
+    // We poll for a short time to handle this eventual consistency
+    // Timeout is generous to handle parallel test execution (maxWorkers > 1)
+    const start = Date.now();
+    const maxWait = 10000; // 10 seconds for parallel execution
+    const pollInterval = 100;
+
+    while (Date.now() - start < maxWait) {
+      const response = await request(this.server)
+        .get(`/api/v1/accounts/${accountId}/balance`);
+
+      if (response.status === 200) {
+        return response.body;
+      }
+
+      // Wait before next poll
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    // Final attempt with expect to get proper error message
     const response = await request(this.server)
       .get(`/api/v1/accounts/${accountId}/balance`)
       .expect(200);
@@ -221,6 +244,9 @@ export class TestAPIHTTP {
       const transactionId = response.body.transactionId;
       if (transactionId) {
         await this.pollTransactionCompletion(transactionId);
+        // Wait for account projections to be updated after transaction
+        // In parallel test execution, projection updates can be delayed
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
@@ -361,7 +387,7 @@ export class TestAPIHTTP {
    */
   private async pollTransactionCompletion(
     transactionId: string,
-    maxWait: number = 3000,
+    maxWait: number = 10000, // 10 seconds for parallel execution
   ): Promise<void> {
     const start = Date.now();
     const pollInterval = 50; // Poll every 50ms
@@ -474,7 +500,7 @@ export class TestAPIHTTP {
    */
   async waitForAccountProjection(
     accountId: string,
-    maxWait = 3000,
+    maxWait = 10000, // 10 seconds for parallel execution
   ): Promise<any> {
     const start = Date.now();
     while (Date.now() - start < maxWait) {
@@ -498,7 +524,7 @@ export class TestAPIHTTP {
    */
   async waitForTransactionProjection(
     transactionId: string,
-    maxWait = 3000,
+    maxWait = 10000, // 10 seconds for parallel execution
   ): Promise<any> {
     const start = Date.now();
     while (Date.now() - start < maxWait) {

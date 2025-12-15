@@ -31,6 +31,7 @@ export class AccountService {
   /**
    * Create a new account using pure CQRS/Event Sourcing.
    * Command → Aggregate → Events → Projection
+   * Returns aggregate state directly for immediate consistency (write model)
    */
   async create(
     createAccountDto: CreateAccountDto,
@@ -55,8 +56,8 @@ export class AccountService {
       actorId: context.actorId,
     });
 
-    // Execute command (emits events to Kafka)
-    await this.commandBus.execute(command);
+    // Execute command (emits events to Kafka) and get aggregate state
+    const aggregateState = await this.commandBus.execute(command);
 
     // Audit log
     await this.auditService.log(
@@ -72,11 +73,9 @@ export class AccountService {
       context,
     );
 
-    // Return projection (read side) - eventually consistent
-    // In practice, give events a moment to propagate
-    await this.waitForProjection(accountId);
-
-    return await this.findById(accountId as AccountId);
+    // Return aggregate state directly (write model, immediate consistency)
+    // Projections will be updated asynchronously, but we don't wait for them
+    return aggregateState as AccountProjection;
   }
 
   /**
@@ -124,6 +123,7 @@ export class AccountService {
   /**
    * Update account status using CQRS/Event Sourcing.
    * Command → Aggregate → Events → Projection
+   * Returns aggregate state directly for immediate consistency (write model)
    */
   async updateStatus(
     id: AccountId,
@@ -141,10 +141,7 @@ export class AccountService {
       actorId: context.actorId,
     });
 
-    await this.commandBus.execute(command);
-
-    // Wait for projection to be updated (eventual consistency)
-    await this.waitForProjection(id);
+    const aggregateState = await this.commandBus.execute(command);
 
     // Audit log
     await this.auditService.log(
@@ -157,7 +154,9 @@ export class AccountService {
       context,
     );
 
-    return await this.findById(id);
+    // Return aggregate state directly (write model, immediate consistency)
+    // Projections will be updated asynchronously, but we don't wait for them
+    return aggregateState as AccountProjection;
   }
 
   /**

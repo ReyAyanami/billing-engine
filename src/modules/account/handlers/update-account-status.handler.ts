@@ -19,7 +19,17 @@ export class UpdateAccountStatusHandler implements ICommandHandler<UpdateAccount
     private eventBus: EventBus,
   ) {}
 
-  async execute(command: UpdateAccountStatusCommand): Promise<void> {
+  async execute(command: UpdateAccountStatusCommand): Promise<{
+    id: string;
+    ownerId: string;
+    ownerType: string;
+    accountType: string;
+    currency: string;
+    balance: string;
+    status: string;
+    maxBalance?: string;
+    minBalance?: string;
+  }> {
     this.logger.log(
       `Updating status for account: ${command.accountId} to ${command.newStatus}`,
     );
@@ -70,6 +80,19 @@ export class UpdateAccountStatusHandler implements ICommandHandler<UpdateAccount
       this.logger.log(
         `✅ Status updated for account: ${command.accountId} (${command.newStatus})`,
       );
+
+      // Return aggregate state directly (write model, immediate consistency)
+      return {
+        id: command.accountId,
+        ownerId: account.getOwnerId(),
+        ownerType: account.getOwnerType(),
+        accountType: account.getAccountType(),
+        currency: account.getCurrency(),
+        balance: account.getBalance().toFixed(8), // 8 decimal precision
+        status: account.getStatus(),
+        maxBalance: account.getMaxBalance()?.toFixed(8),
+        minBalance: account.getMinBalance()?.toFixed(8),
+      };
     } catch (error) {
       this.logger.error(
         `❌ Failed to update status for account ${command.accountId}`,

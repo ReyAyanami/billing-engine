@@ -21,7 +21,17 @@ export class CreateAccountHandler implements ICommandHandler<CreateAccountComman
     private eventBus: EventBus,
   ) {}
 
-  async execute(command: CreateAccountCommand): Promise<void> {
+  async execute(command: CreateAccountCommand): Promise<{
+    id: string;
+    ownerId: string;
+    ownerType: string;
+    accountType: string;
+    currency: string;
+    balance: string;
+    status: string;
+    maxBalance?: string;
+    minBalance?: string;
+  }> {
     this.logger.log(`Creating account: ${command.accountId}`);
 
     try {
@@ -65,6 +75,20 @@ export class CreateAccountHandler implements ICommandHandler<CreateAccountComman
       account.commit();
 
       this.logger.log(`✅ Account created successfully: ${command.accountId}`);
+
+      // Return aggregate state directly (write model, immediate consistency)
+      // This eliminates the need to wait for projections
+      return {
+        id: command.accountId,
+        ownerId: account.getOwnerId(),
+        ownerType: account.getOwnerType(),
+        accountType: account.getAccountType(),
+        currency: account.getCurrency(),
+        balance: account.getBalance().toFixed(8), // 8 decimal precision
+        status: account.getStatus(),
+        maxBalance: account.getMaxBalance()?.toFixed(8),
+        minBalance: account.getMinBalance()?.toFixed(8),
+      };
     } catch (error) {
       this.logger.error(
         `❌ Failed to create account ${command.accountId}`,
