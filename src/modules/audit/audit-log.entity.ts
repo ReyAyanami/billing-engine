@@ -13,30 +13,29 @@ import {
 @Index(['operation'])
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ name: 'entity_type', length: 50 })
-  entityType: string;
+  entityType!: string;
 
   @Column({ name: 'entity_id', type: 'uuid' })
-  entityId: string;
+  entityId!: string;
 
   @Column({ length: 50 })
-  operation: string;
+  operation!: string;
 
   @Column({ name: 'actor_id', length: 255, nullable: true })
-  actorId: string;
+  actorId!: string;
 
   @Column({ name: 'actor_type', length: 50, nullable: true })
-  actorType: string;
+  actorType!: string;
 
   @Column({ type: 'jsonb' })
-  changes: Record<string, any>;
+  changes!: Record<string, unknown>;
 
   @Column({ name: 'correlation_id', type: 'uuid' })
-  correlationId: string;
+  correlationId!: string;
 
   @CreateDateColumn({ type: 'timestamp' })
-  timestamp: Date;
+  timestamp!: Date;
 }
-

@@ -18,7 +18,10 @@ export class TransferHandler implements ICommandHandler<TransferCommand> {
   ) {}
 
   async execute(command: TransferCommand): Promise<string> {
-    this.logger.log(`Processing transfer: ${command.transactionId}`);
+    this.logger.log(
+      `[TransferHandler] Processing [txId=${command.transactionId}, src=${command.sourceAccountId}, ` +
+        `dst=${command.destinationAccountId}, amt=${command.amount}, corr=${command.correlationId}]`,
+    );
 
     try {
       // Create new transaction aggregate
@@ -40,12 +43,13 @@ export class TransferHandler implements ICommandHandler<TransferCommand> {
         },
       });
 
-      // Get uncommitted events
+      // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
-      this.logger.log(`Generated ${events.length} event(s) for transaction ${command.transactionId}`);
-
-      // Save events to the event store (Kafka)
-      await this.eventStore.append('Transaction', command.transactionId, events);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        events,
+      );
 
       // Publish events to the event bus for async processing
       events.forEach((event) => {
@@ -55,13 +59,17 @@ export class TransferHandler implements ICommandHandler<TransferCommand> {
       // Mark events as committed
       transaction.commit();
 
-      this.logger.log(`✅ Transfer transaction requested: ${command.transactionId}`);
+      this.logger.log(
+        `[TransferHandler] Completed [txId=${command.transactionId}]`,
+      );
 
       return command.transactionId;
-    } catch (error) {
-      this.logger.error(`❌ Failed to process transfer ${command.transactionId}`, error);
+    } catch (error: unknown) {
+      this.logger.error(
+        `[TransferHandler] Failed [txId=${command.transactionId}, corr=${command.correlationId}]`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }
 }
-

@@ -17,22 +17,32 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
     private eventBus: EventBus,
   ) {}
 
-  async execute(command: RefundCommand): Promise<{ refundId: string; merchantAccountId: string; customerAccountId: string }> {
-    this.logger.log(`[RefundHandler] Executing RefundCommand: ${command.refundId}`);
-    this.logger.log(`   Original Payment: ${command.originalPaymentId}`);
-    this.logger.log(`   Refund Amount: ${command.refundAmount} ${command.currency}`);
+  async execute(command: RefundCommand): Promise<{
+    refundId: string;
+    merchantAccountId: string;
+    customerAccountId: string;
+  }> {
+    this.logger.log(
+      `[RefundHandler] Executing [refundId=${command.refundId}, paymentId=${command.originalPaymentId}, ` +
+        `amt=${command.refundAmount} ${command.currency}, corr=${command.correlationId}]`,
+    );
 
     try {
       // First, load the original payment to get merchant and customer account IDs
-      const paymentEvents = await this.eventStore.getEvents('Transaction', command.originalPaymentId);
-      
+      const paymentEvents = await this.eventStore.getEvents(
+        'Transaction',
+        command.originalPaymentId,
+      );
+
       if (paymentEvents.length === 0) {
-        throw new Error(`Original payment not found: ${command.originalPaymentId}`);
+        throw new Error(
+          `Original payment not found: ${command.originalPaymentId}`,
+        );
       }
 
       // Reconstruct payment aggregate to get account IDs
       const paymentAggregate = TransactionAggregate.fromEvents(paymentEvents);
-      
+
       const merchantAccountId = paymentAggregate.getDestinationAccountId(); // In payment, merchant is destination
       const customerAccountId = paymentAggregate.getSourceAccountId(); // In payment, customer is source
 
@@ -72,17 +82,21 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
 
       refund.commit();
 
-      this.logger.log(`✅ [RefundHandler] Refund requested: ${command.refundId}`);
-      
+      this.logger.log(
+        `[RefundHandler] Completed [refundId=${command.refundId}]`,
+      );
+
       return {
         refundId: command.refundId,
         merchantAccountId,
         customerAccountId,
       };
-    } catch (error) {
-      this.logger.error(`❌ [RefundHandler] Failed to request refund`, error);
+    } catch (error: unknown) {
+      this.logger.error(
+        `[RefundHandler] Failed [refundId=${command.refundId}, corr=${command.correlationId}]`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }
 }
-

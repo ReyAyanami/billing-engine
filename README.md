@@ -1,227 +1,87 @@
 # Billing Engine
 
-A production-grade billing system demonstrating best practices in financial transaction management. Built with NestJS, TypeORM, and PostgreSQL.
+> 🎓 **Educational Study Project**: A demonstration of CQRS, Event Sourcing, and Double-Entry Bookkeeping patterns applied to a billing system.
 
-> **🎯 Version 2.0 - Double-Entry Bookkeeping System**  
-> This engine implements true double-entry bookkeeping where every transaction has both a source and destination account, ensuring complete auditability and compliance with accounting standards.  
-> 📖 [Learn about the double-entry design](./docs/adr/0004-double-entry-design.md) | ⚠️ [Breaking changes from v1](./docs/BREAKING_CHANGES_V2.md)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-11-red)](https://nestjs.com/)
+[![License](https://img.shields.io/badge/License-Unlicensed-green)](LICENSE)
 
-## 📋 Overview
+## 📚 What is This?
 
-This billing engine provides both HTTP REST APIs and programmatic interfaces for managing financial transactions. It's designed to be embedded in larger systems that require billing capabilities.
+This is a **personal learning project** exploring how billing systems can be built using modern architectural patterns. It demonstrates:
 
-All financial operations follow double-entry accounting principles:
-- **Top-ups**: External Account → User Account  
-- **Withdrawals**: User Account → External Account  
-- **Transfers**: User Account A → User Account B  
-- **Refunds**: Destination Account → Source Account (reversal)
+- **Pure Event Sourcing** with Kafka as the source of truth
+- **CQRS (Command Query Responsibility Segregation)** with complete read/write separation
+- **Double-Entry Bookkeeping** for financial accuracy
+- **Domain-Driven Design** with aggregates and bounded contexts
 
-## ✨ Features
+**⚠️ Important**: This is study material, not production-ready software. Use it to learn concepts, not as a blueprint for real billing systems.
 
-### Core Functionality
-- ✅ **Account Management**: Create and manage accounts with three types:
-  - **USER**: End-user accounts with balance limits
-  - **EXTERNAL**: External services (banks, payment gateways)
-  - **SYSTEM**: Internal accounts (fees, reserves)
-- ✅ **Top-up**: Add funds from external sources to user accounts
-- ✅ **Withdrawal**: Send funds from user accounts to external destinations
-- ✅ **Transfers**: Move funds between accounts atomically
-- ✅ **Payments**: Process payments with metadata support
-- ✅ **Refunds**: Full or partial refunds of transactions (automatic reversal)
-- ✅ **Multi-Currency**: Support for fiat (USD, EUR, GBP) and non-fiat currencies (BTC, ETH, Points)
-- ✅ **Balance Limits**: Optional min/max balance enforcement on user accounts
+---
 
-### Non-Functional Features
-- 🔒 **ACID Compliance**: All transactions use database transactions with pessimistic locking
-- 📝 **Auditability**: Complete audit trail for all operations
-- 🔄 **Idempotency**: Duplicate transaction prevention using idempotency keys
-- ⚡ **Performance**: Optimized with strategic indexing and connection pooling
-- 🛡️ **Error Handling**: Comprehensive error handling with meaningful error messages
-- 🧪 **Test Coverage**: Unit tests and E2E tests for core functionality
+## ✨ Key Features
 
-## 🏗️ Architecture
+### Financial Operations
+- 💰 **Account Management**: Create and manage USER, EXTERNAL, and SYSTEM accounts
+- 💸 **Transactions**: Top-up, Withdrawal, Transfer, Payment, and Refund operations
+- 🌍 **Multi-Currency**: Support for fiat (USD, EUR, GBP) and non-fiat (BTC, ETH, POINTS) currencies
+- 🔄 **Atomic Transfers**: Guaranteed consistency with pessimistic locking
 
-### High-Level Structure
-```
-┌─────────────────┐
-│   HTTP REST API │
-└────────┬────────┘
-         │
-┌────────▼────────┐
-│  Service Layer  │
-│  - Transaction  │
-│  - Account      │
-│  - Audit        │
-└────────┬────────┘
-         │
-┌────────▼────────┐
-│  Data Layer     │
-│  - PostgreSQL   │
-└─────────────────┘
-```
+### Architecture Highlights
+- 📝 **Event Sourcing**: Complete audit trail with event replay capability
+- ⚡ **CQRS Pattern**: Optimized read/write models with projections
+- 🔐 **Idempotency**: Duplicate transaction prevention with UUID keys
+- 🎯 **Saga Orchestration**: Production-grade transaction coordination with state tracking
+- 📦 **Outbox Pattern**: Guaranteed event delivery with at-least-once semantics
+- 🔄 **Dual Consistency**: Immediate (saga state) + eventual (projections)
+- 📊 **Real-time Events**: Server-Sent Events (SSE) for live updates
 
-### Key Design Principles
-- **True Double-Entry Bookkeeping**: Every transaction records both source and destination, with complete balance tracking on both sides
-- **Three Account Types**: User, External, and System accounts for proper financial modeling
-- **Pessimistic Locking**: Prevents race conditions in concurrent transactions
-- **Deterministic Lock Ordering**: Accounts locked in sorted order to prevent deadlocks
-- **Complete Auditability**: Full balance history for every account in every transaction
-- **Immutable Audit Log**: Append-only audit trail for compliance
+---
 
-## 📚 Documentation
-
-### Core Documentation
-- 📖 [Requirements](./REQUIREMENTS.md) - Complete requirements specification
-- 🏗️ [Architecture](./ARCHITECTURE.md) - System architecture and design patterns
-- 💾 [Data Model](./DATA_MODEL.md) - Database schema and entities
-- 🚀 [Quick Start](./QUICK_START.md) - Get up and running in 5 minutes
-
-### Technical Documentation
-- 📁 [Documentation Index](./docs/README.md) - Complete documentation directory
-- 🔄 [Pipeline Architecture](./docs/PIPELINE_ARCHITECTURE.md) - Transaction pipeline pattern
-- ⚠️ [Breaking Changes V2](./docs/BREAKING_CHANGES_V2.md) - Migration guide from v1 to v2
-- 🔧 [Pipeline Migration Examples](./docs/PIPELINE_MIGRATION_EXAMPLE.md) - Code examples
-- 🗄️ [Database Migrations](./src/migrations/README.md) - Migration management
-
-### Architecture Decision Records (ADRs)
-All significant architectural decisions are documented as ADRs:
-- 📋 [ADR Index](./docs/adr/README.md) - Complete list of decisions
-- 🐛 [UUID Validation Debugging](./docs/adr/0001-uuid-validation-debugging.md)
-- 🔄 [Pipeline Pattern Adoption](./docs/adr/0002-pipeline-pattern-adoption.md)
-- 📊 [Double-Entry Bookkeeping](./docs/adr/0003-double-entry-bookkeeping.md)
-- 🏗️ [Double-Entry Design](./docs/adr/0004-double-entry-design.md)
-- 🔗 [Foreign Key Strategy](./docs/adr/0005-foreign-key-strategy.md)
-- 📝 [Refactoring Plan](./docs/adr/0006-double-entry-refactoring-plan.md)
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
-- PostgreSQL 14+
-- Docker (optional, for easy database setup)
 
-### Installation
+- **Docker Desktop** 4.0+ (for PostgreSQL and Kafka)
+- **Node.js** 18+ 
+- **5 minutes** of your time
 
-1. **Clone the repository**
+### One-Command Setup
+
 ```bash
-git clone <repository-url>
+# Clone the repository
+git clone <your-repo-url>
 cd billing-engine
-```
 
-2. **Install dependencies**
-```bash
+# Install dependencies
 npm install
+
+# Start everything (PostgreSQL, Kafka, and the app)
+npm start
 ```
 
-3. **Set up PostgreSQL database**
+That's it! The application will:
+1. Start PostgreSQL and Kafka via Docker Compose
+2. Run database migrations automatically
+3. Start the API server on `http://localhost:3000`
+4. Initialize default currencies
 
-Using Docker:
-```bash
-docker-compose up -d
-```
-
-Or manually create a database:
-```sql
-CREATE DATABASE billing_engine;
-```
-
-4. **Configure environment variables**
-
-Create a `.env` file in the root directory:
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_DATABASE=billing_engine
-DB_SSL=false
-
-PORT=3000
-NODE_ENV=development
-```
-
-5. **Run database migrations**
-
-For production or if you want to use migrations in development:
-```bash
-# Run migrations
-npm run migration:run
-
-# For development with auto-sync (default)
-# Just start the app, schema will be created automatically
-```
-
-To use migrations in development, set `USE_MIGRATIONS=true` in your `.env` file.
-
-6. **Start the application**
-```bash
-# Development mode with hot reload
-npm run start:dev
-
-# Production mode
-npm run build
-npm run start:prod
-```
-
-The API will be available at `http://localhost:3000`
-
-## 🧪 Testing
+### Verify Installation
 
 ```bash
-# Unit tests
-npm run test
+# Check health
+curl http://localhost:3000/health
 
-# E2E tests (requires running database)
-npm run test:e2e
-
-# Test coverage
-npm run test:cov
+# View API documentation
+open http://localhost:3000/api/docs
 ```
 
-## 🗄️ Database Migrations
+---
 
-### Available Migration Commands
+## 🎯 Your First API Call
 
-```bash
-# Run all pending migrations
-npm run migration:run
+### 1. Create an Account
 
-# Revert the last migration
-npm run migration:revert
-
-# Show migration status
-npm run migration:show
-
-# Generate a new migration from entity changes
-npm run migration:generate -- src/migrations/MigrationName
-
-# Create an empty migration
-npm run migration:create -- src/migrations/MigrationName
-```
-
-### Migration Modes
-
-**Development (default):**
-- Uses `synchronize: true` - schema auto-updates
-- No migrations needed unless you set `USE_MIGRATIONS=true`
-
-**Production:**
-- Uses migrations automatically
-- `synchronize` is disabled for safety
-- Migrations run on application startup
-
-### Initial Schema
-
-The project includes an initial migration that creates:
-- All 4 tables (currencies, accounts, transactions, audit_logs)
-- All indexes and constraints
-- Default currency data (USD, EUR, GBP, BTC, ETH, POINTS)
-
-For more details, see [src/migrations/README.md](./src/migrations/README.md)
-
-## 📖 API Usage Examples
-
-### Create an Account
 ```bash
 curl -X POST http://localhost:3000/api/v1/accounts \
   -H "Content-Type: application/json" \
@@ -229,9 +89,7 @@ curl -X POST http://localhost:3000/api/v1/accounts \
     "ownerId": "user_123",
     "ownerType": "user",
     "currency": "USD",
-    "metadata": {
-      "accountName": "Primary Account"
-    }
+    "type": "USER"
   }'
 ```
 
@@ -244,51 +102,34 @@ Response:
   "currency": "USD",
   "balance": "0",
   "status": "active",
-  "createdAt": "2025-12-07T10:00:00.000Z"
+  "type": "USER"
 }
 ```
 
-### Top-up an Account
+### 2. Add Funds (Top-up)
+
 ```bash
 curl -X POST http://localhost:3000/api/v1/transactions/topup \
   -H "Content-Type: application/json" \
   -d '{
-    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
-    "accountId": "550e8400-e29b-41d4-a716-446655440000",
-    "amount": "1000.00",
+    "idempotencyKey": "unique-key-123",
+    "destinationAccountId": "550e8400-e29b-41d4-a716-446655440000",
+    "amount": "100.00",
     "currency": "USD",
-    "reference": "Initial deposit"
+    "sourceAccountId": "external-bank-001"
   }'
 ```
 
 Response:
 ```json
 {
-  "transactionId": "660e8400-e29b-41d4-a716-446655440002",
-  "accountId": "550e8400-e29b-41d4-a716-446655440000",
-  "amount": "1000",
-  "currency": "USD",
-  "balanceAfter": "1000",
-  "status": "completed",
-  "createdAt": "2025-12-07T10:05:00.000Z"
+  "transactionId": "660e8400-e29b-41d4-a716-446655440001",
+  "status": "pending"
 }
 ```
 
-### Transfer Between Accounts
-```bash
-curl -X POST http://localhost:3000/api/v1/transactions/transfer \
-  -H "Content-Type: application/json" \
-  -d '{
-    "idempotencyKey": "770e8400-e29b-41d4-a716-446655440003",
-    "sourceAccountId": "550e8400-e29b-41d4-a716-446655440000",
-    "destinationAccountId": "880e8400-e29b-41d4-a716-446655440004",
-    "amount": "250.00",
-    "currency": "USD",
-    "reference": "Payment for services"
-  }'
-```
+### 3. Check Balance
 
-### Get Account Balance
 ```bash
 curl http://localhost:3000/api/v1/accounts/550e8400-e29b-41d4-a716-446655440000/balance
 ```
@@ -296,164 +137,284 @@ curl http://localhost:3000/api/v1/accounts/550e8400-e29b-41d4-a716-446655440000/
 Response:
 ```json
 {
-  "balance": "750.00",
+  "balance": "100.00",
   "currency": "USD",
   "status": "active"
 }
 ```
 
-### Get Transaction History
-```bash
-curl "http://localhost:3000/api/v1/transactions?accountId=550e8400-e29b-41d4-a716-446655440000&limit=10"
+---
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   REST API Layer                     │
+│              (NestJS Controllers)                    │
+└──────────────────┬──────────────────────────────────┘
+                   │
+         ┌─────────▼─────────┐
+         │  CQRS/DDD Layer   │
+         │                   │
+         │  Commands ────────┼───> Command Handlers
+         │  Queries  ────────┼───> Query Handlers
+         │  Events   ────────┼───> Event Handlers
+         │  Sagas    ────────┼───> Transaction Coordination
+         │                   │
+         └─────────┬─────────┘
+                   │
+      ┌────────────┴────────────┐
+      │                         │
+┌─────▼──────┐          ┌──────▼─────┐
+│ PostgreSQL │          │   Kafka    │
+│            │          │            │
+│ Read/Write │          │Event Store │
+│ Projections│          │Audit Trail │
+└────────────┘          └────────────┘
 ```
 
-## 🔌 Programmatic API Usage
+### Technology Stack
 
-The billing engine can also be used programmatically within your NestJS application:
-
-```typescript
-import { TransactionService } from './modules/transaction/transaction.service';
-import { AccountService } from './modules/account/account.service';
-
-@Injectable()
-export class YourService {
-  constructor(
-    private readonly transactionService: TransactionService,
-    private readonly accountService: AccountService,
-  ) {}
-
-  async processPayment(userId: string, amount: string) {
-    // Create account if needed
-    const account = await this.accountService.create(
-      {
-        ownerId: userId,
-        ownerType: 'user',
-        currency: 'USD',
-      },
-      context,
-    );
-
-    // Process top-up
-    const result = await this.transactionService.topup(
-      {
-        idempotencyKey: generateUUID(),
-        accountId: account.id,
-        amount,
-        currency: 'USD',
-        reference: 'Payment processed',
-      },
-      context,
-    );
-
-    return result;
-  }
-}
-```
-
-## 📊 API Endpoints
-
-### Account Management
-- `POST /api/v1/accounts` - Create account
-- `GET /api/v1/accounts/:id` - Get account details
-- `GET /api/v1/accounts?ownerId=&ownerType=` - Get accounts by owner
-- `GET /api/v1/accounts/:id/balance` - Get account balance
-- `PATCH /api/v1/accounts/:id/status` - Update account status
-
-### Transactions
-- `POST /api/v1/transactions/topup` - Top-up account
-- `POST /api/v1/transactions/withdraw` - Withdraw from account
-- `POST /api/v1/transactions/transfer` - Transfer between accounts
-- `POST /api/v1/transactions/refund` - Refund a transaction
-- `GET /api/v1/transactions/:id` - Get transaction details
-- `GET /api/v1/transactions?accountId=` - Get transaction history
-
-### Currency
-- `GET /api/v1/currencies` - List supported currencies
-- `GET /api/v1/currencies/:code` - Get currency details
-
-## 🛡️ Error Handling
-
-All errors follow a consistent format:
-
-```json
-{
-  "error": {
-    "code": "INSUFFICIENT_BALANCE",
-    "message": "Account balance is insufficient for this operation",
-    "details": {
-      "accountId": "550e8400-e29b-41d4-a716-446655440000",
-      "requestedAmount": "1000.00",
-      "availableBalance": "500.00"
-    },
-    "timestamp": "2025-12-07T10:00:00.000Z"
-  }
-}
-```
-
-Common error codes:
-- `ACCOUNT_NOT_FOUND` - Account doesn't exist
-- `INSUFFICIENT_BALANCE` - Not enough funds
-- `INVALID_CURRENCY` - Currency not supported or inactive
-- `CURRENCY_MISMATCH` - Transaction currency doesn't match account
-- `DUPLICATE_TRANSACTION` - Idempotency key already used
-- `ACCOUNT_INACTIVE` - Account is suspended or closed
-- `INVALID_OPERATION` - Operation not allowed
-
-## 🔐 Security Considerations
-
-- ✅ Input validation using class-validator
-- ✅ SQL injection prevention via TypeORM parameterized queries
-- ✅ CORS enabled (configure for production)
-- ✅ Decimal precision handling for financial calculations
-- ⚠️ Authentication/Authorization not implemented (add JWT or API keys for production)
-
-## 📈 Performance
-
-- Optimized database queries with strategic indexing
-- Connection pooling for PostgreSQL
-- Pessimistic locking only on critical sections
-- Efficient balance calculations using Decimal.js
-
-Expected performance:
-- Simple operations (topup, withdrawal): < 100ms (p95)
-- Complex operations (transfers): < 200ms (p95)
-- Throughput: 1000+ transactions/second (with proper infrastructure)
-
-## 🧰 Technology Stack
-
-- **Framework**: NestJS 11
-- **Language**: TypeScript 5
-- **Database**: PostgreSQL 14+
-- **ORM**: TypeORM
-- **Validation**: class-validator, class-transformer
-- **Testing**: Jest, Supertest
-- **Decimal Math**: decimal.js
-
-## 🤝 Contributing
-
-This is a demonstration project. Feel free to fork and modify for your needs.
-
-## 📝 License
-
-UNLICENSED - This is a demonstration project for educational purposes.
-
-## 🎯 Future Enhancements
-
-- [ ] Authentication & Authorization (JWT, API Keys)
-- [ ] Multi-currency conversion with exchange rates
-- [ ] Scheduled reconciliation jobs
-- [ ] Advanced reporting and analytics
-- [ ] Event sourcing with event store
-- [ ] Message queue integration for async processing
-- [ ] Rate limiting and throttling
-- [ ] Webhook notifications
-- [ ] GraphQL API
-- [ ] Admin dashboard
-
-## 📧 Support
-
-For questions or issues, please open an issue in the repository.
+- **Framework**: NestJS 11 with TypeScript 5
+- **Database**: PostgreSQL 14+ with TypeORM
+- **Event Store**: Kafka 3.x via KafkaJS
+- **Validation**: class-validator + class-transformer
+- **API Docs**: Swagger/OpenAPI
 
 ---
 
-Built with ❤️ using NestJS
+## 📖 Documentation
+
+Comprehensive documentation is available in the [`/docs`](./docs) directory:
+
+### Getting Started
+- 📘 [Getting Started Guide](./GETTING_STARTED.md) - Detailed setup walkthrough
+- 🔧 [Installation Guide](./docs/guides/installation.md) - Installation options and troubleshooting
+- ⚙️ [Configuration Guide](./docs/guides/configuration.md) - Environment variables and settings
+
+### Architecture
+- 🏛️ [System Design](./docs/architecture/system-design.md) - High-level architecture overview
+- 🎯 [CQRS Pattern](./docs/architecture/cqrs-pattern.md) - Command/Query separation explained
+- 📊 [Data Model](./docs/architecture/data-model.md) - Database schema and entities
+- 📝 [Event Sourcing](./docs/architecture/event-sourcing.md) - Event store implementation
+- 📚 [Double-Entry Bookkeeping](./docs/architecture/double-entry.md) - Financial accounting principles
+
+### API Reference
+- 🌐 [REST API Overview](./docs/api/rest-api.md) - Complete API documentation
+- 👤 [Account Endpoints](./docs/api/accounts.md) - Account management API
+- 💰 [Transaction Endpoints](./docs/api/transactions.md) - Transaction operations API
+- 💱 [Currency Endpoints](./docs/api/currencies.md) - Currency configuration
+- ⚡ [Real-time Events](./docs/api/events.md) - Server-Sent Events (SSE)
+
+### Development
+- 🛠️ [Local Development](./docs/development/local-setup.md) - Development environment setup
+- 🧪 [Testing Guide](./docs/development/testing.md) - Unit and E2E testing
+- 🐛 [Debugging Guide](./docs/development/debugging.md) - Debugging tips and tools
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in parallel
+npm run test:parallel
+
+# Run with coverage
+npm run test:cov
+
+# Run E2E tests
+npm run test:e2e
+
+# Run in watch mode
+npm run test:watch
+```
+
+---
+
+## 📋 Available Commands
+
+### Development
+```bash
+npm start              # Start infrastructure and run dev server
+npm run dev            # Run dev server only (requires services running)
+npm run dev:debug      # Run with Node.js debugger
+```
+
+### Infrastructure
+```bash
+npm run env:start      # Start PostgreSQL and Kafka
+npm run env:stop       # Stop all services
+npm run env:clean      # Stop and remove volumes
+npm run env:status     # Check service status
+npm run env:logs       # View service logs
+```
+
+### Database
+```bash
+npm run migration:run       # Run pending migrations
+npm run migration:revert    # Revert last migration
+npm run migration:generate  # Generate new migration
+```
+
+### Code Quality
+```bash
+npm run lint           # Run ESLint with auto-fix
+npm run lint:check     # Check without fixing
+npm run format         # Format code with Prettier
+npm run type-check     # TypeScript type checking
+```
+
+---
+
+## 🎓 What You'll Learn
+
+This project demonstrates:
+
+### 1. CQRS + Event Sourcing
+- **Why**: Separate optimized read/write models for financial data
+- **How**: Commands modify state, events capture changes, queries read projections
+- **Trade-offs**: Increased complexity vs. auditability and scalability
+
+### 2. Double-Entry Bookkeeping
+- **Why**: Every transaction needs balanced debit/credit entries
+- **How**: Three account types (USER, EXTERNAL, SYSTEM) with two-sided transactions
+- **Trade-offs**: Complexity vs. financial accuracy and compliance
+
+### 3. Domain-Driven Design
+- **Why**: Model complex business logic in the domain layer
+- **How**: Aggregates, commands, domain events, and sagas
+- **Trade-offs**: Learning curve vs. maintainable business logic
+
+### 4. Event Sourcing with Kafka
+- **Why**: Complete audit trail and event replay capability
+- **How**: Kafka as append-only event log with projections for queries
+- **Trade-offs**: Storage overhead vs. auditability and debugging
+
+### 5. Idempotency & Concurrency
+- **Why**: Prevent duplicate transactions and race conditions
+- **How**: UUID idempotency keys and pessimistic database locking
+- **Trade-offs**: Performance vs. correctness
+
+### 6. Saga Orchestration
+- **Why**: Coordinate multi-step transactions without race conditions
+- **How**: Saga coordinator with state tracking, outbox pattern for delivery
+- **Trade-offs**: Complexity vs. reliability and observability
+
+For detailed explanations of **WHY** each decision was made, see [Project Philosophy](./PROJECT_PHILOSOPHY.md) and [ADR-002: Saga Orchestration](./docs/architecture/decisions/adr-002-saga-orchestration.md).
+
+---
+
+## ⚠️ Important Disclaimers
+
+### Not for Production
+
+This code:
+- ❌ Lacks comprehensive error handling for all edge cases
+- ❌ Hasn't been tested under production loads
+- ❌ May contain security vulnerabilities
+- ❌ Doesn't implement all features needed for real billing systems
+- ✅ Prioritizes learning over robustness
+
+### No Guarantees
+
+- **No support**: Use at your own risk
+- **No updates**: May or may not evolve
+- **No warranty**: Provided as-is
+- **No license restrictions**: Use freely for learning
+
+### Learning in Public
+
+I'm not an expert in billing systems—I'm learning and sharing that journey. Constructive criticism and better approaches are genuinely welcomed!
+
+---
+
+## 🤝 Contributing
+
+Contributions, questions, and discussions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+**Ways to Contribute:**
+- 💡 Share better approaches or patterns
+- 🐛 Report issues or conceptual problems
+- 📝 Improve documentation
+- 💬 Discuss trade-offs and alternatives
+
+---
+
+## 📚 Further Reading
+
+This project builds on concepts from:
+- **Domain-Driven Design** by Eric Evans
+- **Event Sourcing** patterns by Greg Young
+- **CQRS** architecture principles
+- **Double-Entry Accounting** fundamentals
+- **NestJS** best practices
+
+Recommended resources:
+- [Martin Fowler - CQRS](https://martinfowler.com/bliki/CQRS.html)
+- [Event Sourcing - Greg Young](https://www.eventstore.com/blog/what-is-event-sourcing)
+- [Double-Entry Bookkeeping Explained](https://en.wikipedia.org/wiki/Double-entry_bookkeeping)
+
+---
+
+## 📝 Project Status
+
+**Current Version**: 2.0.0 (CQRS + Event Sourcing Architecture)
+
+✅ **Completed Features**:
+- CQRS architecture with commands and queries
+- Event sourcing with Kafka
+- Double-entry bookkeeping
+- **Saga orchestration with state tracking** ⚡ NEW
+- **Transactional outbox pattern** ⚡ NEW
+- **Projection idempotency** ⚡ NEW
+- Account management (USER, EXTERNAL, SYSTEM types)
+- Core transactions (Top-up, Withdrawal, Transfer)
+- Payment and Refund operations with compensation
+- Multi-currency support
+- Real-time SSE events
+- Comprehensive audit trail
+- E2E testing (61 tests passing)
+
+🚧 **What's Missing** (intentionally simplified):
+- Authentication and authorization
+- Rate limiting
+- Webhook notifications
+- Currency conversion
+- Transaction fees
+- Scheduled transactions
+- Snapshots for event replay optimization
+- Multi-tenancy
+- Distributed saga coordination
+- Saga timeout handling
+- Production-grade monitoring
+
+See [CHANGELOG.md](./CHANGELOG.md) for version history.
+
+---
+
+## 📬 Feedback
+
+Questions? Suggestions? Found a better approach?
+
+This is a learning exercise—constructive feedback helps everyone learn!
+
+---
+
+## 📄 License
+
+**Unlicensed** - Use this however you want:
+- Study it
+- Copy from it  
+- Adapt it
+- Build on it
+- Criticize it
+
+No attribution required, no strings attached.
+
+---
+
+**Remember**: This shows how billing systems *CAN* be built, not how they *SHOULD* be built. Your requirements will differ—use this as inspiration, not gospel! 🚀
+

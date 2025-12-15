@@ -32,4 +32,3 @@ export abstract class Command {
     return this.constructor.name;
   }
 }
-

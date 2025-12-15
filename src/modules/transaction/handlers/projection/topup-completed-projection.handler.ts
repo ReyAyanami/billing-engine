@@ -15,8 +15,6 @@ export class TopupCompletedProjectionHandler implements IEventHandler<TopupCompl
   ) {}
 
   async handle(event: TopupCompletedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] TopupCompleted: ${event.aggregateId}`);
-
     try {
       await this.projectionService.updateTransactionCompleted(
         event.aggregateId,
@@ -27,11 +25,12 @@ export class TopupCompletedProjectionHandler implements IEventHandler<TopupCompl
         event.eventId,
         event.timestamp,
       );
-
-      this.logger.log(`✅ [Projection] Transaction projection updated: ${event.aggregateId}`);
-    } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to update transaction projection`, error);
+    } catch (error: unknown) {
+      this.logger.error(
+        `[Projection] Failed to update topup projection [txId=${event.aggregateId}]`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
     }
   }
 }
-

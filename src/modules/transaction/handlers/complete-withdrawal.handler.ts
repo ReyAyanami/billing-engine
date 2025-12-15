@@ -18,12 +18,17 @@ export class CompleteWithdrawalHandler implements ICommandHandler<CompleteWithdr
   ) {}
 
   async execute(command: CompleteWithdrawalCommand): Promise<void> {
-    this.logger.log(`Completing withdrawal transaction: ${command.transactionId}`);
+    this.logger.log(
+      `Completing withdrawal transaction: ${command.transactionId}`,
+    );
 
     try {
       // Load transaction aggregate from event history
-      const events = await this.eventStore.getEvents('Transaction', command.transactionId);
-      
+      const events = await this.eventStore.getEvents(
+        'Transaction',
+        command.transactionId,
+      );
+
       if (events.length === 0) {
         throw new Error(`Transaction not found: ${command.transactionId}`);
       }
@@ -43,7 +48,11 @@ export class CompleteWithdrawalHandler implements ICommandHandler<CompleteWithdr
 
       // Get and persist uncommitted events
       const newEvents = transaction.getUncommittedEvents();
-      await this.eventStore.append('Transaction', command.transactionId, newEvents);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        newEvents,
+      );
 
       // Publish events
       newEvents.forEach((event) => {
@@ -52,11 +61,15 @@ export class CompleteWithdrawalHandler implements ICommandHandler<CompleteWithdr
 
       transaction.commit();
 
-      this.logger.log(`✅ Withdrawal transaction completed: ${command.transactionId}`);
+      this.logger.log(
+        `✅ Withdrawal transaction completed: ${command.transactionId}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ Failed to complete withdrawal ${command.transactionId}`, error);
+      this.logger.error(
+        `❌ Failed to complete withdrawal ${command.transactionId}`,
+        error,
+      );
       throw error;
     }
   }
 }
-

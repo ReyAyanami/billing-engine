@@ -18,7 +18,10 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
   ) {}
 
   async execute(command: TopupCommand): Promise<string> {
-    this.logger.log(`Processing topup: ${command.transactionId}`);
+    this.logger.log(
+      `[TopupHandler] Processing [txId=${command.transactionId}, accountId=${command.accountId}, ` +
+        `amt=${command.amount}, corr=${command.correlationId}]`,
+    );
 
     try {
       // Create new transaction aggregate
@@ -40,28 +43,41 @@ export class TopupHandler implements ICommandHandler<TopupCommand> {
         },
       });
 
-      // Get uncommitted events
+      // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
-      this.logger.log(`Generated ${events.length} event(s) for transaction ${command.transactionId}`);
+      this.logger.log(
+        `[TopupHandler] Appending ${events.length} events to event store`,
+      );
 
-      // Save events to the event store (Kafka)
-      await this.eventStore.append('Transaction', command.transactionId, events);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        events,
+      );
 
       // Publish events to the event bus for async processing
+      this.logger.log(
+        `[TopupHandler] Publishing ${events.length} events to event bus`,
+      );
       events.forEach((event) => {
+        this.logger.log(`[TopupHandler] Publishing: ${event.getEventType()}`);
         this.eventBus.publish(event);
       });
 
       // Mark events as committed
       transaction.commit();
 
-      this.logger.log(`✅ Topup transaction requested: ${command.transactionId}`);
+      this.logger.log(
+        `[TopupHandler] Completed [txId=${command.transactionId}]`,
+      );
 
       return command.transactionId;
-    } catch (error) {
-      this.logger.error(`❌ Failed to process topup ${command.transactionId}`, error);
+    } catch (error: unknown) {
+      this.logger.error(
+        `[TopupHandler] Failed [txId=${command.transactionId}, corr=${command.correlationId}]`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }
 }
-

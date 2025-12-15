@@ -1,14 +1,18 @@
-import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
-import { Logger } from '@nestjs/common';
+import { IEventHandler } from '@nestjs/cqrs';
+import { Injectable, Logger } from '@nestjs/common';
+import { ProjectionHandler } from '../../../../cqrs/decorators/saga-handler.decorator';
 import { TopupRequestedEvent } from '../../events/topup-requested.event';
 import { TransactionProjectionService } from '../../projections/transaction-projection.service';
-import { TransactionType, TransactionStatus } from '../../transaction.entity';
+import { TransactionType, TransactionStatus } from '../../transaction.types';
 
 /**
- * Event handler to update transaction projection when topup is requested.
+ * Projection handler to update transaction read model when topup is requested.
+ *
  * This is separate from the saga coordinator - it only updates the read model.
+ * It runs asynchronously and must be idempotent.
  */
-@EventsHandler(TopupRequestedEvent)
+@Injectable()
+@ProjectionHandler(TopupRequestedEvent)
 export class TopupRequestedProjectionHandler implements IEventHandler<TopupRequestedEvent> {
   private readonly logger = new Logger(TopupRequestedProjectionHandler.name);
 
@@ -17,7 +21,25 @@ export class TopupRequestedProjectionHandler implements IEventHandler<TopupReque
   ) {}
 
   async handle(event: TopupRequestedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] TopupRequested: ${event.aggregateId}`);
+    // Check idempotency: Has this event already been processed?
+    const existing = await this.projectionService.findById(
+      event.aggregateId as unknown as import('../../../../common/types/branded.types').TransactionId,
+    );
+
+    if (existing && existing.lastEventId === event.eventId) {
+      this.logger.debug(
+        `Skipping duplicate event [txId=${event.aggregateId}, eventId=${event.eventId}]`,
+      );
+      return; // Already processed
+    }
+
+    if (existing && existing.aggregateVersion >= event.aggregateVersion) {
+      this.logger.debug(
+        `Skipping out-of-order event [txId=${event.aggregateId}, ` +
+          `version=${event.aggregateVersion}, current=${existing.aggregateVersion}]`,
+      );
+      return; // Out of order
+    }
 
     try {
       await this.projectionService.createTransactionProjection({
@@ -28,6 +50,8 @@ export class TopupRequestedProjectionHandler implements IEventHandler<TopupReque
         amount: event.amount,
         sourceAccountId: event.sourceAccountId,
         destinationAccountId: event.accountId,
+        sourceSignedAmount: `-${event.amount}`, // External account debited
+        destinationSignedAmount: `${event.amount}`, // User account credited
         idempotencyKey: event.idempotencyKey,
         correlationId: event.correlationId,
         requestedAt: event.timestamp,
@@ -36,12 +60,13 @@ export class TopupRequestedProjectionHandler implements IEventHandler<TopupReque
         lastEventTimestamp: event.timestamp,
         metadata: event.metadata,
       });
-
-      this.logger.log(`✅ [Projection] Transaction projection created: ${event.aggregateId}`);
-    } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to create transaction projection`, error);
-      // Don't throw - projection failures shouldn't break the saga
+    } catch (error: unknown) {
+      this.logger.error(
+        `[Projection] Failed to create topup projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      // Re-throw so we can see what's failing
+      throw error;
     }
   }
 }
-

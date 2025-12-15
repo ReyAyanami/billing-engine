@@ -15,4 +15,3 @@ export class CompleteTransferCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

@@ -4,18 +4,21 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { JsonObject } from '../types/json.types';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  catch(exception: unknown, host: ArgumentsHost) {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+  catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let errorResponse: any = {
+    let errorResponse: JsonObject = {
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'An unexpected error occurred',
@@ -29,7 +32,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
 
       if (typeof exceptionResponse === 'object') {
-        errorResponse = exceptionResponse;
+        errorResponse = exceptionResponse as JsonObject;
       } else {
         errorResponse = {
           error: {
@@ -42,13 +45,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       // Log unexpected errors
-      console.error('Unexpected error:', exception);
+      this.logger.error(
+        `Unexpected error [path=${request.url}, method=${request.method}]`,
+        exception.stack,
+      );
 
       errorResponse = {
         error: {
           code: 'INTERNAL_SERVER_ERROR',
           message:
-            process.env.NODE_ENV === 'development'
+            process.env['NODE_ENV'] === 'development'
               ? exception.message
               : 'An unexpected error occurred',
           timestamp: new Date().toISOString(),
@@ -60,4 +66,3 @@ export class AllExceptionsFilter implements ExceptionFilter {
     response.status(status).json(errorResponse);
   }
 }
-

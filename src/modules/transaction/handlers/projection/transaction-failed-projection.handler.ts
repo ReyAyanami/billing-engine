@@ -15,8 +15,6 @@ export class TransactionFailedProjectionHandler implements IEventHandler<Transac
   ) {}
 
   async handle(event: TransactionFailedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] TransactionFailed: ${event.aggregateId}`);
-
     try {
       await this.projectionService.updateTransactionFailed(
         event.aggregateId,
@@ -26,11 +24,12 @@ export class TransactionFailedProjectionHandler implements IEventHandler<Transac
         event.eventId,
         event.timestamp,
       );
-
-      this.logger.log(`✅ [Projection] Transaction projection updated (failed): ${event.aggregateId}`);
-    } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to update transaction projection`, error);
+    } catch (error: unknown) {
+      this.logger.error(
+        `[Projection] Failed to update transaction projection [txId=${event.aggregateId}]`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
     }
   }
 }
-

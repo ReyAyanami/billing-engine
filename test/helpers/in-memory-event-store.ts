@@ -4,21 +4,66 @@ import { DomainEvent } from '../../src/cqrs/base/domain-event';
 import { IEventStore } from '../../src/cqrs/interfaces/event-store.interface';
 
 /**
- * In-memory event store for testing purposes.
+ * In-memory event store for testing purposes ONLY.
  * Provides fast, reliable event storage without Kafka overhead.
- * 
- * This is perfect for E2E tests that need to verify business logic
- * without the complexity of distributed systems.
+ *
+ * ⚠️ WARNING: This is a TEST-ONLY implementation!
+ * - Does NOT persist events (data lost on restart)
+ * - Does NOT support distributed systems
+ * - Does NOT scale beyond single process
+ *
+ * NEVER use this in production! Use KafkaEventStore instead.
  */
 @Injectable()
 export class InMemoryEventStore implements IEventStore {
   private readonly logger = new Logger(InMemoryEventStore.name);
   private readonly events: Map<string, DomainEvent[]> = new Map();
-  private readonly eventBus: EventBus;
 
   constructor(eventBus?: EventBus) {
-    this.eventBus = eventBus!;
-    this.logger.log('📦 InMemoryEventStore initialized (Test Mode)');
+    // GUARDRAIL: Prevent accidental production use
+    this.validateTestEnvironment();
+    void eventBus; // Reserved for future event publishing
+
+    this.logger.warn('⚠️  InMemoryEventStore initialized - TEST MODE ONLY');
+    this.logger.warn(
+      '⚠️  Events are NOT persisted and will be lost on restart!',
+    );
+  }
+
+  /**
+   * Validates that this is only used in test environment
+   * @throws Error if used in production
+   */
+  private validateTestEnvironment(): void {
+    const nodeEnv = process.env['NODE_ENV'];
+    const isTest =
+      nodeEnv === 'test' || process.env['JEST_WORKER_ID'] !== undefined;
+
+    if (!isTest) {
+      const error = `
+╔════════════════════════════════════════════════════════════════╗
+║  ⛔ CRITICAL ERROR: InMemoryEventStore in Production           ║
+╠════════════════════════════════════════════════════════════════╣
+║  InMemoryEventStore is a TEST-ONLY implementation!             ║
+║                                                                 ║
+║  Issues:                                                        ║
+║  - Events are NOT persisted (lost on restart)                  ║
+║  - No distributed system support                               ║
+║  - No event replay capability                                  ║
+║  - No scalability beyond single process                        ║
+║                                                                 ║
+║  ✅ Solution:                                                   ║
+║  Use AppModule (with KafkaEventStore) instead of AppTestModule ║
+║                                                                 ║
+║  Current NODE_ENV: ${nodeEnv || 'undefined'}                   ║
+╚════════════════════════════════════════════════════════════════╝
+      `;
+
+      this.logger.error(error);
+      throw new Error(
+        'InMemoryEventStore cannot be used outside test environment',
+      );
+    }
   }
 
   /**
@@ -45,15 +90,20 @@ export class InMemoryEventStore implements IEventStore {
     }
 
     // Store events (ensure they're valid DomainEvent objects)
-    const validEvents = events.filter(e => e && typeof e === 'object');
+    const validEvents = events.filter((e) => e && typeof e === 'object');
     if (validEvents.length !== events.length) {
-      this.logger.warn(`Filtered out ${events.length - validEvents.length} invalid events`);
+      this.logger.warn(
+        `Filtered out ${events.length - validEvents.length} invalid events`,
+      );
     }
-    
+
     if (validEvents.length > 0) {
-      this.logger.debug(`First event type: ${validEvents[0].constructor?.name || 'unknown'}`);
+      const firstEvent = validEvents[0];
+      this.logger.debug(
+        `First event type: ${firstEvent?.constructor?.name || 'unknown'}`,
+      );
     }
-    
+
     const allEvents = [...existingEvents, ...validEvents];
     this.events.set(key, allEvents);
 
@@ -79,23 +129,31 @@ export class InMemoryEventStore implements IEventStore {
     const storedEvents = this.events.get(key) || [];
 
     // Convert events to plain objects if they have toJSON method
-    const events = storedEvents.map(event => {
+    const events = storedEvents.map((event) => {
       if (event && typeof event.toJSON === 'function') {
-        return event.toJSON();
+        const jsonEvent = event.toJSON();
+        // Ensure timestamp is a string for deserialized events
+        if (jsonEvent['timestamp'] instanceof Date) {
+          jsonEvent['timestamp'] = (
+            jsonEvent['timestamp'] as Date
+          ).toISOString();
+        }
+        return jsonEvent;
       }
       return event;
     });
 
     // Apply version filter if specified
-    if (fromVersion !== undefined) {
-      return events.filter((e: any) => e.aggregateVersion >= fromVersion);
-    }
+    const filteredEvents =
+      fromVersion !== undefined
+        ? events.filter((e: any) => e.aggregateVersion >= fromVersion)
+        : events;
 
     this.logger.debug(
-      `📥 Retrieved ${events.length} event(s) for ${aggregateType}/${aggregateId}`,
+      `📥 Retrieved ${filteredEvents.length} event(s) for ${aggregateType}/${aggregateId}`,
     );
 
-    return events as any;
+    return filteredEvents as any;
   }
 
   /**
@@ -107,7 +165,7 @@ export class InMemoryEventStore implements IEventStore {
     fromTimestamp?: Date,
   ): AsyncGenerator<DomainEvent> {
     const prefix = `${aggregateType}:`;
-    
+
     for (const [key, events] of this.events.entries()) {
       if (key.startsWith(prefix)) {
         for (const event of events) {
@@ -150,4 +208,3 @@ export class InMemoryEventStore implements IEventStore {
     return `${aggregateType}:${aggregateId}`;
   }
 }
-

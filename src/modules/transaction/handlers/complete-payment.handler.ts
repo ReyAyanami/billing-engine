@@ -22,8 +22,11 @@ export class CompletePaymentHandler implements ICommandHandler<CompletePaymentCo
 
     try {
       // Load transaction aggregate from event history
-      const events = await this.eventStore.getEvents('Transaction', command.transactionId);
-      
+      const events = await this.eventStore.getEvents(
+        'Transaction',
+        command.transactionId,
+      );
+
       if (events.length === 0) {
         throw new Error(`Transaction not found: ${command.transactionId}`);
       }
@@ -44,7 +47,11 @@ export class CompletePaymentHandler implements ICommandHandler<CompletePaymentCo
 
       // Get and persist uncommitted events
       const newEvents = transaction.getUncommittedEvents();
-      await this.eventStore.append('Transaction', command.transactionId, newEvents);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        newEvents,
+      );
 
       // Publish events
       newEvents.forEach((event) => {
@@ -53,11 +60,15 @@ export class CompletePaymentHandler implements ICommandHandler<CompletePaymentCo
 
       transaction.commit();
 
-      this.logger.log(`✅ Payment transaction completed: ${command.transactionId}`);
+      this.logger.log(
+        `✅ Payment transaction completed: ${command.transactionId}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ Failed to complete payment ${command.transactionId}`, error);
+      this.logger.error(
+        `❌ Failed to complete payment ${command.transactionId}`,
+        error,
+      );
       throw error;
     }
   }
 }
-

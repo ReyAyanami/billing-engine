@@ -6,44 +6,65 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
-import { TransactionType, TransactionStatus } from '../transaction.entity';
+import { TransactionType, TransactionStatus } from '../transaction.types';
 
 /**
  * Transaction Projection (Read Model)
- * 
+ *
  * Denormalized view of transaction data optimized for fast queries.
  * Updated by event handlers when transaction events occur.
  */
 @Entity('transaction_projections')
 export class TransactionProjection {
   @PrimaryColumn('uuid')
-  id: string;
+  readonly id!: string;
 
   @Column({ type: 'enum', enum: TransactionType })
   @Index()
-  type: TransactionType;
+  readonly type!: TransactionType;
 
   @Column({ type: 'enum', enum: TransactionStatus })
   @Index()
-  status: TransactionStatus;
+  status!: TransactionStatus;
 
-  @Column({ type: 'numeric', precision: 20, scale: 2 })
-  amount: string;
+  @Column({ type: 'numeric', precision: 20, scale: 8 })
+  readonly amount!: string;
+
+  @Column({
+    name: 'source_signed_amount',
+    type: 'numeric',
+    precision: 20,
+    scale: 8,
+    nullable: true,
+    comment: 'Signed amount from source account perspective (usually negative)',
+  })
+  readonly sourceSignedAmount?: string;
+
+  @Column({
+    name: 'destination_signed_amount',
+    type: 'numeric',
+    precision: 20,
+    scale: 8,
+    nullable: true,
+    comment:
+      'Signed amount from destination account perspective (usually positive)',
+  })
+  readonly destinationSignedAmount?: string;
 
   @Column({ length: 3 })
-  currency: string;
+  readonly currency!: string;
 
   @Column({ name: 'source_account_id', type: 'uuid', nullable: true })
   @Index()
-  sourceAccountId?: string;
+  readonly sourceAccountId?: string;
 
   @Column({ name: 'destination_account_id', type: 'uuid', nullable: true })
   @Index()
-  destinationAccountId?: string;
+  readonly destinationAccountId?: string;
 
   @Column({ name: 'idempotency_key', length: 255, unique: true })
   @Index()
-  idempotencyKey: string;
+  readonly idempotencyKey!: string;
 
   @Column({ name: 'correlation_id', type: 'uuid', nullable: true })
   @Index()
@@ -55,15 +76,27 @@ export class TransactionProjection {
   @Column({ name: 'failure_code', length: 100, nullable: true })
   failureCode?: string;
 
-  @Column({ name: 'source_new_balance', type: 'numeric', precision: 20, scale: 2, nullable: true })
+  @Column({
+    name: 'source_new_balance',
+    type: 'numeric',
+    precision: 20,
+    scale: 8,
+    nullable: true,
+  })
   sourceNewBalance?: string;
 
-  @Column({ name: 'destination_new_balance', type: 'numeric', precision: 20, scale: 2, nullable: true })
+  @Column({
+    name: 'destination_new_balance',
+    type: 'numeric',
+    precision: 20,
+    scale: 8,
+    nullable: true,
+  })
   destinationNewBalance?: string;
 
   @CreateDateColumn({ name: 'requested_at' })
   @Index()
-  requestedAt: Date;
+  readonly requestedAt!: Date;
 
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt?: Date;
@@ -83,10 +116,10 @@ export class TransactionProjection {
   }>;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @Column({ name: 'aggregate_version', type: 'int', default: 0 })
-  aggregateVersion: number;
+  aggregateVersion!: number;
 
   @Column({ name: 'last_event_id', type: 'uuid', nullable: true })
   lastEventId?: string;
@@ -95,6 +128,5 @@ export class TransactionProjection {
   lastEventTimestamp?: Date;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }
-

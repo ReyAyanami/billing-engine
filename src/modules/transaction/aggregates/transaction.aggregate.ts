@@ -1,12 +1,20 @@
 import { AggregateRoot } from '../../../cqrs/base/aggregate-root';
+import { DeserializedEvent } from '../../../cqrs/base/deserialized-event.interface';
+import { JsonObject } from '../../../common/types/json.types';
+import { RefundMetadata } from '../../../common/types/metadata.types';
 import { TopupRequestedEvent } from '../events/topup-requested.event';
 import { TopupCompletedEvent } from '../events/topup-completed.event';
 import { WithdrawalRequestedEvent } from '../events/withdrawal-requested.event';
 import { WithdrawalCompletedEvent } from '../events/withdrawal-completed.event';
 import { TransferRequestedEvent } from '../events/transfer-requested.event';
 import { TransferCompletedEvent } from '../events/transfer-completed.event';
+import { PaymentRequestedEvent } from '../events/payment-requested.event';
+import { PaymentCompletedEvent } from '../events/payment-completed.event';
+import { RefundRequestedEvent } from '../events/refund-requested.event';
+import { RefundCompletedEvent } from '../events/refund-completed.event';
 import { TransactionFailedEvent } from '../events/transaction-failed.event';
 import { TransactionCompensatedEvent } from '../events/transaction-compensated.event';
+import { assertNever } from '../../../common/utils/exhaustive-check';
 
 /**
  * Transaction status enum
@@ -31,40 +39,40 @@ export enum TransactionType {
 
 /**
  * Transaction Aggregate - Event-Sourced Version
- * 
+ *
  * Manages the lifecycle of financial transactions.
  * Follows a state machine: PENDING → COMPLETED/FAILED
  */
 export class TransactionAggregate extends AggregateRoot {
   // Aggregate state (derived from events)
-  private transactionType: TransactionType;
-  private status: TransactionStatus;
-  private amount: string;
-  private currency: string;
+  private transactionType!: TransactionType;
+  private status!: TransactionStatus;
+  private amount!: string;
+  private currency!: string;
   private accountId?: string; // For topup/withdrawal
   private sourceAccountId?: string;
   private destinationAccountId?: string;
-  private idempotencyKey: string;
+  private idempotencyKey!: string;
   private failureReason?: string;
   private failureCode?: string;
-  private requestedAt: Date;
+  private requestedAt!: Date;
   private completedAt?: Date;
   private failedAt?: Date;
-  
+
   // Balance tracking (for completed transactions)
   private newBalance?: string;
   private sourceNewBalance?: string;
   private destinationNewBalance?: string;
 
-  // Compensation tracking
+  // Compensation tracking for saga rollbacks
   private compensationReason?: string;
-  private compensatedAt?: Date;
   private compensationActions?: Array<{
+    action: string;
     accountId: string;
-    action: 'CREDIT' | 'DEBIT';
     amount: string;
-    reason: string;
+    timestamp: string;
   }>;
+  private compensatedAt?: Date;
 
   protected getAggregateType(): string {
     return 'Transaction';
@@ -82,7 +90,7 @@ export class TransactionAggregate extends AggregateRoot {
     idempotencyKey: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Transaction must not already exist
     if (this.aggregateId) {
@@ -95,20 +103,18 @@ export class TransactionAggregate extends AggregateRoot {
     }
 
     // Create and apply the event
-    const event = new TopupRequestedEvent(
-      params.accountId,
-      params.amount,
-      params.currency,
-      params.sourceAccountId,
-      params.idempotencyKey,
-      {
-        aggregateId: params.transactionId,
-        aggregateVersion: 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new TopupRequestedEvent({
+      accountId: params.accountId,
+      amount: params.amount,
+      currency: params.currency,
+      sourceAccountId: params.sourceAccountId,
+      idempotencyKey: params.idempotencyKey,
+      aggregateId: params.transactionId,
+      aggregateVersion: 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -135,24 +141,22 @@ export class TransactionAggregate extends AggregateRoot {
     newBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Transaction must exist and be pending
     this.validateCanComplete();
 
-    const event = new TopupCompletedEvent(
-      this.accountId!,
-      this.amount,
-      params.newBalance,
-      new Date(),
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new TopupCompletedEvent({
+      accountId: this.accountId!,
+      amount: this.amount,
+      newBalance: params.newBalance,
+      completedAt: new Date(),
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -178,30 +182,30 @@ export class TransactionAggregate extends AggregateRoot {
     idempotencyKey: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     if (this.aggregateId) {
       throw new Error('Transaction already exists');
     }
 
     if (!params.accountId || !params.amount || !params.destinationAccountId) {
-      throw new Error('Account ID, amount, and destination account are required');
+      throw new Error(
+        'Account ID, amount, and destination account are required',
+      );
     }
 
-    const event = new WithdrawalRequestedEvent(
-      params.accountId,
-      params.amount,
-      params.currency,
-      params.destinationAccountId,
-      params.idempotencyKey,
-      {
-        aggregateId: params.transactionId,
-        aggregateVersion: 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new WithdrawalRequestedEvent({
+      accountId: params.accountId,
+      amount: params.amount,
+      currency: params.currency,
+      destinationAccountId: params.destinationAccountId,
+      idempotencyKey: params.idempotencyKey,
+      aggregateId: params.transactionId,
+      aggregateVersion: 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -228,23 +232,21 @@ export class TransactionAggregate extends AggregateRoot {
     newBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     this.validateCanComplete();
 
-    const event = new WithdrawalCompletedEvent(
-      this.accountId!,
-      this.amount,
-      params.newBalance,
-      new Date(),
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new WithdrawalCompletedEvent({
+      accountId: this.accountId!,
+      amount: this.amount,
+      newBalance: params.newBalance,
+      completedAt: new Date(),
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -270,34 +272,38 @@ export class TransactionAggregate extends AggregateRoot {
     idempotencyKey: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     if (this.aggregateId) {
       throw new Error('Transaction already exists');
     }
 
-    if (!params.sourceAccountId || !params.destinationAccountId || !params.amount) {
-      throw new Error('Source account, destination account, and amount are required');
+    if (
+      !params.sourceAccountId ||
+      !params.destinationAccountId ||
+      !params.amount
+    ) {
+      throw new Error(
+        'Source account, destination account, and amount are required',
+      );
     }
 
     if (params.sourceAccountId === params.destinationAccountId) {
       throw new Error('Cannot transfer to the same account');
     }
 
-    const event = new TransferRequestedEvent(
-      params.sourceAccountId,
-      params.destinationAccountId,
-      params.amount,
-      params.currency,
-      params.idempotencyKey,
-      {
-        aggregateId: params.transactionId,
-        aggregateVersion: 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new TransferRequestedEvent({
+      sourceAccountId: params.sourceAccountId,
+      destinationAccountId: params.destinationAccountId,
+      amount: params.amount,
+      currency: params.currency,
+      idempotencyKey: params.idempotencyKey,
+      aggregateId: params.transactionId,
+      aggregateVersion: 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -325,25 +331,23 @@ export class TransactionAggregate extends AggregateRoot {
     destinationNewBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     this.validateCanComplete();
 
-    const event = new TransferCompletedEvent(
-      this.sourceAccountId!,
-      this.destinationAccountId!,
-      this.amount,
-      params.sourceNewBalance,
-      params.destinationNewBalance,
-      new Date(),
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new TransferCompletedEvent({
+      sourceAccountId: this.sourceAccountId!,
+      destinationAccountId: this.destinationAccountId!,
+      amount: this.amount,
+      sourceNewBalance: params.sourceNewBalance,
+      destinationNewBalance: params.destinationNewBalance,
+      completedAt: new Date(),
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -368,45 +372,42 @@ export class TransactionAggregate extends AggregateRoot {
     amount: string;
     currency: string;
     idempotencyKey: string;
-    paymentMetadata?: {
-      orderId?: string;
-      invoiceId?: string;
-      description?: string;
-      merchantReference?: string;
-      [key: string]: any;
-    };
+    paymentMetadata?: Record<string, string | number | boolean>;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     if (this.aggregateId) {
       throw new Error('Transaction already exists');
     }
 
-    if (!params.customerAccountId || !params.merchantAccountId || !params.amount) {
-      throw new Error('Customer account, merchant account, and amount are required');
+    if (
+      !params.customerAccountId ||
+      !params.merchantAccountId ||
+      !params.amount
+    ) {
+      throw new Error(
+        'Customer account, merchant account, and amount are required',
+      );
     }
 
     if (params.customerAccountId === params.merchantAccountId) {
       throw new Error('Customer and merchant accounts must be different');
     }
 
-    const PaymentRequestedEvent = require('../events/payment-requested.event').PaymentRequestedEvent;
-    const event = new PaymentRequestedEvent(
-      params.customerAccountId,
-      params.merchantAccountId,
-      params.amount,
-      params.currency,
-      params.idempotencyKey,
-      {
-        aggregateId: params.transactionId,
-        aggregateVersion: 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-      params.paymentMetadata,
-    );
+    const event = new PaymentRequestedEvent({
+      customerAccountId: params.customerAccountId,
+      merchantAccountId: params.merchantAccountId,
+      amount: params.amount,
+      currency: params.currency,
+      idempotencyKey: params.idempotencyKey,
+      aggregateId: params.transactionId,
+      aggregateVersion: 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      paymentMetadata: params.paymentMetadata,
+    });
 
     this.apply(event);
   }
@@ -414,16 +415,16 @@ export class TransactionAggregate extends AggregateRoot {
   /**
    * Event handler for PaymentRequestedEvent
    */
-  onPaymentRequested(event: any): void {
+  onPaymentRequested(event: DeserializedEvent): void {
     this.aggregateId = event.aggregateId;
     this.transactionType = TransactionType.PAYMENT;
     this.status = TransactionStatus.PENDING;
-    this.sourceAccountId = event.customerAccountId;
-    this.destinationAccountId = event.merchantAccountId;
-    this.amount = event.amount;
-    this.currency = event.currency;
-    this.idempotencyKey = event.idempotencyKey;
-    this.requestedAt = event.timestamp;
+    this.sourceAccountId = event['customerAccountId'] as string;
+    this.destinationAccountId = event['merchantAccountId'] as string;
+    this.amount = event['amount'] as string;
+    this.currency = event['currency'] as string;
+    this.idempotencyKey = event['idempotencyKey'] as string;
+    this.requestedAt = new Date(event.timestamp);
   }
 
   /**
@@ -434,24 +435,21 @@ export class TransactionAggregate extends AggregateRoot {
     merchantNewBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     this.validateCanComplete();
 
-    const PaymentCompletedEvent = require('../events/payment-completed.event').PaymentCompletedEvent;
-    const event = new PaymentCompletedEvent(
-      this.aggregateId,
-      params.customerNewBalance,
-      params.merchantNewBalance,
-      new Date(),
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new PaymentCompletedEvent({
+      transactionId: this.aggregateId,
+      customerNewBalance: params.customerNewBalance,
+      merchantNewBalance: params.merchantNewBalance,
+      completedAt: new Date(),
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -459,11 +457,13 @@ export class TransactionAggregate extends AggregateRoot {
   /**
    * Event handler for PaymentCompletedEvent
    */
-  onPaymentCompleted(event: any): void {
+  onPaymentCompleted(event: DeserializedEvent): void {
     this.status = TransactionStatus.COMPLETED;
-    this.sourceNewBalance = event.customerNewBalance;
-    this.destinationNewBalance = event.merchantNewBalance;
-    this.completedAt = event.completedAt;
+    this.sourceNewBalance = event['customerNewBalance'] as string;
+    this.destinationNewBalance = event['merchantNewBalance'] as string;
+    this.completedAt = event['completedAt']
+      ? new Date(event['completedAt'] as string)
+      : undefined;
   }
 
   /**
@@ -477,45 +477,43 @@ export class TransactionAggregate extends AggregateRoot {
     refundAmount: string;
     currency: string;
     idempotencyKey: string;
-    refundMetadata?: {
-      reason?: string;
-      refundType?: 'full' | 'partial';
-      notes?: string;
-      [key: string]: any;
-    };
+    refundMetadata?: RefundMetadata;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     if (this.aggregateId) {
       throw new Error('Transaction already exists');
     }
 
-    if (!params.merchantAccountId || !params.customerAccountId || !params.refundAmount) {
-      throw new Error('Merchant account, customer account, and refund amount are required');
+    if (
+      !params.merchantAccountId ||
+      !params.customerAccountId ||
+      !params.refundAmount
+    ) {
+      throw new Error(
+        'Merchant account, customer account, and refund amount are required',
+      );
     }
 
     if (params.merchantAccountId === params.customerAccountId) {
       throw new Error('Merchant and customer accounts must be different');
     }
 
-    const RefundRequestedEvent = require('../events/refund-requested.event').RefundRequestedEvent;
-    const event = new RefundRequestedEvent(
-      params.originalPaymentId,
-      params.merchantAccountId,
-      params.customerAccountId,
-      params.refundAmount,
-      params.currency,
-      params.idempotencyKey,
-      {
-        aggregateId: params.refundId,
-        aggregateVersion: 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-      params.refundMetadata,
-    );
+    const event = new RefundRequestedEvent({
+      originalPaymentId: params.originalPaymentId,
+      merchantAccountId: params.merchantAccountId,
+      customerAccountId: params.customerAccountId,
+      refundAmount: params.refundAmount,
+      currency: params.currency,
+      idempotencyKey: params.idempotencyKey,
+      aggregateId: params.refundId,
+      aggregateVersion: 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      refundMetadata: params.refundMetadata,
+    });
 
     this.apply(event);
   }
@@ -523,16 +521,16 @@ export class TransactionAggregate extends AggregateRoot {
   /**
    * Event handler for RefundRequestedEvent
    */
-  onRefundRequested(event: any): void {
+  onRefundRequested(event: DeserializedEvent): void {
     this.aggregateId = event.aggregateId;
     this.transactionType = TransactionType.REFUND;
     this.status = TransactionStatus.PENDING;
-    this.sourceAccountId = event.merchantAccountId;
-    this.destinationAccountId = event.customerAccountId;
-    this.amount = event.refundAmount;
-    this.currency = event.currency;
-    this.idempotencyKey = event.idempotencyKey;
-    this.requestedAt = event.timestamp;
+    this.sourceAccountId = event['merchantAccountId'] as string;
+    this.destinationAccountId = event['customerAccountId'] as string;
+    this.amount = event['refundAmount'] as string;
+    this.currency = event['currency'] as string;
+    this.idempotencyKey = event['idempotencyKey'] as string;
+    this.requestedAt = new Date(event.timestamp);
   }
 
   /**
@@ -543,24 +541,21 @@ export class TransactionAggregate extends AggregateRoot {
     customerNewBalance: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     this.validateCanComplete();
 
-    const RefundCompletedEvent = require('../events/refund-completed.event').RefundCompletedEvent;
-    const event = new RefundCompletedEvent(
-      this.aggregateId,
-      params.merchantNewBalance,
-      params.customerNewBalance,
-      new Date(),
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new RefundCompletedEvent({
+      refundId: this.aggregateId,
+      merchantNewBalance: params.merchantNewBalance,
+      customerNewBalance: params.customerNewBalance,
+      completedAt: new Date(),
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -568,11 +563,13 @@ export class TransactionAggregate extends AggregateRoot {
   /**
    * Event handler for RefundCompletedEvent
    */
-  onRefundCompleted(event: any): void {
+  onRefundCompleted(event: DeserializedEvent): void {
     this.status = TransactionStatus.COMPLETED;
-    this.sourceNewBalance = event.merchantNewBalance;
-    this.destinationNewBalance = event.customerNewBalance;
-    this.completedAt = event.completedAt;
+    this.sourceNewBalance = event['merchantNewBalance'] as string;
+    this.destinationNewBalance = event['customerNewBalance'] as string;
+    this.completedAt = event['completedAt']
+      ? new Date(event['completedAt'] as string)
+      : undefined;
   }
 
   /**
@@ -583,7 +580,7 @@ export class TransactionAggregate extends AggregateRoot {
     errorCode: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Transaction must exist and be pending
     if (!this.aggregateId) {
@@ -594,18 +591,16 @@ export class TransactionAggregate extends AggregateRoot {
       throw new Error(`Cannot fail transaction with status: ${this.status}`);
     }
 
-    const event = new TransactionFailedEvent(
-      params.reason,
-      params.errorCode,
-      new Date(),
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new TransactionFailedEvent({
+      reason: params.reason,
+      errorCode: params.errorCode,
+      failedAt: new Date(),
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -634,7 +629,7 @@ export class TransactionAggregate extends AggregateRoot {
     }>;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Transaction must exist
     if (!this.aggregateId) {
@@ -650,42 +645,73 @@ export class TransactionAggregate extends AggregateRoot {
       throw new Error('Transaction is already compensated');
     }
 
-    const event = new TransactionCompensatedEvent(
-      this.aggregateId,
-      params.reason,
-      params.compensationActions,
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new TransactionCompensatedEvent({
+      transactionId: this.aggregateId,
+      reason: params.reason,
+      compensationActions: params.compensationActions,
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
 
   /**
    * Event handler for TransactionCompensatedEvent
+   * Stores compensation details for saga rollback tracking
    */
   onTransactionCompensated(event: TransactionCompensatedEvent): void {
     this.status = TransactionStatus.COMPENSATED;
     this.compensationReason = event.reason;
-    this.compensationActions = event.compensationActions;
-    this.compensatedAt = event.compensatedAt;
+    this.compensationActions = event.compensationActions.map((action) => ({
+      ...action,
+      timestamp: event.timestamp.toISOString(),
+    }));
+    this.compensatedAt = event.timestamp;
   }
 
   /**
    * Validates that transaction can be completed
+   * Uses exhaustive checking to ensure all status values are considered
    */
   private validateCanComplete(): void {
     if (!this.aggregateId) {
       throw new Error('Transaction does not exist');
     }
 
-    if (this.status !== TransactionStatus.PENDING) {
-      throw new Error(`Cannot complete transaction with status: ${this.status}`);
+    // Check if current status allows completion
+    if (!this.canTransitionToCompleted(this.status)) {
+      throw new Error(
+        `Cannot complete transaction with status: ${this.status}`,
+      );
+    }
+  }
+
+  /**
+   * Checks if a transaction can transition to COMPLETED status.
+   * Uses exhaustive checking to ensure all TransactionStatus values are handled.
+   */
+  private canTransitionToCompleted(status: TransactionStatus): boolean {
+    switch (status) {
+      case TransactionStatus.PENDING:
+        return true; // Can complete from pending
+
+      case TransactionStatus.COMPLETED:
+        return false; // Already completed
+
+      case TransactionStatus.FAILED:
+        return false; // Cannot complete a failed transaction
+
+      case TransactionStatus.COMPENSATED:
+        return false; // Cannot complete a compensated transaction
+
+      default:
+        // Compile-time exhaustiveness check
+        // If a new TransactionStatus is added, this will cause a type error
+        return assertNever(status);
     }
   }
 
@@ -744,10 +770,57 @@ export class TransactionAggregate extends AggregateRoot {
     return this.failureReason;
   }
 
+  getCompensationReason(): string | undefined {
+    return this.compensationReason;
+  }
+
+  getCompensationActions():
+    | Array<{
+        action: string;
+        accountId: string;
+        amount: string;
+        timestamp: string;
+      }>
+    | undefined {
+    return this.compensationActions;
+  }
+
+  getCompensatedAt(): Date | undefined {
+    return this.compensatedAt;
+  }
+
+  /**
+   * Gets a human-readable label for the transaction type.
+   * Uses exhaustive checking to ensure all TransactionType values are handled.
+   */
+  getTransactionTypeLabel(): string {
+    switch (this.transactionType) {
+      case TransactionType.TOPUP:
+        return 'Top-up';
+
+      case TransactionType.WITHDRAWAL:
+        return 'Withdrawal';
+
+      case TransactionType.TRANSFER:
+        return 'Transfer';
+
+      case TransactionType.PAYMENT:
+        return 'Payment';
+
+      case TransactionType.REFUND:
+        return 'Refund';
+
+      default:
+        // Compile-time exhaustiveness check
+        // If a new TransactionType is added, this will cause a type error
+        return assertNever(this.transactionType);
+    }
+  }
+
   /**
    * Returns a snapshot of the current state
    */
-  toSnapshot(): Record<string, any> {
+  toSnapshot(): JsonObject {
     return {
       aggregateId: this.aggregateId,
       version: this.version,
@@ -755,19 +828,21 @@ export class TransactionAggregate extends AggregateRoot {
       status: this.status,
       amount: this.amount,
       currency: this.currency,
-      accountId: this.accountId,
-      sourceAccountId: this.sourceAccountId,
-      destinationAccountId: this.destinationAccountId,
+      accountId: this.accountId ?? null,
+      sourceAccountId: this.sourceAccountId ?? null,
+      destinationAccountId: this.destinationAccountId ?? null,
       idempotencyKey: this.idempotencyKey,
-      newBalance: this.newBalance,
-      sourceNewBalance: this.sourceNewBalance,
-      destinationNewBalance: this.destinationNewBalance,
-      failureReason: this.failureReason,
-      failureCode: this.failureCode,
-      requestedAt: this.requestedAt,
-      completedAt: this.completedAt,
-      failedAt: this.failedAt,
+      newBalance: this.newBalance ?? null,
+      compensationReason: this.compensationReason ?? null,
+      compensationActions: this.compensationActions ?? null,
+      compensatedAt: this.compensatedAt?.toISOString() ?? null,
+      sourceNewBalance: this.sourceNewBalance ?? null,
+      destinationNewBalance: this.destinationNewBalance ?? null,
+      failureReason: this.failureReason ?? null,
+      failureCode: this.failureCode ?? null,
+      requestedAt: this.requestedAt.toISOString(),
+      completedAt: this.completedAt?.toISOString() ?? null,
+      failedAt: this.failedAt?.toISOString() ?? null,
     };
   }
 }
-

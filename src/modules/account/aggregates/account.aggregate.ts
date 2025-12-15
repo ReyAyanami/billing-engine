@@ -1,29 +1,31 @@
 import { AggregateRoot } from '../../../cqrs/base/aggregate-root';
+import { JsonObject } from '../../../common/types/json.types';
 import { AccountCreatedEvent } from '../events/account-created.event';
 import { BalanceChangedEvent } from '../events/balance-changed.event';
 import { AccountStatusChangedEvent } from '../events/account-status-changed.event';
 import { AccountLimitsChangedEvent } from '../events/account-limits-changed.event';
-import { AccountType, AccountStatus } from '../account.entity';
+import { AccountType, AccountStatus } from '../account.types';
 import Decimal from 'decimal.js';
+import { assertNever } from '../../../common/utils/exhaustive-check';
 
 /**
  * Account Aggregate - Event-Sourced Version
- * 
+ *
  * This aggregate encapsulates all business logic for accounts.
  * It maintains state by applying domain events and ensures business rules are enforced.
  */
 export class AccountAggregate extends AggregateRoot {
   // Aggregate state (derived from events)
-  private ownerId: string;
-  private ownerType: string;
-  private accountType: AccountType;
-  private currency: string;
-  private status: AccountStatus;
+  private ownerId!: string;
+  private ownerType!: string;
+  private accountType!: AccountType;
+  private currency!: string;
+  private status!: AccountStatus;
   private balance: Decimal = new Decimal(0);
   private maxBalance?: Decimal;
   private minBalance?: Decimal;
-  private createdAt: Date;
-  private updatedAt: Date;
+  private createdAt!: Date;
+  private updatedAt!: Date;
 
   protected getAggregateType(): string {
     return 'Account';
@@ -43,7 +45,7 @@ export class AccountAggregate extends AggregateRoot {
     minBalance?: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Account must not already exist
     if (this.aggregateId) {
@@ -56,23 +58,21 @@ export class AccountAggregate extends AggregateRoot {
     }
 
     // Create and apply the event
-    const event = new AccountCreatedEvent(
-      params.ownerId,
-      params.ownerType,
-      params.accountType,
-      params.currency,
-      AccountStatus.ACTIVE,
-      '0.00', // Initial balance
-      {
-        aggregateId: params.accountId,
-        aggregateVersion: 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-      params.maxBalance,
-      params.minBalance,
-    );
+    const event = new AccountCreatedEvent({
+      ownerId: params.ownerId,
+      ownerType: params.ownerType,
+      accountType: params.accountType,
+      currency: params.currency,
+      status: AccountStatus.ACTIVE,
+      balance: '0.00', // Initial balance
+      aggregateId: params.accountId,
+      aggregateVersion: 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      maxBalance: params.maxBalance,
+      minBalance: params.minBalance,
+    });
 
     this.apply(event);
   }
@@ -89,8 +89,12 @@ export class AccountAggregate extends AggregateRoot {
     this.currency = event.currency;
     this.status = event.status;
     this.balance = new Decimal(0);
-    this.maxBalance = event.maxBalance ? new Decimal(event.maxBalance) : undefined;
-    this.minBalance = event.minBalance ? new Decimal(event.minBalance) : undefined;
+    this.maxBalance = event.maxBalance
+      ? new Decimal(event.maxBalance)
+      : undefined;
+    this.minBalance = event.minBalance
+      ? new Decimal(event.minBalance)
+      : undefined;
     this.createdAt = event.timestamp;
     this.updatedAt = event.timestamp;
   }
@@ -149,7 +153,7 @@ export class AccountAggregate extends AggregateRoot {
     transactionId?: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Account must exist
     if (!this.aggregateId) {
@@ -158,46 +162,67 @@ export class AccountAggregate extends AggregateRoot {
 
     // Validate: Account must be active
     if (this.status !== AccountStatus.ACTIVE) {
-      throw new Error(`Cannot change balance on account with status: ${this.status}`);
+      throw new Error(
+        `Cannot change balance on account with status: ${this.status}`,
+      );
     }
 
-    // Calculate new balance
+    // Step 1: Validate changeAmount is positive
     const changeAmount = new Decimal(params.changeAmount);
+    if (changeAmount.lessThanOrEqualTo(0)) {
+      throw new Error(
+        `Change amount must be positive, got: ${params.changeAmount}`,
+      );
+    }
+
+    // Step 2: Calculate signed amount based on changeType
+    let signedAmount: Decimal;
+    switch (params.changeType) {
+      case 'CREDIT':
+        signedAmount = changeAmount; // Positive for money in
+        break;
+      case 'DEBIT':
+        signedAmount = changeAmount.neg(); // Negative for money out
+        break;
+      default:
+        throw new Error(`Unknown changeType: ${params.changeType}`);
+    }
+
+    // Step 3: Calculate new balance using verified signedAmount
     const previousBalance = this.balance;
-    const newBalance =
-      params.changeType === 'CREDIT'
-        ? previousBalance.plus(changeAmount)
-        : previousBalance.minus(changeAmount);
+    const newBalance = previousBalance.plus(signedAmount);
 
     // Validate: Check limits
     if (this.maxBalance && newBalance.greaterThan(this.maxBalance)) {
       throw new Error(
-        `New balance ${newBalance} would exceed max balance ${this.maxBalance}`,
+        `New balance ${newBalance.toString()} would exceed max balance ${this.maxBalance.toString()}`,
       );
     }
 
-    if (this.minBalance && newBalance.lessThan(this.minBalance)) {
+    // For accounts with minBalance set, check against that
+    // For accounts without minBalance set, prevent negative balances by default
+    const effectiveMinBalance = this.minBalance || new Decimal(0);
+    if (newBalance.lessThan(effectiveMinBalance)) {
       throw new Error(
-        `New balance ${newBalance} would be below min balance ${this.minBalance}`,
+        `Insufficient balance: current ${previousBalance.toString()}, attempting to ${params.changeType} ${changeAmount.toString()}, would result in ${newBalance.toString()}`,
       );
     }
 
     // Create and apply the event
-    const event = new BalanceChangedEvent(
-      previousBalance.toString(),
-      newBalance.toString(),
-      changeAmount.toString(),
-      params.changeType,
-      params.reason,
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-      params.transactionId,
-    );
+    const event = new BalanceChangedEvent({
+      previousBalance: previousBalance.toString(),
+      newBalance: newBalance.toString(),
+      changeAmount: changeAmount.toString(),
+      changeType: params.changeType,
+      signedAmount: signedAmount.toString(),
+      reason: params.reason,
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      transactionId: params.transactionId,
+    });
 
     this.apply(event);
   }
@@ -220,7 +245,7 @@ export class AccountAggregate extends AggregateRoot {
     reason: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Account must exist
     if (!this.aggregateId) {
@@ -233,23 +258,19 @@ export class AccountAggregate extends AggregateRoot {
     }
 
     // Validate: Status transitions (business rules)
-    if (this.status === AccountStatus.CLOSED) {
-      throw new Error('Cannot change status of a closed account');
-    }
+    this.validateStatusTransition(this.status, params.newStatus);
 
     // Create and apply the event
-    const event = new AccountStatusChangedEvent(
-      this.status,
-      params.newStatus,
-      params.reason,
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-    );
+    const event = new AccountStatusChangedEvent({
+      previousStatus: this.status,
+      newStatus: params.newStatus,
+      reason: params.reason,
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
 
     this.apply(event);
   }
@@ -273,7 +294,7 @@ export class AccountAggregate extends AggregateRoot {
     reason?: string;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, string | number | boolean | undefined>;
   }): void {
     // Validate: Account must exist
     if (!this.aggregateId) {
@@ -299,7 +320,7 @@ export class AccountAggregate extends AggregateRoot {
       const max = new Decimal(params.newMaxBalance);
       if (this.balance.greaterThan(max)) {
         throw new Error(
-          `Current balance ${this.balance} exceeds new max ${max}`,
+          `Current balance ${this.balance.toString()} exceeds new max ${max.toString()}`,
         );
       }
     }
@@ -308,26 +329,24 @@ export class AccountAggregate extends AggregateRoot {
       const min = new Decimal(params.newMinBalance);
       if (this.balance.lessThan(min)) {
         throw new Error(
-          `Current balance ${this.balance} is below new min ${min}`,
+          `Current balance ${this.balance.toString()} is below new min ${min.toString()}`,
         );
       }
     }
 
     // Create and apply the event
-    const event = new AccountLimitsChangedEvent(
-      {
-        aggregateId: this.aggregateId,
-        aggregateVersion: this.version + 1,
-        correlationId: params.correlationId,
-        causationId: params.causationId,
-        metadata: params.metadata,
-      },
-      this.maxBalance?.toString(),
-      params.newMaxBalance,
-      this.minBalance?.toString(),
-      params.newMinBalance,
-      params.reason,
-    );
+    const event = new AccountLimitsChangedEvent({
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+      previousMaxBalance: this.maxBalance?.toString(),
+      newMaxBalance: params.newMaxBalance,
+      previousMinBalance: this.minBalance?.toString(),
+      newMinBalance: params.newMinBalance,
+      reason: params.reason,
+    });
 
     this.apply(event);
   }
@@ -347,10 +366,49 @@ export class AccountAggregate extends AggregateRoot {
   }
 
   /**
+   * Validates status transition using exhaustive checking.
+   * Ensures all AccountStatus enum values are handled.
+   */
+  private validateStatusTransition(
+    currentStatus: AccountStatus,
+    newStatus: AccountStatus,
+  ): void {
+    const validTransitions = this.getValidStatusTransitions(currentStatus);
+
+    if (!validTransitions.includes(newStatus)) {
+      throw new Error(
+        `Invalid status transition from ${currentStatus} to ${newStatus}`,
+      );
+    }
+  }
+
+  /**
+   * Returns valid status transitions for a given status.
+   * Uses exhaustive checking to ensure all enum values are handled.
+   */
+  private getValidStatusTransitions(status: AccountStatus): AccountStatus[] {
+    switch (status) {
+      case AccountStatus.ACTIVE:
+        return [AccountStatus.SUSPENDED, AccountStatus.CLOSED];
+
+      case AccountStatus.SUSPENDED:
+        return [AccountStatus.ACTIVE, AccountStatus.CLOSED];
+
+      case AccountStatus.CLOSED:
+        return []; // Terminal state - no transitions allowed
+
+      default:
+        // Compile-time exhaustiveness check
+        // If a new AccountStatus is added, this will cause a type error
+        return assertNever(status);
+    }
+  }
+
+  /**
    * Returns a snapshot of the current state
    * Useful for debugging and projections
    */
-  toSnapshot(): Record<string, any> {
+  toSnapshot(): JsonObject {
     return {
       aggregateId: this.aggregateId,
       version: this.version,
@@ -360,11 +418,10 @@ export class AccountAggregate extends AggregateRoot {
       currency: this.currency,
       status: this.status,
       balance: this.balance.toString(),
-      maxBalance: this.maxBalance?.toString(),
-      minBalance: this.minBalance?.toString(),
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
+      maxBalance: this.maxBalance?.toString() ?? null,
+      minBalance: this.minBalance?.toString() ?? null,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
     };
   }
 }
-

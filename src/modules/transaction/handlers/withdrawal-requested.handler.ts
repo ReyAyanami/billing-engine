@@ -1,53 +1,72 @@
-import { EventsHandler, IEventHandler, CommandBus } from '@nestjs/cqrs';
-import { Logger } from '@nestjs/common';
+import { IEventHandler, CommandBus } from '@nestjs/cqrs';
+import { Injectable, Logger } from '@nestjs/common';
+import { SagaHandler } from '../../../cqrs/decorators/saga-handler.decorator';
+import { SagaCoordinator } from '../../../cqrs/saga/saga-coordinator.service';
 import { WithdrawalRequestedEvent } from '../events/withdrawal-requested.event';
 import { UpdateBalanceCommand } from '../../account/commands/update-balance.command';
 import { CompleteWithdrawalCommand } from '../commands/complete-withdrawal.command';
 import { FailTransactionCommand } from '../commands/fail-transaction.command';
 
 /**
- * Event handler for WithdrawalRequestedEvent (Saga Coordinator).
- * 
- * This implements the Transaction Saga pattern for withdrawals:
- * 1. Listen for WithdrawalRequested
- * 2. Update account balance (via UpdateBalanceCommand - DEBIT)
- * 3. On success: Complete transaction (via CompleteWithdrawalCommand)
- * 4. On failure: Fail transaction (via FailTransactionCommand)
- * 
- * This ensures consistency across Transaction and Account aggregates.
+ * Saga Coordinator for Withdrawal transactions
+ *
+ * Orchestrates the withdrawal business process:
+ * 1. Listen for WithdrawalRequested event
+ * 2. Update account balance (DEBIT)
+ * 3. On success: Complete transaction
+ * 4. On failure: Fail transaction
+ *
+ * Runs synchronously and tracks saga state for monitoring.
  */
-@EventsHandler(WithdrawalRequestedEvent)
+@Injectable()
+@SagaHandler(WithdrawalRequestedEvent)
 export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalRequestedEvent> {
   private readonly logger = new Logger(WithdrawalRequestedHandler.name);
 
-  constructor(private commandBus: CommandBus) {}
+  constructor(
+    private commandBus: CommandBus,
+    private sagaCoordinator: SagaCoordinator,
+  ) {}
 
   async handle(event: WithdrawalRequestedEvent): Promise<void> {
-    this.logger.log(`📨 SAGA: Handling WithdrawalRequestedEvent: ${event.aggregateId}`);
-    this.logger.log(`   Account: ${event.accountId}`);
-    this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
-    this.logger.log(`   Destination: ${event.destinationAccountId}`);
+    // Start saga tracking
+    await this.sagaCoordinator.startSaga({
+      sagaId: event.aggregateId,
+      sagaType: 'withdrawal',
+      correlationId: event.correlationId,
+      steps: ['update_balance', 'complete_transaction'],
+      metadata: event.metadata,
+    });
+
+    this.logger.log(
+      `SAGA: Withdrawal initiated [txId=${event.aggregateId}, accountId=${event.accountId}, ` +
+        `amt=${event.amount} ${event.currency}]`,
+    );
 
     try {
       // Step 1: Update account balance (DEBIT)
-      this.logger.log(`   ⚙️  Step 1: Debiting account balance...`);
-      
-      const updateBalanceCommand = new UpdateBalanceCommand(
-        event.accountId,
-        event.amount,
-        'DEBIT', // Withdrawal is always a debit
-        `Withdrawal from transaction ${event.aggregateId}`,
-        event.aggregateId,
-        event.correlationId,
-        event.metadata?.actorId,
-      );
+      const updateBalanceCommand = new UpdateBalanceCommand({
+        accountId: event.accountId,
+        changeAmount: event.amount,
+        changeType: 'DEBIT',
+        reason: `Withdrawal from transaction ${event.aggregateId}`,
+        transactionId: event.aggregateId,
+        correlationId: event.correlationId,
+        actorId: event.metadata?.actorId,
+      });
 
-      const newBalance = await this.commandBus.execute(updateBalanceCommand);
-      this.logger.log(`   ✅ Account balance updated: ${newBalance}`);
+      const newBalance = await this.commandBus.execute<
+        UpdateBalanceCommand,
+        string
+      >(updateBalanceCommand);
+
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'update_balance',
+        result: { newBalance },
+      });
 
       // Step 2: Complete the transaction
-      this.logger.log(`   ⚙️  Step 2: Completing transaction...`);
-      
       const completeCommand = new CompleteWithdrawalCommand(
         event.aggregateId,
         newBalance,
@@ -56,30 +75,51 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
       );
 
       await this.commandBus.execute(completeCommand);
-      this.logger.log(`   ✅ Transaction completed: ${event.aggregateId}`);
 
-      this.logger.log(`✅ SAGA: Withdrawal completed successfully!`);
-    } catch (error) {
-      // Step 3 (on failure): Fail the transaction
-      this.logger.error(`   ❌ SAGA: Withdrawal failed: ${error.message}`);
-      this.logger.log(`   ⚙️  Step 3: Marking transaction as failed...`);
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'complete_transaction',
+        result: { newBalance },
+      });
+
+      this.logger.log(
+        `SAGA: Withdrawal completed [txId=${event.aggregateId}, balance=${newBalance}]`,
+      );
+    } catch (error: unknown) {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      const errorCode = (error as { code?: string })?.code ?? undefined;
+
+      this.logger.error(
+        `SAGA: Withdrawal failed [txId=${event.aggregateId}]`,
+        errorObj.stack,
+      );
+
+      await this.sagaCoordinator.failSaga({
+        sagaId: event.aggregateId,
+        step: 'update_balance',
+        error: errorObj,
+        canCompensate: false,
+      });
 
       try {
         const failCommand = new FailTransactionCommand(
           event.aggregateId,
-          error.message,
-          error.code || 'WITHDRAWAL_FAILED',
+          errorObj.message,
+          errorCode ?? 'WITHDRAWAL_FAILED',
           event.correlationId,
           event.metadata?.actorId,
         );
 
         await this.commandBus.execute(failCommand);
-        this.logger.log(`   ✅ Transaction marked as failed`);
       } catch (failError) {
-        this.logger.error(`   ❌ SAGA: Failed to mark transaction as failed`, failError);
-        // This is critical - we should alert/retry
+        const failErrorStack =
+          failError instanceof Error ? failError.stack : undefined;
+        this.logger.error(
+          `SAGA: Failed to mark transaction as failed [txId=${event.aggregateId}]`,
+          failErrorStack,
+        );
       }
     }
   }
 }
-

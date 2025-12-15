@@ -3,13 +3,13 @@ import {
   IsString,
   IsNotEmpty,
   IsUUID,
-  IsNumber,
-  IsPositive,
   IsOptional,
   IsObject,
   MinLength,
   MaxLength,
 } from 'class-validator';
+import type { PaymentMetadata } from '../../../common/types/metadata.types';
+import { IsPositiveAmount } from '../../../common/validation/amount.validator';
 
 /**
  * DTO for creating a payment transaction.
@@ -22,7 +22,7 @@ export class CreatePaymentDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  customerAccountId: string;
+  customerAccountId!: string;
 
   @ApiProperty({
     description: 'Merchant account ID (will be credited)',
@@ -30,7 +30,7 @@ export class CreatePaymentDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  merchantAccountId: string;
+  merchantAccountId!: string;
 
   @ApiProperty({
     description: 'Payment amount (must be positive)',
@@ -38,7 +38,8 @@ export class CreatePaymentDto {
   })
   @IsString()
   @IsNotEmpty()
-  amount: string;
+  @IsPositiveAmount()
+  amount!: string;
 
   @ApiProperty({
     description: 'Currency code (ISO 4217)',
@@ -48,7 +49,7 @@ export class CreatePaymentDto {
   @MinLength(3)
   @MaxLength(3)
   @IsNotEmpty()
-  currency: string;
+  currency!: string;
 
   @ApiPropertyOptional({
     description: 'Idempotency key (auto-generated if not provided)',
@@ -69,12 +70,5 @@ export class CreatePaymentDto {
   })
   @IsObject()
   @IsOptional()
-  paymentMetadata?: {
-    orderId?: string;
-    invoiceId?: string;
-    description?: string;
-    merchantReference?: string;
-    [key: string]: any;
-  };
+  paymentMetadata?: PaymentMetadata;
 }
-

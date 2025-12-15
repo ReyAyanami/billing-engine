@@ -22,8 +22,11 @@ export class CompleteRefundHandler implements ICommandHandler<CompleteRefundComm
 
     try {
       // Load refund aggregate from event history
-      const events = await this.eventStore.getEvents('Transaction', command.refundId);
-      
+      const events = await this.eventStore.getEvents(
+        'Transaction',
+        command.refundId,
+      );
+
       if (events.length === 0) {
         throw new Error(`Refund not found: ${command.refundId}`);
       }
@@ -55,9 +58,11 @@ export class CompleteRefundHandler implements ICommandHandler<CompleteRefundComm
 
       this.logger.log(`✅ Refund transaction completed: ${command.refundId}`);
     } catch (error) {
-      this.logger.error(`❌ Failed to complete refund ${command.refundId}`, error);
+      this.logger.error(
+        `❌ Failed to complete refund ${command.refundId}`,
+        error,
+      );
       throw error;
     }
   }
 }
-

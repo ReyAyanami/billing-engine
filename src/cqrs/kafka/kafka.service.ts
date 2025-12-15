@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { Kafka, Producer, Consumer, Admin, KafkaConfig } from 'kafkajs';
 import { ConfigService } from '@nestjs/config';
 
@@ -16,10 +21,16 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private configService: ConfigService) {
     const brokers = this.configService
-      .get<string>('KAFKA_BROKERS', 'localhost:9092,localhost:9093,localhost:9094')
+      .get<string>(
+        'KAFKA_BROKERS',
+        'localhost:9092,localhost:9093,localhost:9094',
+      )
       .split(',');
 
-    const clientId = this.configService.get<string>('KAFKA_CLIENT_ID', 'billing-engine');
+    const clientId = this.configService.get<string>(
+      'KAFKA_CLIENT_ID',
+      'billing-engine',
+    );
 
     const kafkaConfig: KafkaConfig = {
       clientId,
@@ -31,7 +42,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         multiplier: 2,
       },
       connectionTimeout: 10000,
-      requestTimeout: 30000,
+      // Note: requestTimeout removed to prevent negative timeout calculations in KafkaJS
+      // KafkaJS will use its default timeout (30000ms) which works better with retries
     };
 
     this.kafka = new Kafka(kafkaConfig);
@@ -51,7 +63,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     this.admin = this.kafka.admin();
   }
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     try {
       await this.producer.connect();
       this.logger.log('✅ Kafka producer connected');
@@ -62,14 +74,16 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       // List topics to verify connection
       const topics = await this.admin.listTopics();
       const billingTopics = topics.filter((t) => t.startsWith('billing.'));
-      this.logger.log(`📋 Found ${billingTopics.length} billing topics: ${billingTopics.join(', ')}`);
+      this.logger.log(
+        `📋 Found ${billingTopics.length} billing topics: ${billingTopics.join(', ')}`,
+      );
     } catch (error) {
       this.logger.error('❌ Failed to connect to Kafka', error);
       throw error;
     }
   }
 
-  async onModuleDestroy() {
+  async onModuleDestroy(): Promise<void> {
     this.logger.log('Disconnecting from Kafka...');
 
     try {
@@ -145,4 +159,3 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-

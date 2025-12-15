@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CqrsModule } from '@nestjs/cqrs';
-import { Transaction } from './transaction.entity';
+import { CqrsSagaModule } from '../../cqrs/cqrs-saga.module';
 import { TransactionService } from './transaction.service';
 import { TransactionController } from './transaction.controller';
 import { AccountModule } from '../account/account.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { AuditModule } from '../audit/audit.module';
-import { PipelineModule } from './pipeline/pipeline.module';
 
 // CQRS Components - Commands
 import { TopupHandler } from './handlers/topup.handler';
@@ -30,7 +29,7 @@ import { TransferRequestedHandler } from './handlers/transfer-requested.handler'
 import { PaymentRequestedHandler } from './handlers/payment-requested.handler';
 import { RefundRequestedHandler } from './handlers/refund-requested.handler';
 
-// CQRS Components - Events (Projections)
+// CQRS Components - Events (Projections only - pure event sourcing)
 import { TopupRequestedProjectionHandler } from './handlers/projection/topup-requested-projection.handler';
 import { TopupCompletedProjectionHandler } from './handlers/projection/topup-completed-projection.handler';
 import { WithdrawalRequestedProjectionHandler } from './handlers/projection/withdrawal-requested-projection.handler';
@@ -74,7 +73,7 @@ const EventHandlers = [
   TransferRequestedHandler,
   PaymentRequestedHandler,
   RefundRequestedHandler,
-  // Projection updaters
+  // Projection updaters only (pure event sourcing)
   TopupRequestedProjectionHandler,
   TopupCompletedProjectionHandler,
   WithdrawalRequestedProjectionHandler,
@@ -89,19 +88,16 @@ const EventHandlers = [
   TransactionCompensatedProjectionHandler,
 ];
 
-const QueryHandlers = [
-  GetTransactionHandler,
-  GetTransactionsByAccountHandler,
-];
+const QueryHandlers = [GetTransactionHandler, GetTransactionsByAccountHandler];
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Transaction, TransactionProjection]),
+    TypeOrmModule.forFeature([TransactionProjection]), // Projection only - pure event sourcing
     CqrsModule,
+    CqrsSagaModule, // Import saga infrastructure
     AccountModule,
     CurrencyModule,
     AuditModule,
-    PipelineModule, // Pipeline-based transaction processing
   ],
   controllers: [TransactionController],
   providers: [
@@ -114,4 +110,3 @@ const QueryHandlers = [
   exports: [TransactionService, TransactionProjectionService],
 })
 export class TransactionModule {}
-

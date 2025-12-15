@@ -15,4 +15,3 @@ export class FailTransactionCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

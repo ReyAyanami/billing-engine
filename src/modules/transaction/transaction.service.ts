@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager } from 'typeorm';
+import { CommandBus } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  Transaction,
-  TransactionType,
-  TransactionStatus,
-} from './transaction.entity';
-import { Account, AccountType } from '../account/account.entity';
+import { TransactionType, TransactionStatus } from './transaction.types';
+import { TransactionProjection } from './projections/transaction-projection.entity';
+import { TransactionProjectionService } from './projections/transaction-projection.service';
 import { AccountService } from '../account/account.service';
+import { AccountProjection } from '../account/projections/account-projection.entity';
+import {
+  toAccountId,
+  TransactionId,
+  IdempotencyKey,
+} from '../../common/types/branded.types';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -30,198 +32,290 @@ import { TransferDto } from './dto/transfer.dto';
 import { RefundDto } from './dto/refund.dto';
 import Decimal from 'decimal.js';
 
-// Pipeline imports
-import { TransactionPipeline } from './pipeline/transaction-pipeline';
-import { TransactionContext } from './pipeline/transaction-context';
-import {
-  CheckIdempotencyStep,
-  LoadAndLockAccountsStep,
-  ValidateAccountsStep,
-  CalculateBalancesStep,
-  CreateTransactionStep,
-  UpdateBalancesStep,
-  CompleteTransactionStep,
-  AuditLogStep,
-} from './pipeline';
+// CQRS Commands
+import { TopupCommand } from './commands/topup.command';
+import { WithdrawalCommand } from './commands/withdrawal.command';
+import { TransferCommand } from './commands/transfer.command';
+import { RefundCommand } from './commands/refund.command';
 
 @Injectable()
 export class TransactionService {
   constructor(
-    @InjectRepository(Transaction)
-    private readonly transactionRepository: Repository<Transaction>,
+    private readonly transactionProjectionService: TransactionProjectionService,
     private readonly accountService: AccountService,
-    private readonly currencyService: CurrencyService,
-    private readonly auditService: AuditService,
-    private readonly dataSource: DataSource,
-    // Pipeline dependencies
-    private readonly pipeline: TransactionPipeline,
-    private readonly checkIdempotencyStep: CheckIdempotencyStep,
-    private readonly loadAndLockAccountsStep: LoadAndLockAccountsStep,
-    private readonly validateAccountsStep: ValidateAccountsStep,
-    private readonly calculateBalancesStep: CalculateBalancesStep,
-    private readonly createTransactionStep: CreateTransactionStep,
-    private readonly updateBalancesStep: UpdateBalancesStep,
-    private readonly completeTransactionStep: CompleteTransactionStep,
-    private readonly auditLogStep: AuditLogStep,
+    // Reserved for future direct use (validation/auditing currently in CQRS handlers)
+    _currencyService: CurrencyService,
+    _auditService: AuditService,
+    private readonly commandBus: CommandBus,
   ) {}
 
   /**
-   * Top-up (Pipeline-based): External Account (source) → User Account (destination)
-   * 
-   * Adds funds to an account from an external source. Uses pipeline pattern
-   * with composable, reusable steps for efficient transaction processing.
-   * 
-   * Pipeline Steps:
-   * 1. Check idempotency
-   * 2. Load and lock accounts
-   * 3. Validate accounts & currency
-   * 4. Calculate balances
-   * 5. Create transaction record
-   * 6. Update balances
-   * 7. Complete transaction
-   * 8. Audit log
+   * Top-up (CQRS): External Account (source) → User Account (destination)
+   *
+   * Adds funds to an account from an external source. Uses CQRS/Event Sourcing
+   * for full auditability and event replay capability.
+   *
+   * Flow:
+   * 1. Create TopupCommand
+   * 2. Command Handler creates events
+   * 3. Saga processes events and updates balances
+   * 4. Event Handlers update read models
    */
   async topup(
     dto: TopupDto,
     context: OperationContext,
   ): Promise<TransactionResult> {
-    return this.pipeline.execute(
-      new TransactionContext({
-        idempotencyKey: dto.idempotencyKey,
-        type: TransactionType.TOPUP,
-        sourceAccountId: dto.sourceAccountId,
-        destinationAccountId: dto.destinationAccountId,
-        amount: dto.amount,
-        currency: dto.currency,
-        reference: dto.reference,
-        metadata: dto.metadata,
-        operationContext: context,
-      }),
-      [
-        this.checkIdempotencyStep,
-        this.loadAndLockAccountsStep,
-        this.validateAccountsStep,
-        this.calculateBalancesStep,
-        this.createTransactionStep,
-        this.updateBalancesStep,
-        this.completeTransactionStep,
-        this.auditLogStep,
-      ],
-    );
+    // Check idempotency first (before CQRS)
+    const existing =
+      await this.transactionProjectionService.findByIdempotencyKey(
+        dto.idempotencyKey,
+      );
+
+    if (existing) {
+      throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
+    }
+
+    // Generate transaction ID
+    const transactionId = uuidv4();
+
+    // Execute CQRS command
+    const command = new TopupCommand({
+      transactionId,
+      accountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      sourceAccountId: dto.sourceAccountId,
+      idempotencyKey: dto.idempotencyKey,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
+
+    await this.commandBus.execute(command);
+
+    // Return immediately - transaction will be processed asynchronously by saga
+    // Client should poll GET /transactions/:id to check status
+    return {
+      transactionId: transactionId,
+      idempotencyKey: dto.idempotencyKey,
+      type: TransactionType.TOPUP,
+      sourceAccountId: dto.sourceAccountId,
+      destinationAccountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      sourceBalanceBefore: '0',
+      sourceBalanceAfter: '0',
+      destinationBalanceBefore: '0',
+      destinationBalanceAfter: '0',
+      status: TransactionStatus.PENDING,
+      reference: undefined,
+      metadata: {},
+      createdAt: new Date(),
+      completedAt: undefined,
+    };
   }
 
   /**
-   * Withdrawal: User Account (source) → External Account (destination)
-   * Money flows FROM user account TO external destination
-   */
-
-  /**
-   * Withdrawal V2 (Pipeline-based): User Account (source) → External Account (destination)
-   * 
-   * Uses the same pipeline steps as topup, demonstrating reusability.
-   * 
-   * @experimental Running in parallel with existing withdraw() for comparison
+   * Withdrawal (CQRS): User Account (source) → External Account (destination)
+   *
+   * Withdraws funds from user account to external destination. Uses CQRS/Event Sourcing
+   * for full auditability and event replay capability.
    */
   async withdraw(
     dto: WithdrawalDto,
     context: OperationContext,
   ): Promise<TransactionResult> {
-    return this.pipeline.execute(
-      new TransactionContext({
-        idempotencyKey: dto.idempotencyKey,
-        type: TransactionType.WITHDRAWAL,
-        sourceAccountId: dto.sourceAccountId,
-        destinationAccountId: dto.destinationAccountId,
-        amount: dto.amount,
-        currency: dto.currency,
-        reference: dto.reference,
-        metadata: dto.metadata,
-        operationContext: context,
-      }),
-      [
-        this.checkIdempotencyStep,
-        this.loadAndLockAccountsStep,
-        this.validateAccountsStep,
-        this.calculateBalancesStep,      // Includes balance check for user accounts
-        this.createTransactionStep,
-        this.updateBalancesStep,
-        this.completeTransactionStep,
-        this.auditLogStep,
-      ],
+    // Check idempotency first
+    const existing =
+      await this.transactionProjectionService.findByIdempotencyKey(
+        dto.idempotencyKey,
+      );
+
+    if (existing) {
+      throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
+    }
+
+    // Upfront validation: Check source account exists and is valid
+    const sourceAccount = await this.accountService.findById(
+      toAccountId(dto.sourceAccountId),
     );
+
+    // Validate account is active
+    this.accountService.validateAccountActive(sourceAccount);
+
+    // Validate destination account exists (if provided)
+    if (dto.destinationAccountId) {
+      await this.accountService.findById(toAccountId(dto.destinationAccountId));
+    }
+
+    // Validate currency match
+    if (sourceAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
+    }
+
+    // Validate sufficient balance
+    const balance = new Decimal(sourceAccount.balance);
+    const withdrawalAmount = new Decimal(dto.amount);
+    if (balance.lessThan(withdrawalAmount)) {
+      throw new InsufficientBalanceException(
+        dto.sourceAccountId,
+        balance.toString(),
+        withdrawalAmount.toString(),
+      );
+    }
+
+    // Generate transaction ID
+    const transactionId = uuidv4();
+
+    // Execute CQRS command
+    const command = new WithdrawalCommand({
+      transactionId,
+      accountId: dto.sourceAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      destinationAccountId: dto.destinationAccountId,
+      idempotencyKey: dto.idempotencyKey,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
+
+    await this.commandBus.execute(command);
+
+    // Return immediately - transaction will be processed asynchronously by saga
+    // Client should poll GET /transactions/:id to check status
+    return {
+      transactionId: transactionId,
+      idempotencyKey: dto.idempotencyKey,
+      type: TransactionType.WITHDRAWAL,
+      sourceAccountId: dto.sourceAccountId,
+      destinationAccountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      sourceBalanceBefore: '0',
+      sourceBalanceAfter: '0',
+      destinationBalanceBefore: '0',
+      destinationBalanceAfter: '0',
+      status: TransactionStatus.PENDING,
+      reference: undefined,
+      metadata: {},
+      createdAt: new Date(),
+      completedAt: undefined,
+    };
   }
 
   /**
-   * Transfer: Account A (source) → Account B (destination)
-   * Money flows between two accounts
+   * Transfer (CQRS): Account A (source) → Account B (destination)
+   *
+   * Transfers funds between two accounts. Uses CQRS/Event Sourcing with saga coordination.
    */
   async transfer(
     dto: TransferDto,
     context: OperationContext,
   ): Promise<TransferResult> {
-    // Validate self-transfer before pipeline
+    // Validate self-transfer
     if (dto.sourceAccountId === dto.destinationAccountId) {
       throw new InvalidOperationException('SELF_TRANSFER_NOT_ALLOWED');
     }
 
-    const result = await this.pipeline.execute(
-      new TransactionContext({
-        idempotencyKey: dto.idempotencyKey,
-        type: TransactionType.TRANSFER_DEBIT, // Using single transaction model
-        sourceAccountId: dto.sourceAccountId,
-        destinationAccountId: dto.destinationAccountId,
-        amount: dto.amount,
-        currency: dto.currency,
-        reference: dto.reference,
-        metadata: dto.metadata,
-        operationContext: context,
-      }),
-      [
-        this.checkIdempotencyStep,
-        this.loadAndLockAccountsStep,
-        this.validateAccountsStep,
-        this.calculateBalancesStep,
-        this.createTransactionStep,
-        this.updateBalancesStep,
-        this.completeTransactionStep,
-        this.auditLogStep,
-      ],
+    // Check idempotency first
+    const existing =
+      await this.transactionProjectionService.findByIdempotencyKey(
+        dto.idempotencyKey,
+      );
+
+    if (existing) {
+      throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
+    }
+
+    // Upfront validation: Check accounts exist and are valid
+    const sourceAccount = await this.accountService.findById(
+      toAccountId(dto.sourceAccountId),
+    );
+    const destinationAccount = await this.accountService.findById(
+      toAccountId(dto.destinationAccountId),
     );
 
-    // Map to TransferResult format
+    // Validate accounts are active
+    this.accountService.validateAccountActive(sourceAccount);
+    this.accountService.validateAccountActive(destinationAccount);
+
+    // Validate currency match
+    if (sourceAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException(sourceAccount.currency, dto.currency);
+    }
+    if (destinationAccount.currency !== dto.currency) {
+      throw new CurrencyMismatchException(
+        destinationAccount.currency,
+        dto.currency,
+      );
+    }
+
+    // Validate sufficient balance
+    const sourceBalance = new Decimal(sourceAccount.balance);
+    const transferAmount = new Decimal(dto.amount);
+    if (sourceBalance.lessThan(transferAmount)) {
+      throw new InsufficientBalanceException(
+        dto.sourceAccountId,
+        sourceBalance.toString(),
+        transferAmount.toString(),
+      );
+    }
+
+    // Generate transaction ID
+    const transactionId = uuidv4();
+
+    // Execute CQRS command
+    const command = new TransferCommand({
+      transactionId,
+      sourceAccountId: dto.sourceAccountId,
+      destinationAccountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      idempotencyKey: dto.idempotencyKey,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
+
+    await this.commandBus.execute(command);
+
+    // Return immediately - transaction will be processed asynchronously by saga
+    // Client should poll GET /transactions/:id to check status
     return {
-      debitTransactionId: result.transactionId,
-      creditTransactionId: result.transactionId, // Single transaction model
-      sourceAccountId: result.sourceAccountId,
-      destinationAccountId: result.destinationAccountId,
-      amount: result.amount,
-      currency: result.currency,
-      status: result.status,
-      reference: result.reference,
-      createdAt: result.createdAt,
+      debitTransactionId: transactionId,
+      creditTransactionId: transactionId,
+      sourceAccountId: dto.sourceAccountId,
+      destinationAccountId: dto.destinationAccountId,
+      amount: dto.amount,
+      currency: dto.currency,
+      status: TransactionStatus.PENDING,
+      reference: '',
+      createdAt: new Date(),
     };
   }
 
   /**
-   * Refund a transaction (reverses the original transaction)
-   */
-
-  /**
-   * Refund V2 (Pipeline-based): Reverses a previous transaction
-   * 
-   * Refund has pre-pipeline logic to load original transaction and determine
-   * the refund parameters, then uses standard pipeline for execution.
-   * 
-   * @experimental Running in parallel with existing refund() for comparison
+   * Refund (CQRS): Reverses a previous transaction
+   *
+   * Uses CQRS/Event Sourcing with saga coordination for automatic compensation.
    */
   async refund(
     dto: RefundDto,
     context: OperationContext,
   ): Promise<TransactionResult> {
-    // Pre-pipeline: Load original transaction and prepare refund context
-    const originalTransaction = await this.transactionRepository.findOne({
-      where: { id: dto.originalTransactionId },
-    });
+    // Check idempotency first
+    const existing =
+      await this.transactionProjectionService.findByIdempotencyKey(
+        dto.idempotencyKey,
+      );
+
+    if (existing) {
+      throw new DuplicateTransactionException(dto.idempotencyKey, existing.id);
+    }
+
+    // Load original transaction
+    const originalTransaction =
+      await this.transactionProjectionService.findById(
+        dto.originalTransactionId as TransactionId,
+      );
 
     if (!originalTransaction) {
       throw new TransactionNotFoundException(dto.originalTransactionId);
@@ -235,13 +329,15 @@ export class TransactionService {
       throw new RefundException('Can only refund completed transactions');
     }
     if (!originalTransaction.amount) {
-      throw new RefundException(`Original transaction ${originalTransaction.id} has no amount`);
+      throw new RefundException(
+        `Original transaction ${originalTransaction.id} has no amount`,
+      );
     }
 
     // Determine refund amount
     const originalAmount = new Decimal(originalTransaction.amount);
     let refundAmount: Decimal;
-    
+
     if (dto.amount !== undefined && dto.amount !== null && dto.amount !== '') {
       refundAmount = new Decimal(dto.amount);
     } else {
@@ -253,53 +349,54 @@ export class TransactionService {
       throw new RefundException('Refund amount cannot exceed original amount');
     }
 
-    // Execute refund using pipeline (with reversed source/destination)
-    const refundResult = await this.pipeline.execute(
-      new TransactionContext({
-        idempotencyKey: dto.idempotencyKey,
-        type: TransactionType.REFUND,
-        sourceAccountId: originalTransaction.destinationAccountId,  // Reversed
-        destinationAccountId: originalTransaction.sourceAccountId,  // Reversed
-        amount: refundAmount.toString(),
-        currency: originalTransaction.currency,
-        reference: dto.reason || `Refund for ${originalTransaction.id}`,
-        metadata: {
-          ...dto.metadata,
-          originalTransactionId: originalTransaction.id,
-          refundReason: dto.reason,
-        },
-        parentTransactionId: originalTransaction.id,
-        operationContext: context,
-      }),
-      [
-        this.checkIdempotencyStep,
-        this.loadAndLockAccountsStep,
-        this.validateAccountsStep,
-        this.calculateBalancesStep,
-        this.createTransactionStep,
-        this.updateBalancesStep,
-        this.completeTransactionStep,
-        this.auditLogStep,
-      ],
-    );
+    // Generate transaction ID
+    const transactionId = uuidv4();
 
-    // Post-pipeline: Mark original transaction as refunded
-    await this.dataSource.transaction(async (manager) => {
-      originalTransaction.status = TransactionStatus.REFUNDED;
-      await manager.save(Transaction, originalTransaction);
+    // Execute CQRS command
+    const command = new RefundCommand({
+      refundId: transactionId,
+      originalPaymentId: dto.originalTransactionId,
+      refundAmount: refundAmount.toString(),
+      currency: originalTransaction.currency,
+      idempotencyKey: dto.idempotencyKey,
+      refundMetadata: {
+        reason: dto.reason,
+        refundType: refundAmount.equals(originalAmount) ? 'full' : 'partial',
+        ...dto.metadata,
+      },
+      correlationId: context.correlationId,
+      actorId: context.actorId,
     });
 
-    return refundResult;
+    await this.commandBus.execute(command);
+
+    // Return immediately - transaction will be processed asynchronously by saga
+    // Client should poll GET /transactions/:id to check status
+    return {
+      transactionId: transactionId,
+      idempotencyKey: dto.idempotencyKey,
+      type: TransactionType.REFUND,
+      sourceAccountId: originalTransaction.destinationAccountId || '',
+      destinationAccountId: originalTransaction.sourceAccountId || '',
+      amount: refundAmount.toString(),
+      currency: originalTransaction.currency,
+      sourceBalanceBefore: '0',
+      sourceBalanceAfter: '0',
+      destinationBalanceBefore: '0',
+      destinationBalanceAfter: '0',
+      status: TransactionStatus.PENDING,
+      reference: undefined,
+      metadata: {},
+      createdAt: new Date(),
+      completedAt: undefined,
+    };
   }
 
   /**
-   * Get transaction by ID
+   * Get transaction by ID (from projection/read model)
    */
-  async findById(id: string): Promise<Transaction> {
-    const transaction = await this.transactionRepository.findOne({
-      where: { id },
-      relations: ['sourceAccount', 'destinationAccount', 'parentTransaction'],
-    });
+  async findById(id: TransactionId): Promise<TransactionProjection> {
+    const transaction = await this.transactionProjectionService.findById(id);
 
     if (!transaction) {
       throw new TransactionNotFoundException(id);
@@ -309,7 +406,18 @@ export class TransactionService {
   }
 
   /**
-   * List transactions with optional filters
+   * Find transaction by idempotency key (helper for controller)
+   */
+  async findByIdempotencyKey(
+    idempotencyKey: IdempotencyKey,
+  ): Promise<TransactionProjection | null> {
+    return await this.transactionProjectionService.findByIdempotencyKey(
+      idempotencyKey,
+    );
+  }
+
+  /**
+   * List transactions with optional filters (from projection/read model)
    */
   async findAll(filters: {
     accountId?: string;
@@ -317,156 +425,25 @@ export class TransactionService {
     status?: TransactionStatus;
     limit?: number;
     offset?: number;
-  }): Promise<Transaction[]> {
-    const query = this.transactionRepository.createQueryBuilder('transaction');
-
+  }): Promise<TransactionProjection[]> {
+    // Use projection service for queries
     if (filters.accountId) {
-      query.where(
-        '(transaction.source_account_id = :accountId OR transaction.destination_account_id = :accountId)',
-        { accountId: filters.accountId },
+      return this.transactionProjectionService.findByAccount(
+        toAccountId(filters.accountId),
       );
     }
 
-    if (filters.type) {
-      query.andWhere('transaction.type = :type', { type: filters.type });
-    }
-
-    if (filters.status) {
-      query.andWhere('transaction.status = :status', { status: filters.status });
-    }
-
-    query.orderBy('transaction.created_at', 'DESC');
-
-    if (filters.limit) {
-      query.limit(filters.limit);
-    }
-
-    if (filters.offset) {
-      query.offset(filters.offset);
-    }
-
-    return await query.getMany();
-  }
-
-  // ==================== Helper Methods ====================
-
-  /**
-   * Check idempotency to prevent duplicate transactions
-   */
-  private async checkIdempotency(
-    idempotencyKey: string,
-    manager: EntityManager,
-  ): Promise<void> {
-    const existingTransaction = await manager.findOne(Transaction, {
-      where: { idempotencyKey },
-    });
-
-    if (existingTransaction) {
-      throw new DuplicateTransactionException(idempotencyKey, existingTransaction.id);
-    }
+    // Use complex filtering with all provided criteria
+    return this.transactionProjectionService.findWithFilters(filters);
   }
 
   /**
-   * Validate amount is positive
+   * Find account by ID (helper for validation)
    */
-  private validateAmount(amount: string): void {
-    const decimalAmount = new Decimal(amount);
-    if (decimalAmount.lessThanOrEqualTo(0)) {
-      throw new InvalidOperationException('INVALID_AMOUNT');
-    }
+  async findAccountById(accountId: string): Promise<AccountProjection | null> {
+    return await this.accountService.findById(toAccountId(accountId));
   }
 
-  /**
-   * Check maximum balance limit
-   */
-  private checkMaxBalance(account: Account, additionalAmount: Decimal): void {
-    if (account.maxBalance) {
-      const currentBalance = new Decimal(account.balance);
-      const newBalance = currentBalance.plus(additionalAmount);
-      const maxBalance = new Decimal(account.maxBalance);
-
-      if (newBalance.greaterThan(maxBalance)) {
-        throw new InvalidOperationException(
-          `MAX_BALANCE_EXCEEDED: Account ${account.id} would exceed maximum balance of ${maxBalance}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Check minimum balance requirement
-   */
-  private checkMinBalance(account: Account, newBalance: Decimal): void {
-    if (account.minBalance) {
-      const minBalance = new Decimal(account.minBalance);
-
-      if (newBalance.lessThan(minBalance)) {
-        throw new InvalidOperationException(
-          `MIN_BALANCE_REQUIRED: Account ${account.id} requires minimum balance of ${minBalance}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Lock accounts in deterministic order to prevent deadlocks
-   */
-  private async lockAccountsInOrder(
-    accountId1: string,
-    accountId2: string,
-    manager: EntityManager,
-  ): Promise<[Account, Account]> {
-    const [firstId, secondId] = [accountId1, accountId2].sort();
-    
-    const firstAccount = await this.accountService.findAndLock(firstId, manager);
-    const secondAccount = await this.accountService.findAndLock(secondId, manager);
-
-    // Return in original order
-    return accountId1 === firstId
-      ? [firstAccount, secondAccount]
-      : [secondAccount, firstAccount];
-  }
-
-  /**
-   * Map Transaction entity to TransactionResult
-   */
-  private mapToTransactionResult(transaction: Transaction): TransactionResult {
-    return {
-      transactionId: transaction.id,
-      idempotencyKey: transaction.idempotencyKey,
-      type: transaction.type,
-      sourceAccountId: transaction.sourceAccountId,
-      destinationAccountId: transaction.destinationAccountId,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      sourceBalanceBefore: transaction.sourceBalanceBefore,
-      sourceBalanceAfter: transaction.sourceBalanceAfter,
-      destinationBalanceBefore: transaction.destinationBalanceBefore,
-      destinationBalanceAfter: transaction.destinationBalanceAfter,
-      status: transaction.status,
-      reference: transaction.reference,
-      metadata: transaction.metadata,
-      createdAt: transaction.createdAt,
-      completedAt: transaction.completedAt,
-    };
-  }
-
-  /**
-   * Map Transaction entity to TransferResult
-   */
-  private mapToTransferResult(transaction: Transaction): TransferResult {
-    return {
-      debitTransactionId: transaction.id,
-      creditTransactionId: transaction.id, // In new model, it's a single transaction
-      sourceAccountId: transaction.sourceAccountId,
-      destinationAccountId: transaction.destinationAccountId,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      status: transaction.status,
-      reference: transaction.reference,
-      createdAt: transaction.createdAt,
-      completedAt: transaction.completedAt,
-    };
-  }
+  // Note: All business logic has moved to CQRS aggregates and handlers
+  // This service is now a thin coordinator that dispatches commands
 }
-

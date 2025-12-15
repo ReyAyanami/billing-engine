@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog } from './audit-log.entity';
 import { OperationContext } from '../../common/types';
+import { JsonObject } from '../../common/types/json.types';
 
 @Injectable()
 export class AuditService {
@@ -15,7 +16,7 @@ export class AuditService {
     entityType: string,
     entityId: string,
     operation: string,
-    changes: Record<string, any>,
+    changes: JsonObject,
     context: OperationContext,
   ): Promise<AuditLog> {
     const auditLog = this.auditLogRepository.create({
@@ -50,10 +51,7 @@ export class AuditService {
     });
   }
 
-  async findByOperation(
-    operation: string,
-    limit = 50,
-  ): Promise<AuditLog[]> {
+  async findByOperation(operation: string, limit = 50): Promise<AuditLog[]> {
     return await this.auditLogRepository.find({
       where: { operation },
       order: { timestamp: 'DESC' },
@@ -61,4 +59,3 @@ export class AuditService {
     });
   }
 }
-

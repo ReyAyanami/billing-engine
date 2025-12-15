@@ -28,4 +28,3 @@ export class GetAccountHandler implements IQueryHandler<GetAccountQuery> {
     return projection;
   }
 }
-

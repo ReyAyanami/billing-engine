@@ -2,16 +2,14 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { PaymentRequestedEvent } from '../../events/payment-requested.event';
 import { TransactionProjectionService } from '../../projections/transaction-projection.service';
-import { TransactionStatus, TransactionType } from '../../transaction.entity';
+import { TransactionStatus, TransactionType } from '../../transaction.types';
 
 /**
  * Event handler to create transaction projection when payment is requested.
  * Updates the read model for fast queries.
  */
 @EventsHandler(PaymentRequestedEvent)
-export class PaymentRequestedProjectionHandler
-  implements IEventHandler<PaymentRequestedEvent>
-{
+export class PaymentRequestedProjectionHandler implements IEventHandler<PaymentRequestedEvent> {
   private readonly logger = new Logger(PaymentRequestedProjectionHandler.name);
 
   constructor(
@@ -19,13 +17,6 @@ export class PaymentRequestedProjectionHandler
   ) {}
 
   async handle(event: PaymentRequestedEvent): Promise<void> {
-    this.logger.log(
-      `📊 [Projection] PaymentRequested: ${event.aggregateId}`,
-    );
-    this.logger.log(`   Customer: ${event.customerAccountId}`);
-    this.logger.log(`   Merchant: ${event.merchantAccountId}`);
-    this.logger.log(`   Amount: ${event.amount} ${event.currency}`);
-
     try {
       await this.projectionService.createTransactionProjection({
         id: event.aggregateId,
@@ -35,27 +26,21 @@ export class PaymentRequestedProjectionHandler
         currency: event.currency,
         sourceAccountId: event.customerAccountId,
         destinationAccountId: event.merchantAccountId,
+        sourceSignedAmount: `-${event.amount}`, // Customer account debited
+        destinationSignedAmount: `${event.amount}`, // Merchant account credited
         idempotencyKey: event.idempotencyKey,
         correlationId: event.correlationId,
         requestedAt: event.timestamp,
         aggregateVersion: event.aggregateVersion,
         lastEventId: event.eventId,
         lastEventTimestamp: event.timestamp,
-        metadata: {
-          ...event.metadata,
-          paymentMetadata: event.paymentMetadata,
-        },
+        metadata: event.metadata,
       });
-
-      this.logger.log(
-        `✅ [Projection] Payment projection created: ${event.aggregateId}`,
-      );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
-        `❌ [Projection] Failed to create payment projection`,
-        error,
+        `[Projection] Failed to create payment projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }
 }
-

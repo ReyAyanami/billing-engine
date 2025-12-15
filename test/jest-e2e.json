@@ -1,21 +1,28 @@
 {
+  "displayName": "E2E Tests (HTTP-Based)",
   "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
-  "testEnvironment": "node",
-  "testRegex": ".e2e-spec.ts$",
+  "rootDir": "../",
+  "testRegex": "test/e2e/.*\\.spec\\.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", {
-      "tsconfig": {
-        "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true
-      }
-    }]
-  },
-  "moduleNameMapper": {
-    "^uuid$": "uuid",
-    "^src/(.*)$": "<rootDir>/../src/$1"
+    "^.+\\.(t|j)s$": "ts-jest"
   },
   "transformIgnorePatterns": [
     "node_modules/(?!(uuid)/)"
-  ]
+  ],
+  "testEnvironment": "node",
+  "collectCoverageFrom": [
+    "src/**/*.(t|j)s",
+    "!src/**/*.spec.ts",
+    "!src/**/*.entity.ts"
+  ],
+  "coverageDirectory": "./coverage-e2e",
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^uuid$": "<rootDir>/node_modules/uuid/dist/index.js"
+  },
+  "testTimeout": 60000,
+  "maxWorkers": 1,
+  "bail": false,
+  "verbose": true
 }
+

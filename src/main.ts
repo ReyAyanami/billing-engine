@@ -1,10 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { CurrencyService } from './modules/currency/currency.service';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   // Global validation pipe
@@ -24,7 +25,7 @@ async function bootstrap() {
     .setTitle('Billing Engine API')
     .setDescription(
       'A production-grade billing system API for managing accounts, transactions, and payments. ' +
-      'Supports multiple currencies, atomic transfers, refunds, and complete audit trails.',
+        'Supports multiple currencies, atomic transfers, refunds, and complete audit trails.',
     )
     .setVersion('1.0')
     .addTag('accounts', 'Account management operations')
@@ -44,9 +45,14 @@ async function bootstrap() {
   const currencyService = app.get(CurrencyService);
   await currencyService.initializeDefaultCurrencies();
 
-  const port = process.env.PORT ?? 3000;
+  const port = process.env['PORT'] ?? 3000;
   await app.listen(port);
-  console.log(`Billing Engine API running on port ${port}`);
-  console.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
+  logger.log(`Billing Engine API running on port ${port}`);
+  logger.log(
+    `Swagger documentation available at http://localhost:${port}/api/docs`,
+  );
 }
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Failed to start application:', error);
+  process.exit(1);
+});

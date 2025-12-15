@@ -5,21 +5,20 @@ import { Entity, Column, PrimaryColumn, Index } from 'typeorm';
 @Index(['isActive'])
 export class Currency {
   @PrimaryColumn({ length: 10 })
-  code: string;
+  code!: string;
 
   @Column({ length: 100 })
-  name: string;
+  name!: string;
 
   @Column({ length: 20 })
-  type: 'fiat' | 'non-fiat';
+  type!: 'fiat' | 'non-fiat';
 
   @Column({ type: 'int', default: 2 })
-  precision: number;
+  precision!: number;
 
   @Column({ name: 'is_active', default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>;
+  metadata!: Record<string, unknown>;
 }
-

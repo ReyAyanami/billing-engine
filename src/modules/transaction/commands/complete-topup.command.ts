@@ -14,4 +14,3 @@ export class CompleteTopupCommand extends Command {
     super(correlationId, actorId);
   }
 }
-

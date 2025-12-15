@@ -5,10 +5,11 @@ import {
   IsUUID,
   IsOptional,
   IsObject,
-  IsIn,
   MinLength,
   MaxLength,
 } from 'class-validator';
+import type { RefundMetadata } from '../../../common/types/metadata.types';
+import { IsPositiveAmount } from '../../../common/validation/amount.validator';
 
 /**
  * DTO for creating a refund transaction.
@@ -21,15 +22,17 @@ export class CreateRefundDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  originalPaymentId: string;
+  originalPaymentId!: string;
 
   @ApiProperty({
-    description: 'Refund amount (must be > 0 and ≤ remaining refundable amount)',
+    description:
+      'Refund amount (must be > 0 and ≤ remaining refundable amount)',
     example: '99.99',
   })
   @IsString()
   @IsNotEmpty()
-  refundAmount: string;
+  @IsPositiveAmount()
+  refundAmount!: string;
 
   @ApiProperty({
     description: 'Currency code (ISO 4217)',
@@ -39,7 +42,7 @@ export class CreateRefundDto {
   @MinLength(3)
   @MaxLength(3)
   @IsNotEmpty()
-  currency: string;
+  currency!: string;
 
   @ApiPropertyOptional({
     description: 'Idempotency key (auto-generated if not provided)',
@@ -59,11 +62,5 @@ export class CreateRefundDto {
   })
   @IsObject()
   @IsOptional()
-  refundMetadata?: {
-    reason?: string;
-    refundType?: 'full' | 'partial';
-    notes?: string;
-    [key: string]: any;
-  };
+  refundMetadata?: RefundMetadata;
 }
-

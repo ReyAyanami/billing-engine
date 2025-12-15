@@ -1,39 +1,56 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { EventMetadata } from '../../../common/types/metadata.types';
+import { JsonObject } from '../../../common/types/json.types';
+
+/**
+ * Parameters for WithdrawalCompletedEvent
+ */
+export interface WithdrawalCompletedEventParams {
+  accountId: string;
+  amount: string;
+  newBalance: string;
+  completedAt: Date;
+  aggregateId: string;
+  aggregateVersion: number;
+  correlationId: string;
+  causationId?: string;
+  metadata?: EventMetadata;
+}
 
 /**
  * Domain event emitted when a withdrawal transaction is completed successfully.
  */
 export class WithdrawalCompletedEvent extends DomainEvent {
-  constructor(
-    public readonly accountId: string,
-    public readonly amount: string,
-    public readonly newBalance: string,
-    public readonly completedAt: Date,
-    props: {
-      aggregateId: string;
-      aggregateVersion: number;
-      correlationId: string;
-      causationId?: string;
-      metadata?: Record<string, any>;
-    },
-  ) {
+  public readonly accountId: string;
+  public readonly amount: string;
+  public readonly newBalance: string;
+  public readonly completedAt: Date;
+
+  constructor(params: WithdrawalCompletedEventParams) {
     super({
-      ...props,
+      aggregateId: params.aggregateId,
+      aggregateVersion: params.aggregateVersion,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
       aggregateType: 'Transaction',
     });
+    this.accountId = params.accountId;
+    this.amount = params.amount;
+    this.newBalance = params.newBalance;
+    this.completedAt = params.completedAt;
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'WithdrawalCompleted';
   }
 
-  protected getEventData(): Record<string, any> {
+  protected override getEventData(): JsonObject {
     return {
-      accountId: this.accountId,
-      amount: this.amount,
-      newBalance: this.newBalance,
+      accountId: this.accountId ?? null,
+      amount: this.amount ?? null,
+      newBalance: this.newBalance ?? null,
       completedAt: this.completedAt.toISOString(),
     };
   }
 }
-

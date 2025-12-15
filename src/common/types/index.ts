@@ -1,3 +1,5 @@
+import { EventMetadata } from './metadata.types';
+
 export interface OperationContext {
   correlationId: string;
   actorId?: string;
@@ -19,7 +21,7 @@ export interface TransactionResult {
   destinationBalanceAfter: string;
   status: string;
   reference?: string;
-  metadata?: Record<string, any>;
+  metadata?: EventMetadata;
   createdAt: Date;
   completedAt?: Date | null;
 }
@@ -36,4 +38,3 @@ export interface TransferResult {
   createdAt: Date;
   completedAt?: Date | null;
 }
-

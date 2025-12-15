@@ -1,4 +1,20 @@
+import { Logger } from '@nestjs/common';
 import { DomainEvent } from './domain-event';
+import {
+  DeserializedEvent,
+  isDeserializedEvent,
+} from './deserialized-event.interface';
+
+/**
+ * Type for events that can be applied to aggregates
+ * Can be either a proper DomainEvent instance or a deserialized event from storage
+ */
+type ApplicableEvent = DomainEvent | DeserializedEvent;
+
+/**
+ * Event handler function type
+ */
+type EventHandler = (event: ApplicableEvent) => void;
 
 /**
  * Base class for all aggregates in the event-sourced system.
@@ -6,8 +22,9 @@ import { DomainEvent } from './domain-event';
  * They encapsulate business logic and emit events to record state changes.
  */
 export abstract class AggregateRoot {
+  private static readonly logger = new Logger(AggregateRoot.name);
   /** Unique identifier for this aggregate */
-  protected aggregateId: string;
+  protected aggregateId!: string;
 
   /** Current version number (increments with each event) */
   protected version: number = 0;
@@ -22,26 +39,26 @@ export abstract class AggregateRoot {
 
   /**
    * Applies an event to the aggregate, updating its state.
-   * @param event The domain event to apply
+   * @param event The domain event to apply (can be DomainEvent instance or deserialized)
    * @param isNew Whether this is a new event (true) or historical (false)
    */
-  protected apply(event: DomainEvent | any, isNew: boolean = true): void {
+  protected apply(event: ApplicableEvent, isNew: boolean = true): void {
     // Find and call the appropriate event handler
     const handler = this.getEventHandler(event);
     if (handler) {
       handler.call(this, event);
     } else {
       // Get event type for warning message
-      const eventType = typeof event.getEventType === 'function' 
-        ? event.getEventType() 
-        : (event.eventType || 'Unknown');
-      console.warn(
-        `No handler found for event ${eventType} on aggregate ${this.getAggregateType()}`,
+      const eventType = this.getEventType(event);
+      AggregateRoot.logger.warn(
+        `No handler found [eventType=${eventType}, aggregateType=${this.getAggregateType()}, ` +
+          `aggregateId=${this.aggregateId}]`,
       );
     }
 
     // Add to uncommitted events if this is a new event
-    if (isNew) {
+    // Only DomainEvent instances should be added (not deserialized events)
+    if (isNew && event instanceof DomainEvent) {
       this.uncommittedEvents.push(event);
     }
 
@@ -50,30 +67,41 @@ export abstract class AggregateRoot {
   }
 
   /**
+   * Gets the event type from either a DomainEvent or deserialized event
+   */
+  private getEventType(event: ApplicableEvent): string {
+    if (event instanceof DomainEvent) {
+      return event.getEventType();
+    }
+
+    if (isDeserializedEvent(event)) {
+      return event.eventType;
+    }
+
+    return 'Unknown';
+  }
+
+  /**
    * Finds the event handler method for a given event.
    * Handler methods should be named: on{EventType}
    * Example: onAccountCreated, onBalanceChanged
    */
-  private getEventHandler(event: DomainEvent | any): Function | undefined {
-    // Handle both proper DomainEvent instances and plain objects from event store
-    let eventType: string;
-    
-    if (typeof event.getEventType === 'function') {
-      // Proper DomainEvent instance
-      eventType = event.getEventType();
-    } else if (event.eventType) {
-      // Plain object from event store
-      eventType = event.eventType;
-    } else {
-      console.error('Unable to determine event type from event:', event);
+  private getEventHandler(event: ApplicableEvent): EventHandler | undefined {
+    const eventType = this.getEventType(event);
+
+    if (!eventType || eventType === 'Unknown') {
+      AggregateRoot.logger.error(
+        `Unable to determine event type [aggregateId=${this.aggregateId}]`,
+        JSON.stringify(event),
+      );
       return undefined;
     }
-    
-    const handlerName = `on${eventType}`;
 
-    const handler = (this as any)[handlerName];
+    const handlerName = `on${eventType}`;
+    const handler = (this as Record<string, unknown>)[handlerName];
+
     if (typeof handler === 'function') {
-      return handler;
+      return handler as EventHandler;
     }
 
     return undefined;
@@ -137,4 +165,3 @@ export abstract class AggregateRoot {
     // Override in subclasses
   }
 }
-

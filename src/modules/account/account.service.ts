@@ -1,71 +1,93 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
-import { Account, AccountStatus } from './account.entity';
+import { Injectable, Logger } from '@nestjs/common';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { v4 as uuidv4 } from 'uuid';
+import { AccountStatus, AccountType } from './account.types';
 import { CreateAccountDto } from './dto/create-account.dto';
+import { CreateAccountCommand } from './commands/create-account.command';
+import { UpdateAccountStatusCommand } from './commands/update-account-status.command';
+import { GetAccountQuery } from './queries/get-account.query';
+import { GetAccountsByOwnerQuery } from './queries/get-accounts-by-owner.query';
+import { AccountProjection } from './projections/account-projection.entity';
 import {
   AccountNotFoundException,
   AccountInactiveException,
-  InvalidOperationException,
 } from '../../common/exceptions/billing.exception';
 import { CurrencyService } from '../currency/currency.service';
 import { AuditService } from '../audit/audit.service';
 import { OperationContext } from '../../common/types';
+import { AccountId, OwnerId } from '../../common/types/branded.types';
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
+
   constructor(
-    @InjectRepository(Account)
-    private readonly accountRepository: Repository<Account>,
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
     private readonly currencyService: CurrencyService,
     private readonly auditService: AuditService,
   ) {}
 
+  /**
+   * Create a new account using pure CQRS/Event Sourcing.
+   * Command → Aggregate → Events → Projection
+   */
   async create(
     createAccountDto: CreateAccountDto,
     context: OperationContext,
-  ): Promise<Account> {
+  ): Promise<AccountProjection> {
     // Validate currency
     await this.currencyService.validateCurrency(createAccountDto.currency);
 
-    // Create account
-    const account = this.accountRepository.create({
+    // Generate account ID
+    const accountId = uuidv4();
+
+    // Create command (write side)
+    const command = new CreateAccountCommand({
+      accountId,
       ownerId: createAccountDto.ownerId,
       ownerType: createAccountDto.ownerType,
-      accountType: createAccountDto.accountType,
-      accountSubtype: createAccountDto.accountSubtype,
+      accountType: createAccountDto.accountType || AccountType.USER,
       currency: createAccountDto.currency,
-      balance: '0',
       maxBalance: createAccountDto.maxBalance,
       minBalance: createAccountDto.minBalance,
-      status: AccountStatus.ACTIVE,
-      metadata: createAccountDto.metadata || {},
+      correlationId: context.correlationId,
+      actorId: context.actorId,
     });
 
-    const savedAccount = await this.accountRepository.save(account);
+    // Execute command (emits events to Kafka)
+    await this.commandBus.execute(command);
 
     // Audit log
     await this.auditService.log(
       'Account',
-      savedAccount.id,
+      accountId,
       'CREATE',
       {
-        ownerId: savedAccount.ownerId,
-        ownerType: savedAccount.ownerType,
-        accountType: savedAccount.accountType,
-        currency: savedAccount.currency,
+        ownerId: createAccountDto.ownerId,
+        ownerType: createAccountDto.ownerType,
+        accountType: createAccountDto.accountType || AccountType.USER,
+        currency: createAccountDto.currency,
       },
       context,
     );
 
-    return savedAccount;
+    // Return projection (read side) - eventually consistent
+    // In practice, give events a moment to propagate
+    await this.waitForProjection(accountId);
+
+    return await this.findById(accountId as AccountId);
   }
 
-  async findById(id: string): Promise<Account> {
-    const account = await this.accountRepository.findOne({
-      where: { id },
-      relations: ['currencyDetails'],
-    });
+  /**
+   * Find account by ID (from projection/read model)
+   */
+  async findById(id: AccountId): Promise<AccountProjection> {
+    const query = new GetAccountQuery({ accountId: id });
+    const account = await this.queryBus.execute<
+      GetAccountQuery,
+      AccountProjection
+    >(query);
 
     if (!account) {
       throw new AccountNotFoundException(id);
@@ -74,15 +96,23 @@ export class AccountService {
     return account;
   }
 
-  async findByOwner(ownerId: string, ownerType: string): Promise<Account[]> {
-    return await this.accountRepository.find({
-      where: { ownerId, ownerType },
-      relations: ['currencyDetails'],
-      order: { createdAt: 'DESC' },
-    });
+  /**
+   * Find accounts by owner (from projection/read model)
+   */
+  async findByOwner(ownerId: OwnerId): Promise<AccountProjection[]> {
+    const query = new GetAccountsByOwnerQuery({ ownerId });
+    return await this.queryBus.execute<
+      GetAccountsByOwnerQuery,
+      AccountProjection[]
+    >(query);
   }
 
-  async getBalance(id: string): Promise<{ balance: string; currency: string; status: string }> {
+  /**
+   * Get account balance
+   */
+  async getBalance(
+    id: AccountId,
+  ): Promise<{ balance: string; currency: string; status: string }> {
     const account = await this.findById(id);
     return {
       balance: account.balance,
@@ -91,92 +121,70 @@ export class AccountService {
     };
   }
 
+  /**
+   * Update account status using CQRS/Event Sourcing.
+   * Command → Aggregate → Events → Projection
+   */
   async updateStatus(
-    id: string,
+    id: AccountId,
     status: AccountStatus,
     context: OperationContext,
-  ): Promise<Account> {
-    const account = await this.findById(id);
+  ): Promise<AccountProjection> {
+    this.logger.log(`Updating status for account ${id} to ${status}`);
 
-    // Validate status transition
-    this.validateStatusTransition(account.status, status);
+    // Create and execute command
+    const command = new UpdateAccountStatusCommand({
+      accountId: id,
+      newStatus: status,
+      reason: `Status update requested via API`,
+      correlationId: context.correlationId,
+      actorId: context.actorId,
+    });
 
-    const oldStatus = account.status;
-    account.status = status;
+    await this.commandBus.execute(command);
 
-    const updatedAccount = await this.accountRepository.save(account);
+    // Wait for projection to be updated (eventual consistency)
+    await this.waitForProjection(id);
 
     // Audit log
     await this.auditService.log(
       'Account',
-      account.id,
+      id,
       'UPDATE_STATUS',
       {
-        oldStatus,
         newStatus: status,
       },
       context,
     );
 
-    return updatedAccount;
-  }
-
-  /**
-   * Find and lock account for update (used in transactions)
-   */
-  async findAndLock(
-    id: string,
-    manager: EntityManager,
-  ): Promise<Account> {
-    const account = await manager.findOne(Account, {
-      where: { id },
-      lock: { mode: 'pessimistic_write' },
-    });
-
-    if (!account) {
-      throw new AccountNotFoundException(id);
-    }
-
-    return account;
+    return await this.findById(id);
   }
 
   /**
    * Validate account can perform transactions
    */
-  validateAccountActive(account: Account): void {
+  validateAccountActive(account: AccountProjection): void {
     if (account.status !== AccountStatus.ACTIVE) {
       throw new AccountInactiveException(account.id, account.status);
     }
   }
 
   /**
-   * Update account balance (used in transactions)
+   * Wait for projection to be created (eventual consistency)
+   * In production, use a more sophisticated polling/subscription mechanism
    */
-  async updateBalance(
-    account: Account,
-    newBalance: string,
-    manager: EntityManager,
-  ): Promise<Account> {
-    account.balance = newBalance;
-    return await manager.save(Account, account);
-  }
-
-  private validateStatusTransition(
-    currentStatus: AccountStatus,
-    newStatus: AccountStatus,
-  ): void {
-    const validTransitions: Record<AccountStatus, AccountStatus[]> = {
-      [AccountStatus.ACTIVE]: [AccountStatus.SUSPENDED, AccountStatus.CLOSED],
-      [AccountStatus.SUSPENDED]: [AccountStatus.ACTIVE, AccountStatus.CLOSED],
-      [AccountStatus.CLOSED]: [], // Terminal state
-    };
-
-    if (!validTransitions[currentStatus].includes(newStatus)) {
-      throw new InvalidOperationException(
-        `Cannot transition account from ${currentStatus} to ${newStatus}`,
-        { currentStatus, newStatus },
-      );
+  private async waitForProjection(
+    accountId: string,
+    maxAttempts = 10,
+  ): Promise<void> {
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        await this.findById(accountId as AccountId);
+        return; // Found it!
+      } catch (error) {
+        if (i === maxAttempts - 1) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 100)); // Wait 100ms
+      }
     }
   }
 }
-

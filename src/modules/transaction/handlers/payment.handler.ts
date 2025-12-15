@@ -18,7 +18,9 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
   ) {}
 
   async execute(command: PaymentCommand): Promise<string> {
-    this.logger.log(`[PaymentHandler] Executing PaymentCommand: ${command.transactionId}`);
+    this.logger.log(
+      `[PaymentHandler] Executing PaymentCommand: ${command.transactionId}`,
+    );
     this.logger.log(`   Customer: ${command.customerAccountId}`);
     this.logger.log(`   Merchant: ${command.merchantAccountId}`);
     this.logger.log(`   Amount: ${command.amount} ${command.currency}`);
@@ -35,7 +37,9 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
         amount: command.amount,
         currency: command.currency,
         idempotencyKey: command.idempotencyKey,
-        paymentMetadata: command.paymentMetadata,
+        paymentMetadata: command.paymentMetadata as
+          | Record<string, string | number | boolean>
+          | undefined,
         correlationId: command.correlationId,
         causationId: command.commandId,
         metadata: {
@@ -45,7 +49,11 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
 
       // Get uncommitted events and persist them
       const events = transaction.getUncommittedEvents();
-      await this.eventStore.append('Transaction', command.transactionId, events);
+      await this.eventStore.append(
+        'Transaction',
+        command.transactionId,
+        events,
+      );
 
       // Publish events
       events.forEach((event) => {
@@ -54,12 +62,16 @@ export class PaymentHandler implements ICommandHandler<PaymentCommand> {
 
       transaction.commit();
 
-      this.logger.log(`✅ [PaymentHandler] Payment requested: ${command.transactionId}`);
+      this.logger.log(
+        `✅ [PaymentHandler] Payment requested: ${command.transactionId}`,
+      );
       return command.transactionId;
     } catch (error) {
-      this.logger.error(`❌ [PaymentHandler] Failed to request payment`, error);
+      this.logger.error(
+        `❌ [PaymentHandler] Failed to request payment`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }
 }
-

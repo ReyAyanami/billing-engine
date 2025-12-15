@@ -2,16 +2,14 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
 import { TransferRequestedEvent } from '../../events/transfer-requested.event';
 import { TransactionProjectionService } from '../../projections/transaction-projection.service';
-import { TransactionType, TransactionStatus } from '../../transaction.entity';
+import { TransactionType, TransactionStatus } from '../../transaction.types';
 
 /**
  * Event handler to update transaction projection when transfer is requested.
  * This is separate from the saga coordinator - it only updates the read model.
  */
 @EventsHandler(TransferRequestedEvent)
-export class TransferRequestedProjectionHandler
-  implements IEventHandler<TransferRequestedEvent>
-{
+export class TransferRequestedProjectionHandler implements IEventHandler<TransferRequestedEvent> {
   private readonly logger = new Logger(TransferRequestedProjectionHandler.name);
 
   constructor(
@@ -19,8 +17,6 @@ export class TransferRequestedProjectionHandler
   ) {}
 
   async handle(event: TransferRequestedEvent): Promise<void> {
-    this.logger.log(`📊 [Projection] TransferRequested: ${event.aggregateId}`);
-
     try {
       await this.projectionService.createTransactionProjection({
         id: event.aggregateId,
@@ -30,6 +26,8 @@ export class TransferRequestedProjectionHandler
         currency: event.currency,
         sourceAccountId: event.sourceAccountId,
         destinationAccountId: event.destinationAccountId,
+        sourceSignedAmount: `-${event.amount}`, // Source account debited
+        destinationSignedAmount: `${event.amount}`, // Destination account credited
         idempotencyKey: event.idempotencyKey,
         correlationId: event.correlationId,
         requestedAt: event.timestamp,
@@ -38,12 +36,12 @@ export class TransferRequestedProjectionHandler
         lastEventTimestamp: event.timestamp,
         metadata: event.metadata,
       });
-
-      this.logger.log(`✅ [Projection] Transaction projection created: ${event.aggregateId}`);
-    } catch (error) {
-      this.logger.error(`❌ [Projection] Failed to create transaction projection`, error);
+    } catch (error: unknown) {
+      this.logger.error(
+        `[Projection] Failed to create transfer projection [txId=${event.aggregateId}, corr=${event.correlationId}]`,
+        error instanceof Error ? error.stack : String(error),
+      );
       // Don't throw - projection failures shouldn't break the saga
     }
   }
 }
-

@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
+import { JsonObject } from '../../common/types/json.types';
+import { EventMetadata } from '../../common/types/metadata.types';
 
 /**
  * Base class for all domain events in the event-sourced billing system.
@@ -27,7 +29,7 @@ export abstract class DomainEvent {
   readonly causationId?: string;
 
   /** Additional metadata (e.g., user ID, IP address, etc.) */
-  readonly metadata?: Record<string, any>;
+  readonly metadata?: EventMetadata;
 
   constructor(props: {
     aggregateId: string;
@@ -35,7 +37,7 @@ export abstract class DomainEvent {
     aggregateVersion: number;
     correlationId: string;
     causationId?: string;
-    metadata?: Record<string, any>;
+    metadata?: EventMetadata;
   }) {
     this.eventId = uuidv4();
     this.aggregateId = props.aggregateId;
@@ -56,7 +58,9 @@ export abstract class DomainEvent {
   /**
    * Converts the event to a plain object for serialization
    */
-  toJSON(): Record<string, any> {
+  toJSON(): JsonObject {
+    const eventData = this.getEventData();
+
     return {
       eventId: this.eventId,
       eventType: this.getEventType(),
@@ -65,9 +69,9 @@ export abstract class DomainEvent {
       aggregateVersion: this.aggregateVersion,
       timestamp: this.timestamp.toISOString(),
       correlationId: this.correlationId,
-      causationId: this.causationId,
-      metadata: this.metadata,
-      ...this.getEventData(),
+      causationId: this.causationId ?? null,
+      metadata: this.metadata ? (this.metadata as unknown as JsonObject) : {},
+      ...eventData,
     };
   }
 
@@ -75,8 +79,7 @@ export abstract class DomainEvent {
    * Returns event-specific data for serialization
    * Override in subclasses to include event-specific properties
    */
-  protected getEventData(): Record<string, any> {
+  protected getEventData(): JsonObject {
     return {};
   }
 }
-
