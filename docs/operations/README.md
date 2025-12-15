@@ -40,6 +40,16 @@ Reverse a previous payment (full or partial).
 
 ---
 
+## Operational Maintenance
+
+### [Fault Tolerance](./fault-tolerance.md)
+System maintenance and recovery operations.
+- **Features**: Projection rebuilding, reconciliation, stuck transaction detection
+- **Use Case**: Data integrity verification, corruption recovery
+- **Example**: Rebuild corrupted projections, verify accounting equation
+
+---
+
 ## Common Patterns
 
 ### Async Processing
