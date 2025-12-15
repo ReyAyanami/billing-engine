@@ -10,6 +10,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { KafkaModule } from './cqrs/kafka/kafka.module';
 import { CqrsSagaModule } from './cqrs/cqrs-saga.module';
 import { EventsModule } from './modules/events/events.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
@@ -28,6 +29,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     CurrencyModule,
     AuditModule,
     EventsModule, // SSE events for real-time updates
+    AdminModule, // Admin endpoints for fault tolerance operations
   ],
   controllers: [],
   providers: [

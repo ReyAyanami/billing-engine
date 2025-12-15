@@ -7,6 +7,7 @@ import { AccountLimitsChangedEvent } from '../events/account-limits-changed.even
 import { AccountType, AccountStatus } from '../account.types';
 import Decimal from 'decimal.js';
 import { assertNever } from '../../../common/utils/exhaustive-check';
+import { InvariantViolationException } from '../../../common/exceptions/billing.exception';
 
 /**
  * Account Aggregate - Event-Sourced Version
@@ -401,6 +402,36 @@ export class AccountAggregate extends AggregateRoot {
         // Compile-time exhaustiveness check
         // If a new AccountStatus is added, this will cause a type error
         return assertNever(status);
+    }
+  }
+
+  /**
+   * Validate aggregate invariants.
+   * Call this after applying events to ensure data integrity.
+   */
+  validateInvariants(): void {
+    if (this.balance.lessThan(0)) {
+      throw new InvariantViolationException(
+        `Account ${this.aggregateId} has negative balance: ${this.balance}`,
+      );
+    }
+
+    if (this.maxBalance && this.balance.greaterThan(this.maxBalance)) {
+      throw new InvariantViolationException(
+        `Account ${this.aggregateId} balance ${this.balance} exceeds max ${this.maxBalance}`,
+      );
+    }
+
+    if (this.minBalance && this.balance.lessThan(this.minBalance)) {
+      throw new InvariantViolationException(
+        `Account ${this.aggregateId} balance ${this.balance} below min ${this.minBalance}`,
+      );
+    }
+
+    if (this.maxBalance && this.minBalance && this.minBalance.greaterThan(this.maxBalance)) {
+      throw new InvariantViolationException(
+        `Account ${this.aggregateId} min balance ${this.minBalance} exceeds max ${this.maxBalance}`,
+      );
     }
   }
 

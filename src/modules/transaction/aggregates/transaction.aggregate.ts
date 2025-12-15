@@ -726,7 +726,7 @@ export class TransactionAggregate extends AggregateRoot {
     return this.status;
   }
 
-  getAmount(): string {
+  getAmount(): string | undefined {
     return this.amount;
   }
 
@@ -787,6 +787,22 @@ export class TransactionAggregate extends AggregateRoot {
 
   getCompensatedAt(): Date | undefined {
     return this.compensatedAt;
+  }
+
+  getType(): TransactionType {
+    return this.transactionType;
+  }
+
+  getSourceNewBalance(): string | undefined {
+    return this.sourceNewBalance;
+  }
+
+  getDestinationNewBalance(): string | undefined {
+    return this.destinationNewBalance;
+  }
+
+  getFailureCode(): string | undefined {
+    return this.failureCode;
   }
 
   /**

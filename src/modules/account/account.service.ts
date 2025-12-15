@@ -156,23 +156,4 @@ export class AccountService {
       throw new AccountInactiveException(account.id, account.status);
     }
   }
-
-  /**
-   * Wait for projection to be created (eventual consistency)
-   * In production, use a more sophisticated polling/subscription mechanism
-   */
-  private async waitForProjection(
-    accountId: string,
-    maxAttempts = 10,
-  ): Promise<void> {
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        await this.findById(accountId as AccountId);
-        return;
-      } catch (error) {
-        if (i === maxAttempts - 1) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-  }
 }

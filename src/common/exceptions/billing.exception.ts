@@ -1,83 +1,51 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-/**
- * Type for exception details - only serializable values allowed
- */
-export type ExceptionDetails = Record<
-  string,
-  string | number | boolean | Date | null | undefined
->;
-
 export class BillingException extends HttpException {
-  constructor(
-    public readonly code: string,
-    message: string,
-    public readonly details?: ExceptionDetails,
-    httpStatus: HttpStatus = HttpStatus.BAD_REQUEST,
-  ) {
-    super(
-      {
-        error: {
-          code,
-          message,
-          details,
-          timestamp: new Date().toISOString(),
-        },
-      },
-      httpStatus,
-    );
+  constructor(message: string, status: HttpStatus = HttpStatus.BAD_REQUEST) {
+    super(message, status);
   }
 }
 
 export class AccountNotFoundException extends BillingException {
   constructor(accountId: string) {
-    super(
-      'ACCOUNT_NOT_FOUND',
-      `Account with ID ${accountId} not found`,
-      { accountId },
-      HttpStatus.NOT_FOUND,
-    );
+    super(`Account not found: ${accountId}`, HttpStatus.NOT_FOUND);
+  }
+}
+
+export class TransactionNotFoundException extends BillingException {
+  constructor(transactionId: string) {
+    super(`Transaction not found: ${transactionId}`, HttpStatus.NOT_FOUND);
   }
 }
 
 export class InsufficientBalanceException extends BillingException {
-  constructor(
-    accountId: string,
-    availableBalance: string,
-    requestedAmount: string,
-  ) {
+  constructor(accountId: string, available: string, required: string) {
     super(
-      'INSUFFICIENT_BALANCE',
-      'Account balance is insufficient for this operation',
-      { accountId, requestedAmount, availableBalance },
+      `Insufficient balance in account ${accountId}. Available: ${available}, Required: ${required}`,
       HttpStatus.BAD_REQUEST,
     );
   }
 }
 
-export class InvalidCurrencyException extends BillingException {
-  constructor(currency: string) {
+export class CurrencyMismatchException extends BillingException {
+  constructor(expected: string, actual: string) {
     super(
-      'INVALID_CURRENCY',
-      `Currency ${currency} is not supported or inactive`,
-      { currency },
+      `Currency mismatch. Expected: ${expected}, Got: ${actual}`,
       HttpStatus.BAD_REQUEST,
     );
   }
 }
 
 export class InvalidOperationException extends BillingException {
-  constructor(message: string, details?: ExceptionDetails) {
-    super('INVALID_OPERATION', message, details, HttpStatus.BAD_REQUEST);
+  constructor(message: string) {
+    super(message, HttpStatus.BAD_REQUEST);
   }
 }
 
 export class DuplicateTransactionException extends BillingException {
   constructor(idempotencyKey: string, existingTransactionId: string) {
     super(
-      'DUPLICATE_TRANSACTION',
-      'A transaction with this idempotency key already exists',
-      { idempotencyKey, existingTransactionId },
+      `Transaction with idempotency key ${idempotencyKey} already exists: ${existingTransactionId}`,
       HttpStatus.CONFLICT,
     );
   }
@@ -86,38 +54,44 @@ export class DuplicateTransactionException extends BillingException {
 export class AccountInactiveException extends BillingException {
   constructor(accountId: string, status: string) {
     super(
-      'ACCOUNT_INACTIVE',
-      `Account is ${status} and cannot perform transactions`,
-      { accountId, status },
-      HttpStatus.BAD_REQUEST,
-    );
-  }
-}
-
-export class TransactionNotFoundException extends BillingException {
-  constructor(transactionId: string) {
-    super(
-      'TRANSACTION_NOT_FOUND',
-      `Transaction with ID ${transactionId} not found`,
-      { transactionId },
-      HttpStatus.NOT_FOUND,
-    );
-  }
-}
-
-export class CurrencyMismatchException extends BillingException {
-  constructor(accountCurrency: string, transactionCurrency: string) {
-    super(
-      'CURRENCY_MISMATCH',
-      'Transaction currency does not match account currency',
-      { accountCurrency, transactionCurrency },
+      `Account ${accountId} is not active (current status: ${status})`,
       HttpStatus.BAD_REQUEST,
     );
   }
 }
 
 export class RefundException extends BillingException {
-  constructor(message: string, details?: ExceptionDetails) {
-    super('REFUND_ERROR', message, details, HttpStatus.BAD_REQUEST);
+  constructor(message: string) {
+    super(message, HttpStatus.BAD_REQUEST);
+  }
+}
+
+export class OptimisticLockException extends BillingException {
+  constructor(aggregateId: string, expectedVersion: number, actualVersion: number) {
+    super(
+      `Optimistic lock conflict for ${aggregateId}. Expected version: ${expectedVersion}, Actual: ${actualVersion}`,
+      HttpStatus.CONFLICT,
+    );
+  }
+}
+
+export class InvariantViolationException extends BillingException {
+  constructor(message: string) {
+    super(`Invariant violation: ${message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+}
+
+export class ProjectionOutOfSyncException extends BillingException {
+  constructor(aggregateId: string, details: string) {
+    super(
+      `Projection out of sync for ${aggregateId}: ${details}`,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
+
+export class InvalidCurrencyException extends BillingException {
+  constructor(currency: string) {
+    super(`Invalid currency: ${currency}`, HttpStatus.BAD_REQUEST);
   }
 }

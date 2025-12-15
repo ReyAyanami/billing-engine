@@ -51,6 +51,10 @@ import { GetTransactionsByAccountHandler } from './queries/handlers/get-transact
 import { TransactionProjection } from './projections/transaction-projection.entity';
 import { TransactionProjectionService } from './projections/transaction-projection.service';
 
+// Fault Tolerance Services
+import { TransactionProjectionRebuildService } from './services/transaction-projection-rebuild.service';
+import { TransactionReconciliationService } from './services/transaction-reconciliation.service';
+
 const CommandHandlers = [
   TopupHandler,
   WithdrawalHandler,
@@ -103,10 +107,17 @@ const QueryHandlers = [GetTransactionHandler, GetTransactionsByAccountHandler];
   providers: [
     TransactionService,
     TransactionProjectionService,
+    TransactionProjectionRebuildService,
+    TransactionReconciliationService,
     ...CommandHandlers,
     ...EventHandlers,
     ...QueryHandlers,
   ],
-  exports: [TransactionService, TransactionProjectionService],
+  exports: [
+    TransactionService,
+    TransactionProjectionService,
+    TransactionProjectionRebuildService,
+    TransactionReconciliationService,
+  ],
 })
 export class TransactionModule {}

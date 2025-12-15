@@ -26,6 +26,10 @@ import { GetAccountsByOwnerHandler } from './queries/handlers/get-accounts-by-ow
 import { AccountProjection } from './projections/account-projection.entity';
 import { AccountProjectionService } from './projections/account-projection.service';
 
+// Fault Tolerance Services
+import { AccountProjectionRebuildService } from './services/account-projection-rebuild.service';
+import { AccountReconciliationService } from './services/account-reconciliation.service';
+
 const CommandHandlers = [
   CreateAccountHandler,
   UpdateBalanceHandler,
@@ -51,10 +55,17 @@ const QueryHandlers = [GetAccountHandler, GetAccountsByOwnerHandler];
   providers: [
     AccountService,
     AccountProjectionService,
+    AccountProjectionRebuildService,
+    AccountReconciliationService,
     ...CommandHandlers,
     ...EventHandlers,
     ...QueryHandlers,
   ],
-  exports: [AccountService, AccountProjectionService],
+  exports: [
+    AccountService,
+    AccountProjectionService,
+    AccountProjectionRebuildService,
+    AccountReconciliationService,
+  ],
 })
 export class AccountModule {}
