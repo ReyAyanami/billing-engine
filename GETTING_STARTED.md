@@ -310,8 +310,9 @@ When you transferred money from Alice to Bob, here's what happened behind the sc
 3. **Saga Started**: Transaction saga coordinates the two-sided operation
 4. **Events Published**: 
    - `TransferRequested` event published to Kafka
-   - Two `BalanceChanged` events (one debit, one credit)
+   - `BalanceReserved` events (source region reservation)
    - `TransferCompleted` event
+   - `BalanceChanged` events (debit and credit)
 5. **Projections Updated**: Event handlers update read models (account and transaction projections)
 6. **Response Returned**: API returns transaction IDs
 

@@ -155,6 +155,11 @@ This project demonstrates:
    - Idempotency handling
    - Compensation patterns
 
+6. **Multi-Region Architecture**
+   - Hybrid Logical Clocks (HLC) for causal ordering
+   - Reservation-based liquidity management
+   - Active-Active replication patterns
+
 ---
 
 ## 💭 Questions This Project Explores

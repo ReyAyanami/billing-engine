@@ -26,6 +26,8 @@ This is a **personal learning project** exploring how billing systems can be bui
 - 💸 **Transactions**: Top-up, Withdrawal, Transfer, Payment, and Refund operations
 - 🌍 **Multi-Currency**: Support for fiat (USD, EUR, GBP) and non-fiat (BTC, ETH, POINTS) currencies
 - 🔄 **Atomic Transfers**: Guaranteed consistency with pessimistic locking
+- 🌐 **Multi-Region Active-Active**: Global scale with Hybrid Logical Clocks (HLC) and Cross-Region Replication
+- 🛡️ **Reservation-Based Liquidity**: Zero double-spend guarantees via regional reservation pools
 
 ### Architecture Highlights
 - 📝 **Event Sourcing**: Complete audit trail with event replay capability
@@ -33,7 +35,8 @@ This is a **personal learning project** exploring how billing systems can be bui
 - 🔐 **Idempotency**: Duplicate transaction prevention with UUID keys
 - 🎯 **Saga Orchestration**: Production-grade transaction coordination with state tracking
 - 📦 **Outbox Pattern**: Guaranteed event delivery with at-least-once semantics
-- 🔄 **Dual Consistency**: Immediate (saga state) + eventual (projections)
+- 🕰️ **Hybrid Logical Clocks**: Causal ordering of events across distributed regions
+- 🔄 **Dual Consistency**: Immediate (saga/reservation) + eventual (projections)
 - 📊 **Real-time Events**: Server-Sent Events (SSE) for live updates
 
 ---
@@ -370,6 +373,9 @@ Recommended resources:
 - **Saga orchestration with state tracking** ⚡ NEW
 - **Transactional outbox pattern** ⚡ NEW
 - **Projection idempotency** ⚡ NEW
+- **Multi-Region Active-Active Architecture** ⚡ NEW
+- **Reservation-Based Liquidity Management** ⚡ NEW
+- **Hybrid Logical Clocks (HLC)** ⚡ NEW
 - Account management (USER, EXTERNAL, SYSTEM types)
 - Core transactions (Top-up, Withdrawal, Transfer)
 - Payment and Refund operations with compensation
