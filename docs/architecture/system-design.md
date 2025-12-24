@@ -498,10 +498,11 @@ await this.projectionRepository.save(accountProjection);
 
 5. TransferSaga:
    a. Listen for TransferRequestedEvent
-   b. Execute CompleteTransferCommand
-   
+   b. Execute ReserveBalanceCommand (Reserve funds from source)
+   c. Execute CompleteTransferCommand
+
 6. CompleteTransferHandler:
-   a. Debit source account (AccountAggregate.changeBalance)
+   a. Debit source account (AccountAggregate.changeBalance - requires reservation)
    b. Credit destination account (AccountAggregate.changeBalance)
    c. Emit BalanceChangedEvent (x2) → Kafka
    d. Emit TransferCompletedEvent → Kafka

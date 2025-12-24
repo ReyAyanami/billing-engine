@@ -449,4 +449,5 @@ async handle(event: TopupCompletedEvent): Promise<void> {
 ## Revision History
 
 - **2025-12-09**: Initial decision - saga orchestration implemented
+- **2025-12-24**: Enforced `ReserveBalance` step. All debiting sagas (Payment, Refund, Transfer, Withdrawal) must explicitly reserve funds before debiting to satisfy `AccountAggregate` invariants.
 

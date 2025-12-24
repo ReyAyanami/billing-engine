@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Saga Reservations**: Added mandatory `ReserveBalance` step to Payment, Refund, Transfer, and Withdrawal sagas to prevent "Insufficient local reservation" errors.
+- **Event Serialization Fix**: Implemented `getEventData` in `BalanceReservedEvent` for correct hydration.
+
+### Fixed
+- **E2E Tests**: Fixed all end-to-end tests for transaction flows.
+- **Type Safety**: Resolved typescript errors in event definitions.
+
+### Added
 
 #### Fault Tolerance Features
 - **Projection Rebuilding Services**: Reconstruct projections from event store
