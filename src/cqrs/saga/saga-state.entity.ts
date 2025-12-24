@@ -70,6 +70,11 @@ export class SagaState {
       timestamp: string;
       result?: string;
     }>;
+    activityHistory: Record<string, {
+      result: any;
+      timestamp: string;
+      status: 'completed' | 'failed';
+    }>;
   };
 
   /**

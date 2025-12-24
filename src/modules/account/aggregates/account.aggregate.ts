@@ -1,13 +1,16 @@
 import { AggregateRoot } from '../../../cqrs/base/aggregate-root';
 import { JsonObject } from '../../../common/types/json.types';
 import { AccountCreatedEvent } from '../events/account-created.event';
+import { ReplenishmentRequestedEvent } from '../events/replenishment-requested.event';
 import { BalanceChangedEvent } from '../events/balance-changed.event';
+import { BalanceReservedEvent } from '../events/balance-reserved.event';
 import { AccountStatusChangedEvent } from '../events/account-status-changed.event';
 import { AccountLimitsChangedEvent } from '../events/account-limits-changed.event';
 import { AccountType, AccountStatus } from '../account.types';
 import Decimal from 'decimal.js';
 import { assertNever } from '../../../common/utils/exhaustive-check';
 import { InvariantViolationException } from '../../../common/exceptions/billing.exception';
+import { Logger } from '@nestjs/common';
 
 /**
  * Account Aggregate - Event-Sourced Version
@@ -16,13 +19,16 @@ import { InvariantViolationException } from '../../../common/exceptions/billing.
  * It maintains state by applying domain events and ensures business rules are enforced.
  */
 export class AccountAggregate extends AggregateRoot {
+  private readonly logger = new Logger(AccountAggregate.name);
   // Aggregate state (derived from events)
   private ownerId!: string;
   private ownerType!: string;
   private accountType!: AccountType;
   private currency!: string;
+  private homeRegionId!: string;
   private status!: AccountStatus;
   private balance: Decimal = new Decimal(0);
+  private reservations: Map<string, Decimal> = new Map();
   private maxBalance?: Decimal;
   private minBalance?: Decimal;
   private createdAt!: Date;
@@ -66,6 +72,7 @@ export class AccountAggregate extends AggregateRoot {
       currency: params.currency,
       status: AccountStatus.ACTIVE,
       balance: '0.00', // Initial balance
+      homeRegionId: this.regionId,
       aggregateId: params.accountId,
       aggregateVersion: 1,
       correlationId: params.correlationId,
@@ -88,6 +95,7 @@ export class AccountAggregate extends AggregateRoot {
     this.ownerType = event.ownerType;
     this.accountType = event.accountType;
     this.currency = event.currency;
+    this.homeRegionId = event.homeRegionId;
     this.status = event.status;
     this.balance = new Decimal(0);
     this.maxBalance = event.maxBalance
@@ -127,6 +135,18 @@ export class AccountAggregate extends AggregateRoot {
     return this.balance;
   }
 
+  getReservation(regionId: string): Decimal {
+    return this.reservations.get(regionId) || new Decimal(0);
+  }
+
+  getTotalReserved(): Decimal {
+    let total = new Decimal(0);
+    for (const res of this.reservations.values()) {
+      total = total.plus(res);
+    }
+    return total;
+  }
+
   getMaxBalance(): Decimal | undefined {
     return this.maxBalance;
   }
@@ -141,6 +161,10 @@ export class AccountAggregate extends AggregateRoot {
 
   getUpdatedAt(): Date {
     return this.updatedAt;
+  }
+
+  getHomeRegionId(): string {
+    return this.homeRegionId;
   }
 
   /**
@@ -200,12 +224,25 @@ export class AccountAggregate extends AggregateRoot {
       );
     }
 
-    // For accounts with minBalance set, check against that
-    // For accounts without minBalance set, prevent negative balances by default
+    // Reservation-Based Validation (Option B)
+    // For DEBITs, we check if the LOCAL region has enough reservation.
+    // For CREDITs, we just update the total balance.
+    if (params.changeType === 'DEBIT') {
+      const localReservation = this.getReservation(this.regionId);
+      if (localReservation.lessThan(changeAmount)) {
+        throw new Error(
+          `Insufficient local reservation in region ${this.regionId}: ` +
+          `available ${localReservation.toString()}, requested ${changeAmount.toString()}`
+        );
+      }
+    }
+
+    // Still respect aggregate-level invariants (e.g. total balance min/max)
     const effectiveMinBalance = this.minBalance || new Decimal(0);
     if (newBalance.lessThan(effectiveMinBalance)) {
       throw new Error(
-        `Insufficient balance: current ${previousBalance.toString()}, attempting to ${params.changeType} ${changeAmount.toString()}, would result in ${newBalance.toString()}`,
+        `Insufficient total balance: current ${previousBalance.toString()}, ` +
+        `attempting to ${params.changeType} ${changeAmount.toString()}, would result in ${newBalance.toString()}`
       );
     }
 
@@ -226,6 +263,38 @@ export class AccountAggregate extends AggregateRoot {
     });
 
     this.apply(event);
+
+    // After updating balance, check if replenishment is needed
+    this.checkReplenishmentThreshold(params.correlationId, event.eventId);
+  }
+
+  private checkReplenishmentThreshold(correlationId: string, causationId: string): void {
+    const localRes = this.getReservation(this.regionId);
+
+    // threshold: if local reservation < 50, and we are not the home region
+    if (localRes.lessThan(50) && this.regionId !== this.homeRegionId) {
+      this.logger.log(`Local reservation low in ${this.regionId} (${localRes.toString()}). Requesting replenishment.`);
+
+      const replenishmentAmount = '100.00';
+
+      const requestEvent = new ReplenishmentRequestedEvent({
+        requestedAmount: replenishmentAmount,
+        requestingRegionId: this.regionId,
+        homeRegionId: this.homeRegionId,
+        currentAvailable: localRes.toString(),
+        aggregateId: this.aggregateId,
+        aggregateVersion: this.version + 1,
+        correlationId: correlationId,
+        causationId: causationId,
+      });
+      this.apply(requestEvent);
+    }
+  }
+
+  onReplenishmentRequested(event: ReplenishmentRequestedEvent): void {
+    // This event is a signal for the Home Region to act. 
+    // Aggregate state doesn't necessarily change until the reservation is allocated.
+    this.updatedAt = event.timestamp;
   }
 
   /**
@@ -233,7 +302,64 @@ export class AccountAggregate extends AggregateRoot {
    * Updates aggregate state when balance changes
    */
   onBalanceChanged(event: BalanceChangedEvent): void {
+    const changeAmount = new Decimal(event.changeAmount);
+    const regionId = (event as any).regionId || 'unknown';
+
+    // If it's a DEBIT, deduct from the region's reservation
+    if (event.changeType === 'DEBIT') {
+      const currentRes = this.getReservation(regionId);
+      this.reservations.set(regionId, currentRes.minus(changeAmount));
+    }
+
     this.balance = new Decimal(event.newBalance);
+    this.updatedAt = event.timestamp;
+  }
+
+  /**
+   * Allocates reservation to a region (command method)
+   */
+  reserve(params: {
+    amount: string;
+    targetRegionId: string;
+    correlationId: string;
+    causationId?: string;
+    metadata?: Record<string, string | number | boolean | undefined>;
+  }): void {
+    if (!this.aggregateId) throw new Error('Account does not exist');
+
+    const amount = new Decimal(params.amount);
+    if (amount.lessThanOrEqualTo(0)) throw new Error('Reserve amount must be positive');
+
+    const totalReserved = this.getTotalReserved();
+    const unreservedBalance = this.balance.minus(totalReserved);
+
+    if (unreservedBalance.lessThan(amount)) {
+      throw new Error(
+        `Insufficient unreserved balance to allocate ${amount.toString()}. ` +
+        `Balance: ${this.balance.toString()}, Total Reserved: ${totalReserved.toString()}`
+      );
+    }
+
+    const event = new BalanceReservedEvent({
+      amount: params.amount,
+      targetRegionId: params.targetRegionId,
+      newTotalReserved: totalReserved.plus(amount).toString(),
+      aggregateId: this.aggregateId,
+      aggregateVersion: this.version + 1,
+      correlationId: params.correlationId,
+      causationId: params.causationId,
+      metadata: params.metadata,
+    });
+
+    this.apply(event);
+  }
+
+  onBalanceReserved(event: BalanceReservedEvent): void {
+    const currentRes = this.getReservation(event.targetRegionId);
+    this.reservations.set(
+      event.targetRegionId,
+      currentRes.plus(new Decimal(event.amount))
+    );
     this.updatedAt = event.timestamp;
   }
 
@@ -447,6 +573,7 @@ export class AccountAggregate extends AggregateRoot {
       ownerType: this.ownerType,
       accountType: this.accountType,
       currency: this.currency,
+      homeRegionId: this.homeRegionId,
       status: this.status,
       balance: this.balance.toString(),
       maxBalance: this.maxBalance?.toString() ?? null,

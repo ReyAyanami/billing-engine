@@ -1,15 +1,17 @@
 import { Logger } from '@nestjs/common';
-import { DomainEvent } from './domain-event';
+import { DomainEvent as BaseDomainEvent } from './domain-event';
 import {
   DeserializedEvent,
   isDeserializedEvent,
 } from './deserialized-event.interface';
+import { HLC } from '../../common/utils/hlc.util';
+import * as crypto from 'crypto';
 
 /**
  * Type for events that can be applied to aggregates
  * Can be either a proper DomainEvent instance or a deserialized event from storage
  */
-type ApplicableEvent = DomainEvent | DeserializedEvent;
+type ApplicableEvent = BaseDomainEvent | DeserializedEvent;
 
 /**
  * Event handler function type
@@ -29,8 +31,16 @@ export abstract class AggregateRoot {
   /** Current version number (increments with each event) */
   protected version: number = 0;
 
+  /** Region ID where this aggregate is currently being modified */
+  protected regionId: string = process.env['REGION_ID'] || 'unknown';
+
+  protected static hlc = new HLC();
+
+  /** Last event hash for tamper-evidence chain */
+  private lastEventHash: string = '0'.repeat(64);
+
   /** Events that have been applied but not yet persisted */
-  private uncommittedEvents: DomainEvent[] = [];
+  private uncommittedEvents: BaseDomainEvent[] = [];
 
   /**
    * Returns the aggregate type name (e.g., 'Account', 'Transaction')
@@ -52,14 +62,35 @@ export abstract class AggregateRoot {
       const eventType = this.getEventType(event);
       AggregateRoot.logger.warn(
         `No handler found [eventType=${eventType}, aggregateType=${this.getAggregateType()}, ` +
-          `aggregateId=${this.aggregateId}]`,
+        `aggregateId=${this.aggregateId}]`,
       );
     }
 
     // Add to uncommitted events if this is a new event
     // Only DomainEvent instances should be added (not deserialized events)
-    if (isNew && event instanceof DomainEvent) {
+    if (isNew && event instanceof BaseDomainEvent) {
+      // Assign HLC timestamp and regionId for new local events
+      (event as any)['hlcTimestamp'] = AggregateRoot.hlc.now();
+      (event as any)['regionId'] = this.regionId;
+
+      // Tamper-evidence: Hash chaining
+      const eventData = JSON.stringify(event.toJSON());
+      const hmac = crypto.createHmac('sha256', process.env['HMAC_KEY'] || 'default-secret');
+      hmac.update(eventData + this.lastEventHash);
+      this.lastEventHash = hmac.digest('hex');
+      (event as any)['metadata'] = {
+        ...(event.metadata || {}),
+        hash: this.lastEventHash
+      };
+
       this.uncommittedEvents.push(event);
+    } else if (!isNew && isDeserializedEvent(event)) {
+      if ((event as any)['hlcTimestamp']) {
+        // For historical/replicated events, catch up the local HLC to preserve causality
+        AggregateRoot.hlc.update((event as any)['hlcTimestamp']);
+      }
+      // Update local lastEventHash from historical event to maintain the chain
+      this.lastEventHash = (event as any).metadata?.hash || this.lastEventHash;
     }
 
     // Update version
@@ -70,7 +101,7 @@ export abstract class AggregateRoot {
    * Gets the event type from either a DomainEvent or deserialized event
    */
   private getEventType(event: ApplicableEvent): string {
-    if (event instanceof DomainEvent) {
+    if (event instanceof BaseDomainEvent) {
       return event.getEventType();
     }
 
@@ -110,7 +141,7 @@ export abstract class AggregateRoot {
   /**
    * Returns all events that have been applied but not yet persisted
    */
-  getUncommittedEvents(): DomainEvent[] {
+  getUncommittedEvents(): BaseDomainEvent[] {
     return [...this.uncommittedEvents];
   }
 
@@ -145,7 +176,7 @@ export abstract class AggregateRoot {
    */
   static fromEvents<T extends AggregateRoot>(
     this: new () => T,
-    events: DomainEvent[],
+    events: ApplicableEvent[],
   ): T {
     const aggregate = new this();
 

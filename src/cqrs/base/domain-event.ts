@@ -31,6 +31,12 @@ export abstract class DomainEvent {
   /** Additional metadata (e.g., user ID, IP address, etc.) */
   readonly metadata?: EventMetadata;
 
+  /** Hybrid Logical Clock timestamp for global ordering */
+  readonly hlcTimestamp: string;
+
+  /** Region ID where the event originated */
+  readonly regionId: string;
+
   constructor(props: {
     aggregateId: string;
     aggregateType: string;
@@ -38,12 +44,16 @@ export abstract class DomainEvent {
     correlationId: string;
     causationId?: string;
     metadata?: EventMetadata;
+    hlcTimestamp?: string;
+    regionId?: string;
   }) {
     this.eventId = uuidv4();
     this.aggregateId = props.aggregateId;
     this.aggregateType = props.aggregateType;
     this.aggregateVersion = props.aggregateVersion;
     this.timestamp = new Date();
+    this.hlcTimestamp = props.hlcTimestamp || '0000000000000:00000';
+    this.regionId = props.regionId || process.env['REGION_ID'] || 'unknown';
     this.correlationId = props.correlationId;
     this.causationId = props.causationId;
     this.metadata = props.metadata || {};
@@ -68,6 +78,8 @@ export abstract class DomainEvent {
       aggregateType: this.aggregateType,
       aggregateVersion: this.aggregateVersion,
       timestamp: this.timestamp.toISOString(),
+      hlcTimestamp: this.hlcTimestamp,
+      regionId: this.regionId,
       correlationId: this.correlationId,
       causationId: this.causationId ?? null,
       metadata: this.metadata ? (this.metadata as unknown as JsonObject) : {},

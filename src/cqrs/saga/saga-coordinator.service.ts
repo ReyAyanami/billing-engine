@@ -43,7 +43,7 @@ export class SagaCoordinator {
   constructor(
     @InjectRepository(SagaState)
     private readonly sagaStateRepo: Repository<SagaState>,
-  ) {}
+  ) { }
 
   /**
    * Start a new saga and track its state
@@ -64,6 +64,7 @@ export class SagaCoordinator {
         completedSteps: [],
         pendingSteps: params.steps,
         compensationActions: [],
+        activityHistory: {},
       },
       metadata: params.metadata,
     });
@@ -103,7 +104,7 @@ export class SagaCoordinator {
     } else {
       this.logger.debug(
         `Saga step completed [id=${saga.sagaId}, step=${params.step}, ` +
-          `remaining=${saga.state.pendingSteps.length}]`,
+        `remaining=${saga.state.pendingSteps.length}]`,
       );
     }
 
@@ -247,5 +248,36 @@ export class SagaCoordinator {
       order: { startedAt: 'ASC' },
       take: limit,
     });
+  }
+
+  /**
+   * Record the result of an activity (side-effect) for idempotency
+   */
+  async recordActivity(params: {
+    sagaId: string;
+    activityId: string;
+    result: any;
+    status: 'completed' | 'failed';
+  }): Promise<SagaState> {
+    const saga = await this.getSaga(params.sagaId);
+    if (!saga) throw new Error(`Saga not found: ${params.sagaId}`);
+
+    saga.state.activityHistory[params.activityId] = {
+      result: params.result,
+      timestamp: new Date().toISOString(),
+      status: params.status,
+    };
+
+    return await this.sagaStateRepo.save(saga);
+  }
+
+  /**
+   * Get the result of a previously executed activity
+   */
+  async getActivity(sagaId: string, activityId: string): Promise<any | null> {
+    const saga = await this.getSaga(sagaId);
+    if (!saga) return null;
+
+    return (saga.state as any).activityHistory?.[activityId] || null;
   }
 }

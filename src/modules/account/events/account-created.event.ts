@@ -13,6 +13,7 @@ export interface AccountCreatedEventParams {
   currency: string;
   status: AccountStatus;
   balance: string;
+  homeRegionId: string;
   aggregateId: string;
   aggregateVersion: number;
   correlationId: string;
@@ -33,6 +34,7 @@ export class AccountCreatedEvent extends DomainEvent {
   public readonly currency: string;
   public readonly status: AccountStatus;
   public readonly balance: string;
+  public readonly homeRegionId: string;
   public readonly maxBalance?: string;
   public readonly minBalance?: string;
 
@@ -51,6 +53,7 @@ export class AccountCreatedEvent extends DomainEvent {
     this.currency = params.currency;
     this.status = params.status;
     this.balance = params.balance;
+    this.homeRegionId = params.homeRegionId;
     this.maxBalance = params.maxBalance;
     this.minBalance = params.minBalance;
   }
@@ -67,6 +70,7 @@ export class AccountCreatedEvent extends DomainEvent {
       currency: this.currency ?? null,
       status: this.status ?? null,
       balance: this.balance ?? null,
+      homeRegionId: this.homeRegionId,
       maxBalance: this.maxBalance ?? null,
       minBalance: this.minBalance ?? null,
     };

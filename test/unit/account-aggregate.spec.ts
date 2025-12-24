@@ -4,6 +4,8 @@ import {
   AccountStatus,
 } from '../../src/modules/account/account.types';
 
+process.env['REGION_ID'] = 'test-region';
+
 describe('AccountAggregate - Balance Change Validation', () => {
   let aggregate: AccountAggregate;
   const accountId = 'test-account-123';

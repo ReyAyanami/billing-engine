@@ -11,12 +11,14 @@ import { NotificationModule } from '../notification/notification.module';
 import { CreateAccountHandler } from './handlers/create-account.handler';
 import { UpdateBalanceHandler } from './handlers/update-balance.handler';
 import { UpdateAccountStatusHandler } from './handlers/update-account-status.handler';
+import { ReserveBalanceHandler } from './handlers/reserve-balance.handler';
 
 // CQRS Components - Events (Projection handlers only)
 import { AccountCreatedHandler } from './handlers/account-created.handler';
 import { BalanceChangedHandler } from './handlers/balance-changed.handler';
 import { AccountStatusChangedHandler } from './handlers/account-status-changed.handler';
 import { AccountLimitsChangedHandler } from './handlers/account-limits-changed.handler';
+import { ReplenishmentPolicy } from './handlers/replenishment.policy';
 
 // CQRS Components - Queries
 import { GetAccountHandler } from './queries/handlers/get-account.handler';
@@ -34,12 +36,14 @@ const CommandHandlers = [
   CreateAccountHandler,
   UpdateBalanceHandler,
   UpdateAccountStatusHandler,
+  ReserveBalanceHandler,
 ];
 const EventHandlers = [
   AccountCreatedHandler, // Updates projection only
   BalanceChangedHandler, // Updates projection only
   AccountStatusChangedHandler,
   AccountLimitsChangedHandler,
+  ReplenishmentPolicy,
 ];
 const QueryHandlers = [GetAccountHandler, GetAccountsByOwnerHandler];
 
@@ -68,4 +72,4 @@ const QueryHandlers = [GetAccountHandler, GetAccountsByOwnerHandler];
     AccountReconciliationService,
   ],
 })
-export class AccountModule {}
+export class AccountModule { }
