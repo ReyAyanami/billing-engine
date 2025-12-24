@@ -58,7 +58,8 @@ export class AccountReconciliationService {
     const projectionBalance = new Decimal(projection.balance);
     const eventSourceBalance = aggregate.getBalance();
     const balanceMatch = projectionBalance.equals(eventSourceBalance);
-    const versionMismatch = projection.aggregateVersion !== aggregate.getVersion();
+    const versionMismatch =
+      projection.aggregateVersion !== aggregate.getVersion();
 
     const issues: string[] = [];
 
@@ -84,7 +85,9 @@ export class AccountReconciliationService {
       match: balanceMatch && !versionMismatch && issues.length === 0,
       projectionBalance: projectionBalance.toFixed(8),
       eventSourceBalance: eventSourceBalance.toFixed(8),
-      difference: balanceMatch ? undefined : projectionBalance.minus(eventSourceBalance).toFixed(8),
+      difference: balanceMatch
+        ? undefined
+        : projectionBalance.minus(eventSourceBalance).toFixed(8),
       projectionVersion: projection.aggregateVersion,
       eventSourceVersion: aggregate.getVersion(),
       versionMismatch,
@@ -133,7 +136,9 @@ export class AccountReconciliationService {
           projectionVersion: projection.aggregateVersion,
           eventSourceVersion: -1,
           versionMismatch: true,
-          issues: [`Reconciliation error: ${error instanceof Error ? error.message : String(error)}`],
+          issues: [
+            `Reconciliation error: ${error instanceof Error ? error.message : String(error)}`,
+          ],
         });
       }
     }
@@ -168,7 +173,7 @@ export class AccountReconciliationService {
     this.logger.log('Verifying accounting equation...');
 
     const allProjections = await this.projectionRepository.find();
-    
+
     let totalBalance = new Decimal(0);
     for (const projection of allProjections) {
       totalBalance = totalBalance.plus(projection.balance);
@@ -187,4 +192,3 @@ export class AccountReconciliationService {
     return result;
   }
 }
-

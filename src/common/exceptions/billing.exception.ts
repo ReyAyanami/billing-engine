@@ -67,7 +67,11 @@ export class RefundException extends BillingException {
 }
 
 export class OptimisticLockException extends BillingException {
-  constructor(aggregateId: string, expectedVersion: number, actualVersion: number) {
+  constructor(
+    aggregateId: string,
+    expectedVersion: number,
+    actualVersion: number,
+  ) {
     super(
       `Optimistic lock conflict for ${aggregateId}. Expected version: ${expectedVersion}, Actual: ${actualVersion}`,
       HttpStatus.CONFLICT,

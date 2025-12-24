@@ -16,7 +16,9 @@ import { TransactionId } from '../../../common/types/branded.types';
  */
 @Injectable()
 export class TransactionProjectionRebuildService {
-  private readonly logger = new Logger(TransactionProjectionRebuildService.name);
+  private readonly logger = new Logger(
+    TransactionProjectionRebuildService.name,
+  );
 
   constructor(
     @Inject('EVENT_STORE') private eventStore: IEventStore,
@@ -27,10 +29,15 @@ export class TransactionProjectionRebuildService {
   /**
    * Rebuild a single transaction projection from its events
    */
-  async rebuildTransaction(transactionId: TransactionId): Promise<TransactionProjection> {
+  async rebuildTransaction(
+    transactionId: TransactionId,
+  ): Promise<TransactionProjection> {
     this.logger.log(`Rebuilding projection for transaction: ${transactionId}`);
 
-    const events = await this.eventStore.getEvents('Transaction', transactionId);
+    const events = await this.eventStore.getEvents(
+      'Transaction',
+      transactionId,
+    );
 
     if (events.length === 0) {
       throw new Error(`No events found for transaction: ${transactionId}`);
@@ -61,7 +68,8 @@ export class TransactionProjectionRebuildService {
       failureReason: aggregate.getFailureReason() || undefined,
       failureCode: aggregate.getFailureCode() || undefined,
       compensationReason: aggregate.getCompensationReason() || undefined,
-      compensationActions: aggregate.getCompensationActions() as any || undefined,
+      compensationActions:
+        (aggregate.getCompensationActions() as any) || undefined,
       requestedAt: aggregate.getRequestedAt() || firstEvent.timestamp,
       completedAt: aggregate.getCompletedAt() || undefined,
       compensatedAt: aggregate.getCompensatedAt() || undefined,
@@ -81,9 +89,9 @@ export class TransactionProjectionRebuildService {
       this.logger.log(`✅ Transaction projection created: ${transactionId}`);
     }
 
-    return await this.projectionRepository.findOne({
+    return (await this.projectionRepository.findOne({
       where: { id: transactionId },
-    }) as TransactionProjection;
+    })) as TransactionProjection;
   }
 
   /**
@@ -123,4 +131,3 @@ export class TransactionProjectionRebuildService {
     return results;
   }
 }
-

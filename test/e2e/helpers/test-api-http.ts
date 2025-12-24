@@ -167,8 +167,9 @@ export class TestAPIHTTP {
     const pollInterval = 100;
 
     while (Date.now() - start < maxWait) {
-      const response = await request(this.server)
-        .get(`/api/v1/accounts/${accountId}/balance`);
+      const response = await request(this.server).get(
+        `/api/v1/accounts/${accountId}/balance`,
+      );
 
       if (response.status === 200) {
         return response.body;

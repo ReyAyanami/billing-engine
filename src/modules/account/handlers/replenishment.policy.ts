@@ -11,43 +11,48 @@ import { ConfigService } from '@nestjs/config';
 @EventsHandler(ReplenishmentRequestedEvent)
 @Injectable()
 export class ReplenishmentPolicy implements IEventHandler<ReplenishmentRequestedEvent> {
-    private readonly logger = new Logger(ReplenishmentPolicy.name);
-    private readonly regionId: string;
+  private readonly logger = new Logger(ReplenishmentPolicy.name);
+  private readonly regionId: string;
 
-    constructor(
-        private commandBus: CommandBus,
-        private configService: ConfigService,
-    ) {
-        this.regionId = this.configService.get<string>('REGION_ID', 'unknown');
+  constructor(
+    private commandBus: CommandBus,
+    private configService: ConfigService,
+  ) {
+    this.regionId = this.configService.get<string>('REGION_ID', 'unknown');
+  }
+
+  async handle(event: ReplenishmentRequestedEvent) {
+    // Only the Home Region has authority to allocate reservations from the global pool
+    if (this.regionId !== event.homeRegionId) {
+      this.logger.debug(
+        `Ignoring replenishment request for account ${event.aggregateId} (Region: ${this.regionId}, Home: ${event.homeRegionId})`,
+      );
+      return;
     }
 
-    async handle(event: ReplenishmentRequestedEvent) {
-        // Only the Home Region has authority to allocate reservations from the global pool
-        if (this.regionId !== event.homeRegionId) {
-            this.logger.debug(
-                `Ignoring replenishment request for account ${event.aggregateId} (Region: ${this.regionId}, Home: ${event.homeRegionId})`
-            );
-            return;
-        }
+    this.logger.log(
+      `Home Region (${this.regionId}) processing replenishment request from ${event.requestingRegionId} for account ${event.aggregateId}`,
+    );
 
-        this.logger.log(
-            `Home Region (${this.regionId}) processing replenishment request from ${event.requestingRegionId} for account ${event.aggregateId}`
-        );
-
-        try {
-            await this.commandBus.execute(
-                new ReserveBalanceCommand({
-                    accountId: event.aggregateId,
-                    amount: event.requestedAmount,
-                    targetRegionId: event.requestingRegionId,
-                    reason: `Automatic replenishment requested by region ${event.requestingRegionId}`,
-                    correlationId: event.correlationId,
-                    causationId: event.eventId,
-                })
-            );
-            this.logger.log(`✅ Successfully processed replenishment for ${event.aggregateId}`);
-        } catch (error) {
-            this.logger.error(`❌ Failed to process replenishment for ${event.aggregateId}:`, error);
-        }
+    try {
+      await this.commandBus.execute(
+        new ReserveBalanceCommand({
+          accountId: event.aggregateId,
+          amount: event.requestedAmount,
+          targetRegionId: event.requestingRegionId,
+          reason: `Automatic replenishment requested by region ${event.requestingRegionId}`,
+          correlationId: event.correlationId,
+          causationId: event.eventId,
+        }),
+      );
+      this.logger.log(
+        `✅ Successfully processed replenishment for ${event.aggregateId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `❌ Failed to process replenishment for ${event.aggregateId}:`,
+        error,
+      );
     }
+  }
 }

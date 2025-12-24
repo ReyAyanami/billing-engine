@@ -45,4 +45,4 @@ import { TimerProcessor } from './saga/timer.processor';
     TimerProcessor,
   ],
 })
-export class CqrsSagaModule { }
+export class CqrsSagaModule {}

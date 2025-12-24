@@ -39,7 +39,10 @@ export class RetryUtil {
       } catch (error) {
         lastError = error;
 
-        if (attempt === opts.maxAttempts || !this.isRetryable(error, opts.retryableErrors)) {
+        if (
+          attempt === opts.maxAttempts ||
+          !this.isRetryable(error, opts.retryableErrors)
+        ) {
           this.logger.error(
             `${context} failed after ${attempt} attempt(s)`,
             error instanceof Error ? error.stack : String(error),
@@ -67,9 +70,9 @@ export class RetryUtil {
 
     return retryableErrors.some(
       (retryable) =>
-        errorCode.includes(retryable) || 
+        errorCode.includes(retryable) ||
         errorMessage.includes(retryable) ||
-        error.constructor.name.includes(retryable)
+        error.constructor.name.includes(retryable),
     );
   }
 
@@ -90,4 +93,3 @@ export class RetryUtil {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
-

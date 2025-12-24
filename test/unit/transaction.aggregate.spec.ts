@@ -214,10 +214,10 @@ describe('TransactionAggregate', () => {
 
         const actions = aggregate.getCompensationActions();
         expect(actions).toHaveLength(2);
-        expect(actions?.[0].accountId).toBe('acc-123');
-        expect(actions?.[0].action).toBe('CREDIT');
-        expect(actions?.[0].amount).toBe('100.00');
-        expect(actions?.[0].timestamp).toBeDefined();
+        expect(actions![0]!.accountId).toBe('acc-123');
+        expect(actions![0]!.action).toBe('CREDIT');
+        expect(actions![0]!.amount).toBe('100.00');
+        expect(actions![0]!.timestamp).toBeDefined();
 
         expect(aggregate.getCompensatedAt()).toBeInstanceOf(Date);
       });
@@ -495,8 +495,8 @@ describe('TransactionAggregate', () => {
         failedAt: null,
       });
 
-      expect(snapshot.requestedAt).toBeDefined();
-      expect(typeof snapshot.requestedAt).toBe('string');
+      expect(snapshot['requestedAt']).toBeDefined();
+      expect(typeof snapshot['requestedAt']).toBe('string');
     });
 
     it('should create snapshot of completed transfer', () => {
@@ -532,7 +532,7 @@ describe('TransactionAggregate', () => {
         accountId: null,
       });
 
-      expect(snapshot.completedAt).toBeDefined();
+      expect(snapshot['completedAt']).toBeDefined();
     });
 
     it('should create snapshot of failed transaction', () => {
@@ -560,7 +560,7 @@ describe('TransactionAggregate', () => {
         failureCode: 'TIMEOUT',
       });
 
-      expect(snapshot.failedAt).toBeDefined();
+      expect(snapshot['failedAt']).toBeDefined();
     });
 
     it('should create snapshot of compensated transaction', () => {
@@ -594,8 +594,8 @@ describe('TransactionAggregate', () => {
         compensationReason: 'Saga rollback',
       });
 
-      expect(snapshot.compensationActions).toHaveLength(1);
-      expect(snapshot.compensatedAt).toBeDefined();
+      expect(snapshot['compensationActions']).toHaveLength(1);
+      expect(snapshot['compensatedAt']).toBeDefined();
     });
   });
 
@@ -709,7 +709,8 @@ describe('TransactionAggregate', () => {
 
       // Metadata should be stored in events
       const events = aggregate.getUncommittedEvents();
-      expect(events[0].metadata).toEqual(metadata);
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[0]!.metadata).toEqual(expect.objectContaining(metadata));
     });
 
     it('should maintain aggregate version through state transitions', () => {
@@ -778,4 +779,3 @@ describe('TransactionAggregate', () => {
     });
   });
 });
-

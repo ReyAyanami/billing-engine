@@ -1,13 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EventBus } from '@nestjs/cqrs';
-import { Repository, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { OutboxProcessor } from '../../src/cqrs/outbox/outbox-processor.service';
-import {
-  OutboxEvent,
-  OutboxStatus,
-} from '../../src/cqrs/outbox/outbox.entity';
-import { DomainEvent } from '../../src/cqrs/base/domain-event';
+import { OutboxEvent, OutboxStatus } from '../../src/cqrs/outbox/outbox.entity';
+
 import { EventStream } from '../../src/cqrs/events/event-stream.types';
 
 describe('OutboxProcessor', () => {
@@ -59,21 +56,36 @@ describe('OutboxProcessor', () => {
         aggregateType: 'Test',
         aggregateId: 'test-001',
         aggregateVersion: 1,
+        timestamp: new Date(),
+        correlationId: 'corr-001',
+        hlcTimestamp: 'hlc-001',
+        regionId: 'region-001',
+        getEventData: () => ({ data: 'test' }),
         toJSON: () => ({ data: 'test' }),
-      } as DomainEvent;
+      } as any;
 
       const mockOutboxEvent = {
         id: 'outbox-001',
         eventType: 'TestEvent',
         eventId: 'event-001',
+        aggregateType: 'Test',
+        aggregateId: 'test-001',
+        aggregateVersion: 1,
         status: OutboxStatus.PENDING,
+        priority: 0,
+        targetStreams: [EventStream.PROJECTION],
+        payload: { data: 'test' } as any,
+        retryCount: 0,
+        maxRetries: 3,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as OutboxEvent;
 
       mockRepository.create.mockReturnValue(mockOutboxEvent);
       mockRepository.save.mockResolvedValue(mockOutboxEvent);
 
       const result = await processor.addToOutbox(mockEvent, [
-        EventStream.PROJECTIONS,
+        EventStream.PROJECTION,
       ]);
 
       expect(result).toEqual(mockOutboxEvent);
@@ -85,7 +97,7 @@ describe('OutboxProcessor', () => {
           aggregateId: 'test-001',
           aggregateVersion: 1,
           payload: { data: 'test' },
-          targetStreams: [EventStream.PROJECTIONS],
+          targetStreams: [EventStream.PROJECTION],
           status: OutboxStatus.PENDING,
           priority: 0,
         }),
@@ -99,10 +111,30 @@ describe('OutboxProcessor', () => {
         aggregateType: 'Test',
         aggregateId: 'test-002',
         aggregateVersion: 1,
+        timestamp: new Date(),
+        correlationId: 'corr-002',
+        hlcTimestamp: 'hlc-002',
+        regionId: 'region-001',
+        getEventData: () => ({ data: 'saga' }),
         toJSON: () => ({ data: 'saga' }),
-      } as DomainEvent;
+      } as any;
 
-      const mockOutboxEvent = {} as OutboxEvent;
+      const mockOutboxEvent = {
+        id: 'outbox-002',
+        eventType: 'SagaEvent',
+        eventId: 'event-002',
+        aggregateType: 'Test',
+        aggregateId: 'test-002',
+        aggregateVersion: 1,
+        status: OutboxStatus.PENDING,
+        priority: 10,
+        targetStreams: [EventStream.SAGA],
+        payload: { data: 'saga' } as any,
+        retryCount: 0,
+        maxRetries: 3,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as OutboxEvent;
       mockRepository.create.mockReturnValue(mockOutboxEvent);
       mockRepository.save.mockResolvedValue(mockOutboxEvent);
 
@@ -121,22 +153,41 @@ describe('OutboxProcessor', () => {
         toJSON: () => ({}),
       } as any;
 
-      const mockOutboxEvent = {} as OutboxEvent;
+      const mockOutboxEvent = {
+        id: 'outbox-multi',
+        eventType: 'MultiEvent',
+        eventId: 'event-multi',
+        aggregateType: 'Test',
+        aggregateId: 'test-multi',
+        aggregateVersion: 1,
+        status: OutboxStatus.PENDING,
+        priority: 10,
+        targetStreams: [
+          EventStream.SAGA,
+          EventStream.PROJECTION,
+          EventStream.INTEGRATION,
+        ],
+        payload: {} as any,
+        retryCount: 0,
+        maxRetries: 3,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as OutboxEvent;
       mockRepository.create.mockReturnValue(mockOutboxEvent);
       mockRepository.save.mockResolvedValue(mockOutboxEvent);
 
       await processor.addToOutbox(mockEvent, [
         EventStream.SAGA,
-        EventStream.PROJECTIONS,
-        EventStream.AUDIT,
+        EventStream.PROJECTION,
+        EventStream.INTEGRATION,
       ]);
 
       expect(mockRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           targetStreams: [
             EventStream.SAGA,
-            EventStream.PROJECTIONS,
-            EventStream.AUDIT,
+            EventStream.PROJECTION,
+            EventStream.INTEGRATION,
           ],
           priority: 10, // Because SAGA is included
         }),
@@ -263,7 +314,7 @@ describe('OutboxProcessor', () => {
       expect(mockRepository.delete).toHaveBeenCalledWith({
         status: OutboxStatus.DELIVERED,
         deliveredAt: expect.any(Object), // LessThan matcher
-      });
+      } as any);
     });
 
     it('should use custom retention period', async () => {
@@ -274,9 +325,12 @@ describe('OutboxProcessor', () => {
 
       expect(mockRepository.delete).toHaveBeenCalled();
       // Verify it was called with LessThan date 30 days ago
-      const deleteCall = mockRepository.delete.mock.calls[0][0];
-      expect(deleteCall.status).toBe(OutboxStatus.DELIVERED);
-      expect(deleteCall.deliveredAt).toBeDefined();
+      const calls = mockRepository.delete.mock.calls;
+      const deleteCall = calls.length > 0 ? (calls[0]![0] as any) : undefined;
+      if (deleteCall) {
+        expect(deleteCall.status).toBe(OutboxStatus.DELIVERED);
+        expect(deleteCall.deliveredAt).toBeDefined();
+      }
     });
 
     it('should return zero when no events deleted', async () => {
@@ -335,9 +389,18 @@ describe('OutboxProcessor', () => {
       const event = {
         id: 'outbox-001',
         eventType: 'TestEvent',
+        eventId: 'event-001',
+        aggregateType: 'Test',
+        aggregateId: 'test-001',
+        aggregateVersion: 1,
         status: OutboxStatus.PENDING,
+        priority: 0,
+        targetStreams: [],
+        payload: {} as any,
         retryCount: 0,
         maxRetries: 3,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as OutboxEvent;
 
       mockRepository.find.mockResolvedValue([event]);
@@ -363,13 +426,33 @@ describe('OutboxProcessor', () => {
           id: 'outbox-001',
           priority: 0,
           eventType: 'LowPriority',
+          eventId: 'event-low',
+          aggregateType: 'Test',
+          aggregateId: 'test-001',
+          aggregateVersion: 1,
           status: OutboxStatus.PENDING,
+          targetStreams: [],
+          payload: {} as any,
+          retryCount: 0,
+          maxRetries: 3,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
         {
           id: 'outbox-002',
           priority: 10,
           eventType: 'HighPriority',
+          eventId: 'event-high',
+          aggregateType: 'Test',
+          aggregateId: 'test-002',
+          aggregateVersion: 1,
           status: OutboxStatus.PENDING,
+          targetStreams: [],
+          payload: {} as any,
+          retryCount: 0,
+          maxRetries: 3,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ] as OutboxEvent[];
 
@@ -395,10 +478,20 @@ describe('OutboxProcessor', () => {
     it('should accumulate error history on retries', async () => {
       const event = {
         id: 'outbox-001',
+        eventType: 'TestEvent',
+        eventId: 'event-001',
+        aggregateType: 'Test',
+        aggregateId: 'test-001',
+        aggregateVersion: 1,
         status: OutboxStatus.PENDING,
+        priority: 0,
+        targetStreams: [],
+        payload: {} as any,
         retryCount: 0,
         maxRetries: 3,
         errorHistory: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as OutboxEvent;
 
       mockRepository.find.mockResolvedValue([event]);
@@ -414,8 +507,11 @@ describe('OutboxProcessor', () => {
       // Verify error history was updated
       const saveCalls = mockRepository.save.mock.calls;
       if (saveCalls.length > 0) {
-        const lastCall = saveCalls[saveCalls.length - 1][0] as OutboxEvent;
-        if (lastCall.errorHistory) {
+        const lastCallArgs = saveCalls[saveCalls.length - 1];
+        const lastCall = lastCallArgs
+          ? (lastCallArgs[0] as OutboxEvent)
+          : undefined;
+        if (lastCall && lastCall.errorHistory) {
           expect(lastCall.errorHistory.length).toBeGreaterThan(0);
         }
       }
@@ -461,4 +557,3 @@ describe('OutboxProcessor', () => {
     });
   });
 });
-

@@ -52,8 +52,12 @@ export class AccountProjectionRebuildService {
       currency: aggregate.getCurrency(),
       balance: aggregate.getBalance().toFixed(8),
       status: aggregate.getStatus(),
-      maxBalance: aggregate.getMaxBalance() ? aggregate.getMaxBalance()!.toFixed(8) : null,
-      minBalance: aggregate.getMinBalance() ? aggregate.getMinBalance()!.toFixed(8) : null,
+      maxBalance: aggregate.getMaxBalance()
+        ? aggregate.getMaxBalance()!.toFixed(8)
+        : null,
+      minBalance: aggregate.getMinBalance()
+        ? aggregate.getMinBalance()!.toFixed(8)
+        : null,
       aggregateVersion: aggregate.getVersion(),
       lastEventId: lastEvent.eventId,
       lastEventTimestamp: lastEvent.timestamp,
@@ -73,9 +77,9 @@ export class AccountProjectionRebuildService {
       this.logger.log(`✅ Account projection created: ${accountId}`);
     }
 
-    return await this.projectionRepository.findOne({
+    return (await this.projectionRepository.findOne({
       where: { id: accountId },
-    }) as AccountProjection;
+    })) as AccountProjection;
   }
 
   /**
@@ -115,4 +119,3 @@ export class AccountProjectionRebuildService {
     return results;
   }
 }
-

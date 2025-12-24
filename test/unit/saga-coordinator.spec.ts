@@ -2,10 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SagaCoordinator } from '../../src/cqrs/saga/saga-coordinator.service';
-import {
-  SagaState,
-  SagaStatus,
-} from '../../src/cqrs/saga/saga-state.entity';
+import { SagaState, SagaStatus } from '../../src/cqrs/saga/saga-state.entity';
 
 describe('SagaCoordinator', () => {
   let coordinator: SagaCoordinator;
@@ -56,7 +53,11 @@ describe('SagaCoordinator', () => {
           completedSteps: [],
           pendingSteps: params.steps,
           compensationActions: [],
+          activityHistory: {},
         },
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       mockRepository.create.mockReturnValue(mockSaga);
@@ -76,6 +77,7 @@ describe('SagaCoordinator', () => {
           completedSteps: [],
           pendingSteps: params.steps,
           compensationActions: [],
+          activityHistory: {},
         },
         metadata: undefined,
       });
@@ -100,7 +102,11 @@ describe('SagaCoordinator', () => {
           completedSteps: [],
           pendingSteps: params.steps,
           compensationActions: [],
+          activityHistory: {},
         },
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       mockRepository.create.mockReturnValue(mockSaga);
@@ -131,7 +137,14 @@ describe('SagaCoordinator', () => {
           completedSteps: [],
           pendingSteps: params.steps,
           compensationActions: [],
+          activityHistory: {},
         },
+        sagaType: params.sagaType,
+        status: SagaStatus.PROCESSING,
+        correlationId: params.correlationId,
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       mockRepository.create.mockReturnValue(mockSaga);
@@ -156,7 +169,12 @@ describe('SagaCoordinator', () => {
           completedSteps: [],
           pendingSteps: ['step1', 'step2', 'step3'],
           compensationActions: [],
+          activityHistory: {},
         },
+        correlationId: 'corr-001',
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       mockRepository.findOne.mockResolvedValue(saga);
@@ -191,7 +209,12 @@ describe('SagaCoordinator', () => {
           completedSteps: ['step1', 'step2'],
           pendingSteps: ['step3'],
           compensationActions: [],
+          activityHistory: {},
         },
+        correlationId: 'corr-001',
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       const completedSaga = {
@@ -245,7 +268,15 @@ describe('SagaCoordinator', () => {
           completedSteps: ['step1'],
           pendingSteps: ['step2', 'step3'],
           compensationActions: [],
+          activityHistory: {},
+          currentStep: 2,
+          totalSteps: 3,
         },
+        sagaType: 'PaymentSaga',
+        correlationId: 'corr-001',
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       const failedSaga = {
@@ -293,7 +324,15 @@ describe('SagaCoordinator', () => {
           completedSteps: [],
           pendingSteps: ['step1'],
           compensationActions: [],
+          activityHistory: {},
+          currentStep: 1,
+          totalSteps: 1,
         },
+        sagaType: 'PaymentSaga',
+        correlationId: 'corr-001',
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       const failedSaga = {
@@ -348,7 +387,17 @@ describe('SagaCoordinator', () => {
         status: SagaStatus.COMPENSATING,
         state: {
           compensationActions: [],
+          activityHistory: {},
+          currentStep: 1,
+          totalSteps: 1,
+          completedSteps: [],
+          pendingSteps: [],
         },
+        sagaType: 'PaymentSaga',
+        correlationId: 'corr-001',
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       const updatedSaga = {
@@ -391,7 +440,14 @@ describe('SagaCoordinator', () => {
               timestamp: '2025-01-01T00:00:00.000Z',
             },
           ],
+          activityHistory: {},
         },
+        sagaType: 'PaymentSaga',
+        status: SagaStatus.COMPENSATING,
+        correlationId: 'corr-001',
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       mockRepository.findOne.mockResolvedValue(saga);
@@ -429,7 +485,13 @@ describe('SagaCoordinator', () => {
           compensationActions: [
             { action: 'reverse-step1', timestamp: '2025-01-01T00:00:00.000Z' },
           ],
+          activityHistory: {},
         },
+        sagaType: 'PaymentSaga',
+        correlationId: 'corr-001',
+        retryCount: 0,
+        startedAt: new Date(),
+        updatedAt: new Date(),
       } as SagaState;
 
       const completedSaga = {
@@ -659,4 +721,3 @@ describe('SagaCoordinator', () => {
     });
   });
 });
-

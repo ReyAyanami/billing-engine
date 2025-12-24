@@ -1,4 +1,11 @@
-import { Controller, Post, Get, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AccountProjectionRebuildService } from '../account/services/account-projection-rebuild.service';
 import { AccountReconciliationService } from '../account/services/account-reconciliation.service';
@@ -24,13 +31,16 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Rebuild account projection from events',
-    description: 'Reconstructs account projection from event store. Used for recovering from corruption.',
+    description:
+      'Reconstructs account projection from event store. Used for recovering from corruption.',
   })
   @ApiParam({ name: 'id', description: 'Account ID' })
   @ApiResponse({ status: 200, description: 'Projection rebuilt successfully' })
   @ApiResponse({ status: 404, description: 'Account not found' })
   async rebuildAccount(@Param('id') accountId: string) {
-    return await this.accountRebuildService.rebuildAccount(accountId as AccountId);
+    return await this.accountRebuildService.rebuildAccount(
+      accountId as AccountId,
+    );
   }
 
   @Post('accounts/rebuild-all')
@@ -52,7 +62,9 @@ export class AdminController {
   @ApiParam({ name: 'id', description: 'Account ID' })
   @ApiResponse({ status: 200, description: 'Reconciliation result' })
   async reconcileAccount(@Param('id') accountId: string) {
-    return await this.accountReconciliationService.reconcileAccount(accountId as AccountId);
+    return await this.accountReconciliationService.reconcileAccount(
+      accountId as AccountId,
+    );
   }
 
   @Get('accounts/reconcile-all')
@@ -84,7 +96,9 @@ export class AdminController {
   @ApiParam({ name: 'id', description: 'Transaction ID' })
   @ApiResponse({ status: 200, description: 'Projection rebuilt successfully' })
   async rebuildTransaction(@Param('id') transactionId: string) {
-    return await this.transactionRebuildService.rebuildTransaction(transactionId as TransactionId);
+    return await this.transactionRebuildService.rebuildTransaction(
+      transactionId as TransactionId,
+    );
   }
 
   @Post('transactions/rebuild-all')
@@ -106,7 +120,9 @@ export class AdminController {
   @ApiParam({ name: 'id', description: 'Transaction ID' })
   @ApiResponse({ status: 200, description: 'Reconciliation result' })
   async reconcileTransaction(@Param('id') transactionId: string) {
-    return await this.transactionReconciliationService.reconcileTransaction(transactionId as TransactionId);
+    return await this.transactionReconciliationService.reconcileTransaction(
+      transactionId as TransactionId,
+    );
   }
 
   @Get('transactions/reconcile-all')
@@ -129,4 +145,3 @@ export class AdminController {
     return await this.transactionReconciliationService.findStuckTransactions(5);
   }
 }
-

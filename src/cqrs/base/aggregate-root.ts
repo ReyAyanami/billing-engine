@@ -62,7 +62,7 @@ export abstract class AggregateRoot {
       const eventType = this.getEventType(event);
       AggregateRoot.logger.warn(
         `No handler found [eventType=${eventType}, aggregateType=${this.getAggregateType()}, ` +
-        `aggregateId=${this.aggregateId}]`,
+          `aggregateId=${this.aggregateId}]`,
       );
     }
 
@@ -75,12 +75,15 @@ export abstract class AggregateRoot {
 
       // Tamper-evidence: Hash chaining
       const eventData = JSON.stringify(event.toJSON());
-      const hmac = crypto.createHmac('sha256', process.env['HMAC_KEY'] || 'default-secret');
+      const hmac = crypto.createHmac(
+        'sha256',
+        process.env['HMAC_KEY'] || 'default-secret',
+      );
       hmac.update(eventData + this.lastEventHash);
       this.lastEventHash = hmac.digest('hex');
       (event as any)['metadata'] = {
         ...(event.metadata || {}),
-        hash: this.lastEventHash
+        hash: this.lastEventHash,
       };
 
       this.uncommittedEvents.push(event);

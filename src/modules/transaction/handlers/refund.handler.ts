@@ -63,7 +63,8 @@ export class RefundHandler implements ICommandHandler<RefundCommand> {
         causationId: command.commandId,
         metadata: {
           actorId: command.actorId,
-          originalPaymentAmount: paymentAggregate.getAmount()?.toString() || '0',
+          originalPaymentAmount:
+            paymentAggregate.getAmount()?.toString() || '0',
         },
       });
 

@@ -8,4 +8,3 @@ import { TransactionModule } from '../transaction/transaction.module';
   controllers: [AdminController],
 })
 export class AdminModule {}
-

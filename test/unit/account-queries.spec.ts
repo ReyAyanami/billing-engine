@@ -65,7 +65,9 @@ describe('Account Query Handlers', () => {
       });
 
       it('should throw NotFoundException when account not found', async () => {
-        const query = new GetAccountQuery({ accountId: 'acc-nonexistent' as any });
+        const query = new GetAccountQuery({
+          accountId: 'acc-nonexistent' as any,
+        });
         mockProjectionService.findById.mockResolvedValue(null);
 
         await expect(getAccountHandler.execute(query)).rejects.toThrow(
@@ -128,7 +130,9 @@ describe('Account Query Handlers', () => {
         const statuses = ['active', 'suspended', 'closed'];
 
         for (const status of statuses) {
-          const query = new GetAccountQuery({ accountId: `acc-${status}` as any });
+          const query = new GetAccountQuery({
+            accountId: `acc-${status}` as any,
+          });
           mockProjectionService.findById.mockResolvedValue({
             ...mockAccount,
             id: `acc-${status}`,
@@ -145,7 +149,9 @@ describe('Account Query Handlers', () => {
         const accountTypes = ['user', 'system', 'external'];
 
         for (const accountType of accountTypes) {
-          const query = new GetAccountQuery({ accountId: `acc-${accountType}` as any });
+          const query = new GetAccountQuery({
+            accountId: `acc-${accountType}` as any,
+          });
           mockProjectionService.findById.mockResolvedValue({
             ...mockAccount,
             id: `acc-${accountType}`,
@@ -173,7 +179,9 @@ describe('Account Query Handlers', () => {
   describe('GetAccountsByOwnerHandler', () => {
     describe('execute', () => {
       it('should return accounts for owner', async () => {
-        const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-123' as any });
+        const query = new GetAccountsByOwnerQuery({
+          ownerId: 'owner-123' as any,
+        });
         const accounts = [
           { ...mockAccount, id: 'acc-001', ownerId: 'owner-123' },
           { ...mockAccount, id: 'acc-002', ownerId: 'owner-123' },
@@ -193,7 +201,9 @@ describe('Account Query Handlers', () => {
       });
 
       it('should return empty array when no accounts found', async () => {
-        const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-empty' as any });
+        const query = new GetAccountsByOwnerQuery({
+          ownerId: 'owner-empty' as any,
+        });
         mockProjectionService.findByOwnerId.mockResolvedValue([]);
 
         const result = await getAccountsByOwnerHandler.execute(query);
@@ -206,7 +216,9 @@ describe('Account Query Handlers', () => {
       });
 
       it('should handle single account', async () => {
-        const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-single' as any });
+        const query = new GetAccountsByOwnerQuery({
+          ownerId: 'owner-single' as any,
+        });
         const accounts = [mockAccount] as AccountProjection[];
 
         mockProjectionService.findByOwnerId.mockResolvedValue(accounts);
@@ -218,7 +230,9 @@ describe('Account Query Handlers', () => {
       });
 
       it('should handle large number of accounts', async () => {
-        const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-many' as any });
+        const query = new GetAccountsByOwnerQuery({
+          ownerId: 'owner-many' as any,
+        });
         const accounts = Array.from({ length: 50 }, (_, i) => ({
           ...mockAccount,
           id: `acc-${i}`,
@@ -230,12 +244,14 @@ describe('Account Query Handlers', () => {
         const result = await getAccountsByOwnerHandler.execute(query);
 
         expect(result.length).toBe(50);
-        expect(result[0].id).toBe('acc-0');
-        expect(result[49].id).toBe('acc-49');
+        expect(result[0]!.id).toBe('acc-0');
+        expect(result[49]!.id).toBe('acc-49');
       });
 
       it('should return accounts with different currencies', async () => {
-        const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-multi' as any });
+        const query = new GetAccountsByOwnerQuery({
+          ownerId: 'owner-multi' as any,
+        });
         const accounts = [
           { ...mockAccount, id: 'acc-001', currency: 'USD' },
           { ...mockAccount, id: 'acc-002', currency: 'EUR' },
@@ -251,7 +267,9 @@ describe('Account Query Handlers', () => {
       });
 
       it('should return accounts with different statuses', async () => {
-        const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-mixed' as any });
+        const query = new GetAccountsByOwnerQuery({
+          ownerId: 'owner-mixed' as any,
+        });
         const accounts = [
           { ...mockAccount, id: 'acc-001', status: 'active' },
           { ...mockAccount, id: 'acc-002', status: 'suspended' },
@@ -263,13 +281,15 @@ describe('Account Query Handlers', () => {
         const result = await getAccountsByOwnerHandler.execute(query);
 
         expect(result.length).toBe(3);
-        expect(result[0].status).toBe('active');
-        expect(result[1].status).toBe('suspended');
-        expect(result[2].status).toBe('closed');
+        expect(result[0]!.status).toBe('active');
+        expect(result[1]!.status).toBe('suspended');
+        expect(result[2]!.status).toBe('closed');
       });
 
       it('should return accounts with different balances', async () => {
-        const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-balance' as any });
+        const query = new GetAccountsByOwnerQuery({
+          ownerId: 'owner-balance' as any,
+        });
         const accounts = [
           { ...mockAccount, id: 'acc-001', balance: '0.00' },
           { ...mockAccount, id: 'acc-002', balance: '100.50' },
@@ -281,25 +301,25 @@ describe('Account Query Handlers', () => {
         const result = await getAccountsByOwnerHandler.execute(query);
 
         expect(result.length).toBe(3);
-        expect(result[0].balance).toBe('0.00');
-        expect(result[1].balance).toBe('100.50');
-        expect(result[2].balance).toBe('10000.99');
+        expect(result[0]!.balance).toBe('0.00');
+        expect(result[1]!.balance).toBe('100.50');
+        expect(result[2]!.balance).toBe('10000.99');
       });
 
       it('should handle different owner IDs', async () => {
         const ownerIds = ['owner-001', 'owner-002', 'owner-003'];
 
         for (const ownerId of ownerIds) {
-          const query = new GetAccountsByOwnerQuery({ ownerId: ownerId as any });
-          const accounts = [
-            { ...mockAccount, ownerId },
-          ] as AccountProjection[];
+          const query = new GetAccountsByOwnerQuery({
+            ownerId: ownerId as any,
+          });
+          const accounts = [{ ...mockAccount, ownerId }] as AccountProjection[];
 
           mockProjectionService.findByOwnerId.mockResolvedValue(accounts);
 
           const result = await getAccountsByOwnerHandler.execute(query);
 
-          expect(result[0].ownerId).toBe(ownerId);
+          expect(result[0]!.ownerId).toBe(ownerId);
           expect(mockProjectionService.findByOwnerId).toHaveBeenCalledWith(
             ownerId,
           );
@@ -307,13 +327,15 @@ describe('Account Query Handlers', () => {
       });
 
       it('should propagate service errors', async () => {
-        const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-error' as any });
+        const query = new GetAccountsByOwnerQuery({
+          ownerId: 'owner-error' as any,
+        });
         const serviceError = new Error('Database query failed');
         mockProjectionService.findByOwnerId.mockRejectedValue(serviceError);
 
-        await expect(
-          getAccountsByOwnerHandler.execute(query),
-        ).rejects.toThrow('Database query failed');
+        await expect(getAccountsByOwnerHandler.execute(query)).rejects.toThrow(
+          'Database query failed',
+        );
       });
     });
   });
@@ -325,7 +347,9 @@ describe('Account Query Handlers', () => {
     });
 
     it('should create GetAccountsByOwnerQuery with ownerId', () => {
-      const query = new GetAccountsByOwnerQuery({ ownerId: 'owner-test' as any });
+      const query = new GetAccountsByOwnerQuery({
+        ownerId: 'owner-test' as any,
+      });
       expect(query.ownerId).toBe('owner-test');
     });
   });
@@ -359,7 +383,7 @@ describe('Account Query Handlers', () => {
         ] as AccountProjection[]);
 
         const result = await getAccountsByOwnerHandler.execute(query);
-        expect(result[0].ownerId).toBe(ownerId);
+        expect(result[0]!.ownerId).toBe(ownerId);
       }
 
       expect(mockProjectionService.findByOwnerId).toHaveBeenCalledTimes(3);
@@ -386,4 +410,3 @@ describe('Account Query Handlers', () => {
     });
   });
 });
-

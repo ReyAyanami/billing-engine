@@ -5,7 +5,6 @@ import {
 } from '../../src/common/validation/metadata.validator';
 import {
   validateTransactionMetadata,
-  validateAccountMetadata,
   validateEventMetadata,
 } from '../../src/common/validation/runtime-validators';
 
@@ -397,21 +396,19 @@ describe('Metadata Validators', () => {
 
     it('should validate each standard field type correctly', () => {
       // Test each field individually
-      expect(
-        validateEventMetadata({ actorId: 'valid-string' }).valid,
-      ).toBe(true);
-      expect(
-        validateEventMetadata({ actorType: 'valid-string' }).valid,
-      ).toBe(true);
-      expect(
-        validateEventMetadata({ ipAddress: '127.0.0.1' }).valid,
-      ).toBe(true);
-      expect(
-        validateEventMetadata({ userAgent: 'Mozilla/5.0' }).valid,
-      ).toBe(true);
-      expect(
-        validateEventMetadata({ source: 'api' }).valid,
-      ).toBe(true);
+      expect(validateEventMetadata({ actorId: 'valid-string' }).valid).toBe(
+        true,
+      );
+      expect(validateEventMetadata({ actorType: 'valid-string' }).valid).toBe(
+        true,
+      );
+      expect(validateEventMetadata({ ipAddress: '127.0.0.1' }).valid).toBe(
+        true,
+      );
+      expect(validateEventMetadata({ userAgent: 'Mozilla/5.0' }).valid).toBe(
+        true,
+      );
+      expect(validateEventMetadata({ source: 'api' }).valid).toBe(true);
     });
 
     it('should collect all errors for multiple invalid fields', () => {
@@ -431,4 +428,3 @@ describe('Metadata Validators', () => {
     });
   });
 });
-

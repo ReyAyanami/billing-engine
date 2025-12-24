@@ -9,34 +9,38 @@ import { v4 as uuidv4 } from 'uuid';
  */
 @Injectable()
 export class TimerService {
-    private readonly logger = new Logger(TimerService.name);
+  private readonly logger = new Logger(TimerService.name);
 
-    constructor(
-        @InjectRepository(WorkflowTimer)
-        private timerRepository: Repository<WorkflowTimer>,
-    ) { }
+  constructor(
+    @InjectRepository(WorkflowTimer)
+    private timerRepository: Repository<WorkflowTimer>,
+  ) {}
 
-    async schedule(params: {
-        sagaId: string;
-        executeAt: Date;
-        payload: any;
-    }): Promise<string> {
-        const timerId = uuidv4();
-        const timer = this.timerRepository.create({
-            timerId,
-            sagaId: params.sagaId,
-            executeAt: params.executeAt,
-            payload: params.payload,
-            status: TimerStatus.PENDING,
-        });
+  async schedule(params: {
+    sagaId: string;
+    executeAt: Date;
+    payload: any;
+  }): Promise<string> {
+    const timerId = uuidv4();
+    const timer = this.timerRepository.create({
+      timerId,
+      sagaId: params.sagaId,
+      executeAt: params.executeAt,
+      payload: params.payload,
+      status: TimerStatus.PENDING,
+    });
 
-        await this.timerRepository.save(timer);
-        this.logger.log(`Scheduled timer ${timerId} for saga ${params.sagaId} at ${params.executeAt.toISOString()}`);
-        return timerId;
-    }
+    await this.timerRepository.save(timer);
+    this.logger.log(
+      `Scheduled timer ${timerId} for saga ${params.sagaId} at ${params.executeAt.toISOString()}`,
+    );
+    return timerId;
+  }
 
-    async cancel(timerId: string): Promise<void> {
-        await this.timerRepository.update(timerId, { status: TimerStatus.CANCELLED });
-        this.logger.log(`Cancelled timer ${timerId}`);
-    }
+  async cancel(timerId: string): Promise<void> {
+    await this.timerRepository.update(timerId, {
+      status: TimerStatus.CANCELLED,
+    });
+    this.logger.log(`Cancelled timer ${timerId}`);
+  }
 }

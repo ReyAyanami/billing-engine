@@ -43,7 +43,7 @@ export class SagaCoordinator {
   constructor(
     @InjectRepository(SagaState)
     private readonly sagaStateRepo: Repository<SagaState>,
-  ) { }
+  ) {}
 
   /**
    * Start a new saga and track its state
@@ -104,7 +104,7 @@ export class SagaCoordinator {
     } else {
       this.logger.debug(
         `Saga step completed [id=${saga.sagaId}, step=${params.step}, ` +
-        `remaining=${saga.state.pendingSteps.length}]`,
+          `remaining=${saga.state.pendingSteps.length}]`,
       );
     }
 

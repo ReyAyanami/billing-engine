@@ -10,4 +10,4 @@ import { KafkaModule } from '../../cqrs/kafka/kafka.module';
   providers: [CrossRegionReplicatorService],
   exports: [CrossRegionReplicatorService],
 })
-export class EventsModule { }
+export class EventsModule {}

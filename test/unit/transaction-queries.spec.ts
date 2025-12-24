@@ -57,7 +57,9 @@ describe('Transaction Query Handlers', () => {
   describe('GetTransactionHandler', () => {
     describe('execute', () => {
       it('should return transaction when found', async () => {
-        const query = new GetTransactionQuery({ transactionId: 'tx-123' as any });
+        const query = new GetTransactionQuery({
+          transactionId: 'tx-123' as any,
+        });
         mockProjectionService.findById.mockResolvedValue(
           mockTransaction as TransactionProjection,
         );
@@ -70,7 +72,9 @@ describe('Transaction Query Handlers', () => {
       });
 
       it('should throw NotFoundException when transaction not found', async () => {
-        const query = new GetTransactionQuery({ transactionId: 'tx-nonexistent' as any });
+        const query = new GetTransactionQuery({
+          transactionId: 'tx-nonexistent' as any,
+        });
         mockProjectionService.findById.mockResolvedValue(null);
 
         await expect(getTransactionHandler.execute(query)).rejects.toThrow(
@@ -120,7 +124,9 @@ describe('Transaction Query Handlers', () => {
           metadata: { orderId: '12345' },
         };
 
-        const query = new GetTransactionQuery({ transactionId: 'tx-complete' as any });
+        const query = new GetTransactionQuery({
+          transactionId: 'tx-complete' as any,
+        });
         mockProjectionService.findById.mockResolvedValue(
           completeTransaction as TransactionProjection,
         );
@@ -132,7 +138,9 @@ describe('Transaction Query Handlers', () => {
       });
 
       it('should propagate service errors', async () => {
-        const query = new GetTransactionQuery({ transactionId: 'tx-error' as any });
+        const query = new GetTransactionQuery({
+          transactionId: 'tx-error' as any,
+        });
         const serviceError = new Error('Database connection failed');
         mockProjectionService.findById.mockRejectedValue(serviceError);
 
@@ -146,7 +154,9 @@ describe('Transaction Query Handlers', () => {
   describe('GetTransactionsByAccountHandler', () => {
     describe('execute', () => {
       it('should return transactions for account', async () => {
-        const query = new GetTransactionsByAccountQuery({ accountId: 'acc-123' as any });
+        const query = new GetTransactionsByAccountQuery({
+          accountId: 'acc-123' as any,
+        });
         const transactions = [
           { ...mockTransaction, id: 'tx-001' },
           { ...mockTransaction, id: 'tx-002' },
@@ -166,7 +176,9 @@ describe('Transaction Query Handlers', () => {
       });
 
       it('should return empty array when no transactions found', async () => {
-        const query = new GetTransactionsByAccountQuery({ accountId: 'acc-empty' as any });
+        const query = new GetTransactionsByAccountQuery({
+          accountId: 'acc-empty' as any,
+        });
         mockProjectionService.findByAccount.mockResolvedValue([]);
 
         const result = await getTransactionsByAccountHandler.execute(query);
@@ -179,7 +191,9 @@ describe('Transaction Query Handlers', () => {
       });
 
       it('should handle single transaction', async () => {
-        const query = new GetTransactionsByAccountQuery({ accountId: 'acc-single' as any });
+        const query = new GetTransactionsByAccountQuery({
+          accountId: 'acc-single' as any,
+        });
         const transactions = [mockTransaction] as TransactionProjection[];
 
         mockProjectionService.findByAccount.mockResolvedValue(transactions);
@@ -191,7 +205,9 @@ describe('Transaction Query Handlers', () => {
       });
 
       it('should handle large number of transactions', async () => {
-        const query = new GetTransactionsByAccountQuery({ accountId: 'acc-many' as any });
+        const query = new GetTransactionsByAccountQuery({
+          accountId: 'acc-many' as any,
+        });
         const transactions = Array.from({ length: 100 }, (_, i) => ({
           ...mockTransaction,
           id: `tx-${i}`,
@@ -202,12 +218,14 @@ describe('Transaction Query Handlers', () => {
         const result = await getTransactionsByAccountHandler.execute(query);
 
         expect(result.length).toBe(100);
-        expect(result[0].id).toBe('tx-0');
-        expect(result[99].id).toBe('tx-99');
+        expect(result[0]!.id).toBe('tx-0');
+        expect(result[99]!.id).toBe('tx-99');
       });
 
       it('should return transactions with different statuses', async () => {
-        const query = new GetTransactionsByAccountQuery({ accountId: 'acc-mixed' as any });
+        const query = new GetTransactionsByAccountQuery({
+          accountId: 'acc-mixed' as any,
+        });
         const transactions = [
           { ...mockTransaction, id: 'tx-001', status: 'pending' },
           { ...mockTransaction, id: 'tx-002', status: 'completed' },
@@ -219,13 +237,15 @@ describe('Transaction Query Handlers', () => {
         const result = await getTransactionsByAccountHandler.execute(query);
 
         expect(result.length).toBe(3);
-        expect(result[0].status).toBe('pending');
-        expect(result[1].status).toBe('completed');
-        expect(result[2].status).toBe('failed');
+        expect(result[0]!.status).toBe('pending');
+        expect(result[1]!.status).toBe('completed');
+        expect(result[2]!.status).toBe('failed');
       });
 
       it('should return transactions with different types', async () => {
-        const query = new GetTransactionsByAccountQuery({ accountId: 'acc-types' as any });
+        const query = new GetTransactionsByAccountQuery({
+          accountId: 'acc-types' as any,
+        });
         const transactions = [
           { ...mockTransaction, id: 'tx-001', type: 'payment' },
           { ...mockTransaction, id: 'tx-002', type: 'refund' },
@@ -252,7 +272,9 @@ describe('Transaction Query Handlers', () => {
         const accountIds = ['acc-001', 'acc-002', 'acc-003'];
 
         for (const accountId of accountIds) {
-          const query = new GetTransactionsByAccountQuery({ accountId: accountId as any });
+          const query = new GetTransactionsByAccountQuery({
+            accountId: accountId as any,
+          });
           const transactions = [
             { ...mockTransaction, sourceAccountId: accountId },
           ] as TransactionProjection[];
@@ -261,7 +283,7 @@ describe('Transaction Query Handlers', () => {
 
           const result = await getTransactionsByAccountHandler.execute(query);
 
-          expect(result[0].sourceAccountId).toBe(accountId);
+          expect(result[0]!.sourceAccountId).toBe(accountId);
           expect(mockProjectionService.findByAccount).toHaveBeenCalledWith(
             accountId,
           );
@@ -269,7 +291,9 @@ describe('Transaction Query Handlers', () => {
       });
 
       it('should propagate service errors', async () => {
-        const query = new GetTransactionsByAccountQuery({ accountId: 'acc-error' as any });
+        const query = new GetTransactionsByAccountQuery({
+          accountId: 'acc-error' as any,
+        });
         const serviceError = new Error('Database query failed');
         mockProjectionService.findByAccount.mockRejectedValue(serviceError);
 
@@ -282,12 +306,16 @@ describe('Transaction Query Handlers', () => {
 
   describe('Query Objects', () => {
     it('should create GetTransactionQuery with transactionId', () => {
-      const query = new GetTransactionQuery({ transactionId: 'tx-test' as any });
+      const query = new GetTransactionQuery({
+        transactionId: 'tx-test' as any,
+      });
       expect(query.transactionId).toBe('tx-test');
     });
 
     it('should create GetTransactionsByAccountQuery with accountId', () => {
-      const query = new GetTransactionsByAccountQuery({ accountId: 'acc-test' as any });
+      const query = new GetTransactionsByAccountQuery({
+        accountId: 'acc-test' as any,
+      });
       expect(query.accountId).toBe('acc-test');
     });
   });
@@ -295,7 +323,9 @@ describe('Transaction Query Handlers', () => {
   describe('Integration Scenarios', () => {
     it('should handle sequence of queries for same transaction', async () => {
       const transactionId = 'tx-sequential';
-      const query = new GetTransactionQuery({ transactionId: transactionId as any });
+      const query = new GetTransactionQuery({
+        transactionId: transactionId as any,
+      });
 
       mockProjectionService.findById.mockResolvedValue(
         mockTransaction as TransactionProjection,
@@ -315,13 +345,15 @@ describe('Transaction Query Handlers', () => {
       const accountIds = ['acc-001', 'acc-002', 'acc-003'];
 
       for (const accountId of accountIds) {
-        const query = new GetTransactionsByAccountQuery({ accountId: accountId as any });
+        const query = new GetTransactionsByAccountQuery({
+          accountId: accountId as any,
+        });
         mockProjectionService.findByAccount.mockResolvedValue([
           { ...mockTransaction, sourceAccountId: accountId },
         ] as TransactionProjection[]);
 
         const result = await getTransactionsByAccountHandler.execute(query);
-        expect(result[0].sourceAccountId).toBe(accountId);
+        expect(result[0]!.sourceAccountId).toBe(accountId);
       }
 
       expect(mockProjectionService.findByAccount).toHaveBeenCalledTimes(3);
@@ -329,7 +361,9 @@ describe('Transaction Query Handlers', () => {
 
     it('should handle transaction not found after multiple retries', async () => {
       const transactionId = 'tx-retry';
-      const query = new GetTransactionQuery({ transactionId: transactionId as any });
+      const query = new GetTransactionQuery({
+        transactionId: transactionId as any,
+      });
 
       mockProjectionService.findById.mockResolvedValue(null);
 
@@ -348,4 +382,3 @@ describe('Transaction Query Handlers', () => {
     });
   });
 });
-

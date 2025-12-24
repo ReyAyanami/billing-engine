@@ -35,7 +35,9 @@ export class TransactionReconciliationService {
   /**
    * Reconcile a single transaction projection with its event-sourced state
    */
-  async reconcileTransaction(transactionId: TransactionId): Promise<TransactionReconciliationResult> {
+  async reconcileTransaction(
+    transactionId: TransactionId,
+  ): Promise<TransactionReconciliationResult> {
     this.logger.log(`Reconciling transaction: ${transactionId}`);
 
     const projection = await this.projectionRepository.findOne({
@@ -46,7 +48,10 @@ export class TransactionReconciliationService {
       throw new Error(`Projection not found for transaction: ${transactionId}`);
     }
 
-    const events = await this.eventStore.getEvents('Transaction', transactionId);
+    const events = await this.eventStore.getEvents(
+      'Transaction',
+      transactionId,
+    );
 
     if (events.length === 0) {
       throw new Error(`No events found for transaction: ${transactionId}`);
@@ -54,7 +59,8 @@ export class TransactionReconciliationService {
 
     const aggregate = TransactionAggregate.fromEvents(events);
 
-    const versionMismatch = projection.aggregateVersion !== aggregate.getVersion();
+    const versionMismatch =
+      projection.aggregateVersion !== aggregate.getVersion();
     const statusMatch = projection.status === aggregate.getStatus();
 
     const issues: string[] = [];
@@ -99,7 +105,9 @@ export class TransactionReconciliationService {
         `❌ Reconciliation failed for transaction ${transactionId}:\n${issues.join('\n')}`,
       );
     } else {
-      this.logger.log(`✅ Transaction ${transactionId} reconciliation successful`);
+      this.logger.log(
+        `✅ Transaction ${transactionId} reconciliation successful`,
+      );
     }
 
     return result;
@@ -108,7 +116,9 @@ export class TransactionReconciliationService {
   /**
    * Find stuck transactions (pending for too long)
    */
-  async findStuckTransactions(olderThanMinutes: number = 5): Promise<TransactionProjection[]> {
+  async findStuckTransactions(
+    olderThanMinutes: number = 5,
+  ): Promise<TransactionProjection[]> {
     const cutoffTime = new Date(Date.now() - olderThanMinutes * 60 * 1000);
 
     const stuckTransactions = await this.projectionRepository
@@ -142,7 +152,9 @@ export class TransactionReconciliationService {
 
     for (const projection of allProjections) {
       try {
-        const result = await this.reconcileTransaction(projection.id as TransactionId);
+        const result = await this.reconcileTransaction(
+          projection.id as TransactionId,
+        );
         results.push(result);
       } catch (error) {
         this.logger.error(
@@ -157,7 +169,9 @@ export class TransactionReconciliationService {
           projectionVersion: projection.aggregateVersion,
           eventSourceVersion: -1,
           versionMismatch: true,
-          issues: [`Reconciliation error: ${error instanceof Error ? error.message : String(error)}`],
+          issues: [
+            `Reconciliation error: ${error instanceof Error ? error.message : String(error)}`,
+          ],
         });
       }
     }
@@ -180,4 +194,3 @@ export class TransactionReconciliationService {
     return summary;
   }
 }
-

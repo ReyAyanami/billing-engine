@@ -3,9 +3,12 @@ import { AccountProjectionRebuildService } from '../../src/modules/account/servi
 import { AccountReconciliationService } from '../../src/modules/account/services/account-reconciliation.service';
 import { AccountAggregate } from '../../src/modules/account/aggregates/account.aggregate';
 import { AccountProjection } from '../../src/modules/account/projections/account-projection.entity';
-import { Repository } from 'typeorm';
+
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { AccountStatus, AccountType } from '../../src/modules/account/account.types';
+import {
+  AccountStatus,
+  AccountType,
+} from '../../src/modules/account/account.types';
 import { AccountCreatedEvent } from '../../src/modules/account/events/account-created.event';
 import { BalanceChangedEvent } from '../../src/modules/account/events/balance-changed.event';
 import { InvariantViolationException } from '../../src/common/exceptions/billing.exception';
@@ -24,6 +27,7 @@ describe('Fault Tolerance', () => {
         aggregateId: 'acc-1',
         aggregateVersion: 1,
         correlationId: 'corr-1',
+        homeRegionId: 'region-1',
       });
 
       aggregate['onAccountCreated'](createEvent);
@@ -31,9 +35,10 @@ describe('Fault Tolerance', () => {
       const debitEvent = new BalanceChangedEvent({
         previousBalance: '100.00',
         newBalance: '-50.00',
+        changeAmount: '150.00',
         signedAmount: '-150.00',
         changeType: 'DEBIT',
-        changeReason: 'withdrawal',
+        reason: 'withdrawal',
         transactionId: 'tx-1',
         aggregateId: 'acc-1',
         aggregateVersion: 2,
@@ -42,7 +47,9 @@ describe('Fault Tolerance', () => {
 
       aggregate['onBalanceChanged'](debitEvent);
 
-      expect(() => aggregate.validateInvariants()).toThrow(InvariantViolationException);
+      expect(() => aggregate.validateInvariants()).toThrow(
+        InvariantViolationException,
+      );
       expect(() => aggregate.validateInvariants()).toThrow(/negative balance/);
     });
 
@@ -59,6 +66,7 @@ describe('Fault Tolerance', () => {
         aggregateId: 'acc-1',
         aggregateVersion: 1,
         correlationId: 'corr-1',
+        homeRegionId: 'region-1',
       });
 
       aggregate['onAccountCreated'](createEvent);
@@ -66,9 +74,10 @@ describe('Fault Tolerance', () => {
       const creditEvent = new BalanceChangedEvent({
         previousBalance: '100.00',
         newBalance: '2000.00',
+        changeAmount: '1900.00',
         signedAmount: '1900.00',
         changeType: 'CREDIT',
-        changeReason: 'topup',
+        reason: 'topup',
         transactionId: 'tx-1',
         aggregateId: 'acc-1',
         aggregateVersion: 2,
@@ -77,7 +86,9 @@ describe('Fault Tolerance', () => {
 
       aggregate['onBalanceChanged'](creditEvent);
 
-      expect(() => aggregate.validateInvariants()).toThrow(InvariantViolationException);
+      expect(() => aggregate.validateInvariants()).toThrow(
+        InvariantViolationException,
+      );
       expect(() => aggregate.validateInvariants()).toThrow(/exceeds max/);
     });
 
@@ -95,6 +106,7 @@ describe('Fault Tolerance', () => {
         aggregateId: 'acc-1',
         aggregateVersion: 1,
         correlationId: 'corr-1',
+        homeRegionId: 'region-1',
       });
 
       aggregate['onAccountCreated'](createEvent);
@@ -102,9 +114,10 @@ describe('Fault Tolerance', () => {
       const creditEvent = new BalanceChangedEvent({
         previousBalance: '100.00',
         newBalance: '500.00',
+        changeAmount: '400.00',
         signedAmount: '400.00',
         changeType: 'CREDIT',
-        changeReason: 'topup',
+        reason: 'topup',
         transactionId: 'tx-1',
         aggregateId: 'acc-1',
         aggregateVersion: 2,
@@ -153,7 +166,7 @@ describe('Fault Tolerance', () => {
 
     it('should detect balance mismatch', async () => {
       const accountId = 'acc-1';
-      
+
       const projection = {
         id: accountId,
         balance: '100.00',
@@ -172,13 +185,15 @@ describe('Fault Tolerance', () => {
           aggregateId: accountId,
           aggregateVersion: 1,
           correlationId: 'corr-1',
+          homeRegionId: 'region-1',
         }),
         new BalanceChangedEvent({
           previousBalance: '0.00',
           newBalance: '200.00',
+          changeAmount: '200.00',
           signedAmount: '200.00',
           changeType: 'CREDIT',
-          changeReason: 'topup',
+          reason: 'topup',
           transactionId: 'tx-1',
           aggregateId: accountId,
           aggregateVersion: 2,
@@ -199,7 +214,7 @@ describe('Fault Tolerance', () => {
 
     it('should confirm matching state', async () => {
       const accountId = 'acc-1';
-      
+
       const projection = {
         id: accountId,
         balance: '200.00',
@@ -218,13 +233,15 @@ describe('Fault Tolerance', () => {
           aggregateId: accountId,
           aggregateVersion: 1,
           correlationId: 'corr-1',
+          homeRegionId: 'region-1',
         }),
         new BalanceChangedEvent({
           previousBalance: '0.00',
           newBalance: '200.00',
+          changeAmount: '200.00',
           signedAmount: '200.00',
           changeType: 'CREDIT',
-          changeReason: 'topup',
+          reason: 'topup',
           transactionId: 'tx-1',
           aggregateId: accountId,
           aggregateVersion: 2,
@@ -279,7 +296,7 @@ describe('Fault Tolerance', () => {
 
     it('should rebuild projection from events', async () => {
       const accountId = 'acc-1';
-      
+
       const corruptedProjection = {
         id: accountId,
         balance: '999.99',
@@ -298,13 +315,15 @@ describe('Fault Tolerance', () => {
           aggregateId: accountId,
           aggregateVersion: 1,
           correlationId: 'corr-1',
+          homeRegionId: 'region-1',
         }),
         new BalanceChangedEvent({
           previousBalance: '0.00',
           newBalance: '100.00',
+          changeAmount: '100.00',
           signedAmount: '100.00',
           changeType: 'CREDIT',
-          changeReason: 'topup',
+          reason: 'topup',
           transactionId: 'tx-1',
           aggregateId: accountId,
           aggregateVersion: 2,
@@ -319,9 +338,11 @@ describe('Fault Tolerance', () => {
           balance: '100.00000000',
           aggregateVersion: 2,
         });
-      
+
       mockEventStore.getEvents.mockResolvedValue(events);
-      mockRepository.save.mockImplementation((proj) => Promise.resolve(proj));
+      mockRepository.save.mockImplementation((proj: any) =>
+        Promise.resolve(proj),
+      );
 
       const result = await service.rebuildAccount(accountId as any);
 
@@ -340,4 +361,3 @@ describe('Fault Tolerance', () => {
     });
   });
 });
-

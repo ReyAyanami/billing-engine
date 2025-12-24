@@ -72,4 +72,4 @@ const QueryHandlers = [GetAccountHandler, GetAccountsByOwnerHandler];
     AccountReconciliationService,
   ],
 })
-export class AccountModule { }
+export class AccountModule {}

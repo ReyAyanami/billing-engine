@@ -80,6 +80,13 @@ describe('AccountAggregate - Balance Change Validation', () => {
         correlationId,
       });
 
+      // Reserve funds for debit
+      aggregate.reserve({
+        amount: '50.00',
+        targetRegionId: aggregate.getHomeRegionId(),
+        correlationId,
+      });
+
       // Then debit
       expect(() => {
         aggregate.changeBalance({
@@ -123,6 +130,14 @@ describe('AccountAggregate - Balance Change Validation', () => {
 
       aggregate.commit(); // Clear events
 
+      // Reserve funds
+      aggregate.reserve({
+        amount: '50.00',
+        targetRegionId: 'test-region', // Hardcoded as per test setup
+        correlationId,
+      });
+      aggregate.commit();
+
       // Then debit
       aggregate.changeBalance({
         changeAmount: '50.00',
@@ -164,6 +179,13 @@ describe('AccountAggregate - Balance Change Validation', () => {
       expect(aggregate.getBalance().toString()).toBe('150');
 
       // Debit 30
+      // Reserve first
+      aggregate.reserve({
+        amount: '30.00',
+        targetRegionId: 'test-region',
+        correlationId,
+      });
+
       aggregate.changeBalance({
         changeAmount: '30.00',
         changeType: 'DEBIT',
@@ -173,6 +195,94 @@ describe('AccountAggregate - Balance Change Validation', () => {
 
       expect(aggregate.getBalance().toString()).toBe('120');
     });
+  });
+
+  // ... (Status Changes tests seem fine)
+
+  // ...
+
+  it('should enforce min balance on subsequent transactions', () => {
+    // Set min balance and add initial funds
+    aggregate.changeLimits({
+      newMinBalance: '-100.00',
+      reason: 'Allow overdraft',
+      correlationId,
+    });
+
+    aggregate.changeBalance({
+      changeAmount: '50.00',
+      changeType: 'CREDIT',
+      reason: 'Add funds',
+      correlationId,
+    });
+
+    // Try to go below min balance
+    // Reservation will check unreserved balance vs minBalance
+    // 50 (balance) - -100 (min) = 150 available.
+    // Trying to debit 200.
+    // aggregate.reserve(200) should fail with "Insufficient unreserved balance..."
+
+    expect(() => {
+      aggregate.reserve({
+        amount: '200.00',
+        targetRegionId: 'test-region',
+        correlationId,
+      });
+    }).toThrow(/Insufficient unreserved balance/);
+
+    // Even if we forced changeBalance, it would fail
+  });
+
+  // ...
+
+  it('should handle decimal precision correctly', () => {
+    aggregate.changeBalance({
+      changeAmount: '0.01',
+      changeType: 'CREDIT',
+      reason: 'Penny',
+      correlationId,
+    });
+
+    expect(aggregate.getBalance().toString()).toBe('0.01');
+
+    aggregate.reserve({
+      amount: '0.01',
+      targetRegionId: 'test-region',
+      correlationId,
+    });
+
+    aggregate.changeBalance({
+      changeAmount: '0.01',
+      changeType: 'DEBIT',
+      reason: 'Remove penny',
+      correlationId,
+    });
+
+    expect(aggregate.getBalance().toString()).toBe('0');
+  });
+
+  // ...
+
+  it('should prevent negative balance by default', () => {
+    // Account starts with 0 balance and no min balance set
+    // Try to reserve first - should fail
+    expect(() => {
+      aggregate.reserve({
+        amount: '50.00',
+        targetRegionId: 'test-region',
+        correlationId,
+      });
+    }).toThrow(/Insufficient unreserved balance/);
+
+    // And changeBalance would fail too
+    expect(() => {
+      aggregate.changeBalance({
+        changeAmount: '50.00',
+        changeType: 'DEBIT',
+        reason: 'Try to go negative',
+        correlationId,
+      });
+    }).toThrow(/Insufficient local reservation/);
   });
 
   describe('Account Status Changes', () => {
@@ -448,14 +558,15 @@ describe('AccountAggregate - Balance Change Validation', () => {
       });
 
       // Try to go below min balance
+      // Try to go below min balance
+      // Reserve should fail first
       expect(() => {
-        aggregate.changeBalance({
-          changeAmount: '200.00',
-          changeType: 'DEBIT',
-          reason: 'Exceed overdraft',
+        aggregate.reserve({
+          amount: '200.00',
+          targetRegionId: aggregate.getHomeRegionId(),
           correlationId,
         });
-      }).toThrow('Insufficient balance');
+      }).toThrow(/Insufficient unreserved balance/);
     });
 
     it('should allow updating limits on non-existent account to fail', () => {
@@ -492,10 +603,10 @@ describe('AccountAggregate - Balance Change Validation', () => {
         balance: '250',
       });
 
-      expect(snapshot.createdAt).toBeDefined();
-      expect(snapshot.updatedAt).toBeDefined();
-      expect(snapshot.maxBalance).toBeNull();
-      expect(snapshot.minBalance).toBeNull();
+      expect(snapshot['createdAt']).toBeDefined();
+      expect(snapshot['updatedAt']).toBeDefined();
+      expect(snapshot['maxBalance']).toBeNull();
+      expect(snapshot['minBalance']).toBeNull();
     });
 
     it('should create snapshot of account with limits', () => {
@@ -508,8 +619,8 @@ describe('AccountAggregate - Balance Change Validation', () => {
 
       const snapshot = aggregate.toSnapshot();
 
-      expect(snapshot.maxBalance).toBe('5000');
-      expect(snapshot.minBalance).toBe('0');
+      expect(snapshot['maxBalance']).toBe('5000');
+      expect(snapshot['minBalance']).toBe('0');
     });
 
     it('should create snapshot of suspended account', () => {
@@ -521,13 +632,13 @@ describe('AccountAggregate - Balance Change Validation', () => {
 
       const snapshot = aggregate.toSnapshot();
 
-      expect(snapshot.status).toBe(AccountStatus.SUSPENDED);
+      expect(snapshot['status']).toBe(AccountStatus.SUSPENDED);
     });
 
     it('should include version in snapshot', () => {
       // Initial version is 1
       let snapshot = aggregate.toSnapshot();
-      expect(snapshot.version).toBe(1);
+      expect(snapshot['version']).toBe(1);
 
       // After a status change, version should be 2
       aggregate.changeStatus({
@@ -537,7 +648,7 @@ describe('AccountAggregate - Balance Change Validation', () => {
       });
 
       snapshot = aggregate.toSnapshot();
-      expect(snapshot.version).toBe(2);
+      expect(snapshot['version']).toBe(2);
     });
   });
 
@@ -551,6 +662,12 @@ describe('AccountAggregate - Balance Change Validation', () => {
       });
 
       expect(aggregate.getBalance().toString()).toBe('0.01');
+
+      aggregate.reserve({
+        amount: '0.01',
+        targetRegionId: aggregate.getHomeRegionId(),
+        correlationId,
+      });
 
       aggregate.changeBalance({
         changeAmount: '0.01',
@@ -576,13 +693,12 @@ describe('AccountAggregate - Balance Change Validation', () => {
     it('should prevent negative balance by default', () => {
       // Account starts with 0 balance and no min balance set
       expect(() => {
-        aggregate.changeBalance({
-          changeAmount: '50.00',
-          changeType: 'DEBIT',
-          reason: 'Try to go negative',
+        aggregate.reserve({
+          amount: '50.00', // 50 > 0 (balance)
+          targetRegionId: aggregate.getHomeRegionId(),
           correlationId,
         });
-      }).toThrow('Insufficient balance');
+      }).toThrow(/Insufficient unreserved balance/);
     });
 
     it('should allow negative balance when min balance is set below zero', () => {
@@ -593,6 +709,13 @@ describe('AccountAggregate - Balance Change Validation', () => {
       });
 
       // Should work now
+      // Reserve first
+      aggregate.reserve({
+        amount: '50.00',
+        targetRegionId: aggregate.getHomeRegionId(),
+        correlationId,
+      });
+
       aggregate.changeBalance({
         changeAmount: '50.00',
         changeType: 'DEBIT',

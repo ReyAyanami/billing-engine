@@ -232,7 +232,7 @@ export class AccountAggregate extends AggregateRoot {
       if (localReservation.lessThan(changeAmount)) {
         throw new Error(
           `Insufficient local reservation in region ${this.regionId}: ` +
-          `available ${localReservation.toString()}, requested ${changeAmount.toString()}`
+            `available ${localReservation.toString()}, requested ${changeAmount.toString()}`,
         );
       }
     }
@@ -242,7 +242,7 @@ export class AccountAggregate extends AggregateRoot {
     if (newBalance.lessThan(effectiveMinBalance)) {
       throw new Error(
         `Insufficient total balance: current ${previousBalance.toString()}, ` +
-        `attempting to ${params.changeType} ${changeAmount.toString()}, would result in ${newBalance.toString()}`
+          `attempting to ${params.changeType} ${changeAmount.toString()}, would result in ${newBalance.toString()}`,
       );
     }
 
@@ -268,12 +268,17 @@ export class AccountAggregate extends AggregateRoot {
     this.checkReplenishmentThreshold(params.correlationId, event.eventId);
   }
 
-  private checkReplenishmentThreshold(correlationId: string, causationId: string): void {
+  private checkReplenishmentThreshold(
+    correlationId: string,
+    causationId: string,
+  ): void {
     const localRes = this.getReservation(this.regionId);
 
     // threshold: if local reservation < 50, and we are not the home region
     if (localRes.lessThan(50) && this.regionId !== this.homeRegionId) {
-      this.logger.log(`Local reservation low in ${this.regionId} (${localRes.toString()}). Requesting replenishment.`);
+      this.logger.log(
+        `Local reservation low in ${this.regionId} (${localRes.toString()}). Requesting replenishment.`,
+      );
 
       const replenishmentAmount = '100.00';
 
@@ -292,7 +297,7 @@ export class AccountAggregate extends AggregateRoot {
   }
 
   onReplenishmentRequested(event: ReplenishmentRequestedEvent): void {
-    // This event is a signal for the Home Region to act. 
+    // This event is a signal for the Home Region to act.
     // Aggregate state doesn't necessarily change until the reservation is allocated.
     this.updatedAt = event.timestamp;
   }
@@ -328,15 +333,20 @@ export class AccountAggregate extends AggregateRoot {
     if (!this.aggregateId) throw new Error('Account does not exist');
 
     const amount = new Decimal(params.amount);
-    if (amount.lessThanOrEqualTo(0)) throw new Error('Reserve amount must be positive');
+    if (amount.lessThanOrEqualTo(0))
+      throw new Error('Reserve amount must be positive');
 
     const totalReserved = this.getTotalReserved();
-    const unreservedBalance = this.balance.minus(totalReserved);
+    // Available to reserve = Balance - MinBalance - TotalReserved
+    const minBalance = this.minBalance || new Decimal(0);
+    const availableToReserve = this.balance
+      .minus(minBalance)
+      .minus(totalReserved);
 
-    if (unreservedBalance.lessThan(amount)) {
+    if (availableToReserve.lessThan(amount)) {
       throw new Error(
         `Insufficient unreserved balance to allocate ${amount.toString()}. ` +
-        `Balance: ${this.balance.toString()}, Total Reserved: ${totalReserved.toString()}`
+          `Balance: ${this.balance.toString()}, MinBalance: ${minBalance.toString()}, Total Reserved: ${totalReserved.toString()}`,
       );
     }
 
@@ -358,7 +368,7 @@ export class AccountAggregate extends AggregateRoot {
     const currentRes = this.getReservation(event.targetRegionId);
     this.reservations.set(
       event.targetRegionId,
-      currentRes.plus(new Decimal(event.amount))
+      currentRes.plus(new Decimal(event.amount)),
     );
     this.updatedAt = event.timestamp;
   }
@@ -538,25 +548,29 @@ export class AccountAggregate extends AggregateRoot {
   validateInvariants(): void {
     if (this.balance.lessThan(0)) {
       throw new InvariantViolationException(
-        `Account ${this.aggregateId} has negative balance: ${this.balance}`,
+        `Account ${this.aggregateId} has negative balance: ${this.balance.toString()}`,
       );
     }
 
     if (this.maxBalance && this.balance.greaterThan(this.maxBalance)) {
       throw new InvariantViolationException(
-        `Account ${this.aggregateId} balance ${this.balance} exceeds max ${this.maxBalance}`,
+        `Account ${this.aggregateId} balance ${this.balance.toString()} exceeds max ${this.maxBalance.toString()}`,
       );
     }
 
     if (this.minBalance && this.balance.lessThan(this.minBalance)) {
       throw new InvariantViolationException(
-        `Account ${this.aggregateId} balance ${this.balance} below min ${this.minBalance}`,
+        `Account ${this.aggregateId} balance ${this.balance.toString()} below min ${this.minBalance.toString()}`,
       );
     }
 
-    if (this.maxBalance && this.minBalance && this.minBalance.greaterThan(this.maxBalance)) {
+    if (
+      this.maxBalance &&
+      this.minBalance &&
+      this.minBalance.greaterThan(this.maxBalance)
+    ) {
       throw new InvariantViolationException(
-        `Account ${this.aggregateId} min balance ${this.minBalance} exceeds max ${this.maxBalance}`,
+        `Account ${this.aggregateId} min balance ${this.minBalance.toString()} exceeds max ${this.maxBalance.toString()}`,
       );
     }
   }

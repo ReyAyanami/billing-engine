@@ -243,7 +243,7 @@ export class TransactionProjectionService {
     endDate?: Date;
     limit?: number;
     offset?: number;
-  }  ): Promise<TransactionProjection[]> {
+  }): Promise<TransactionProjection[]> {
     const query = this.projectionRepository.createQueryBuilder('t');
 
     if (filters.accountId) {
