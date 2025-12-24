@@ -23,6 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `AccountProjectionRebuildService` - Rebuild account projections
   - `TransactionProjectionRebuildService` - Rebuild transaction projections
   - Support for single entity or bulk rebuilding
+
+#### Documentation
+- **ADR-003**: Added [ADR-003](./docs/architecture/decisions/adr-003-multi-region-active-active.md) documenting Multi-Region interactions, HLC, and Reservation strategy.
+- **System Design**: Added "Multi-Region Active-Active Architecture" section.
 - **Reconciliation Services**: Verify projection consistency with events
   - `AccountReconciliationService` - Detect account inconsistencies
   - `TransactionReconciliationService` - Detect transaction inconsistencies

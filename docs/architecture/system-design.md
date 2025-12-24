@@ -606,6 +606,29 @@ For educational focus, these are excluded:
 
 ---
 
+## Multi-Region Active-Active Architecture
+
+To support global scale and high availability, the system employs a **Multi-Region Active-Active** architecture.
+
+### Core Components
+
+#### 1. Reservation-Based Liquidity
+- **No Global Locks**: Transactions are processed locally using reserved funds.
+- **Liquidity Pools**: Account balance is partitioned into regional reservations.
+- **Invariant**: Debit operation in Region X requires `Reservation(Region X) >= Amount`.
+
+#### 2. Hybrid Logical Clocks (HLC)
+- **Causal Ordering**: Events are ordered across regions using HLC timestamps (`timestamp:logical_counter`).
+- **Global Identity**: `RegionID + HLC` forms a globally unique, sortable Event ID.
+
+#### 3. Cross-Region Replication
+- **Async Replication**: Events are asynchronously replicated to all other regions.
+- **Eventual Consistency**: Global state is the aggregate of all regional events.
+
+For detailed design decisions, see [ADR-003: Multi-Region Active-Active](./decisions/adr-003-multi-region-active-active.md).
+
+---
+
 ## Related Documentation
 
 - [CQRS Pattern](./cqrs-pattern.md) - Deep dive into CQRS implementation
