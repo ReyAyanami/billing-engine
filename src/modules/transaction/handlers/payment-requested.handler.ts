@@ -7,6 +7,7 @@ import { UpdateBalanceCommand } from '../../account/commands/update-balance.comm
 import { CompletePaymentCommand } from '../commands/complete-payment.command';
 import { FailTransactionCommand } from '../commands/fail-transaction.command';
 import { CompensateTransactionCommand } from '../commands/compensate-transaction.command';
+import { ReserveBalanceCommand } from '../../account/commands/reserve-balance.command';
 
 /**
  * Saga Coordinator for Payment transactions
@@ -34,7 +35,12 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
       sagaId: event.aggregateId,
       sagaType: 'payment',
       correlationId: event.correlationId,
-      steps: ['debit_customer', 'credit_merchant', 'complete_transaction'],
+      steps: [
+        'reserve_customer',
+        'debit_customer',
+        'credit_merchant',
+        'complete_transaction',
+      ],
       metadata: event.metadata,
     });
 
@@ -46,7 +52,28 @@ export class PaymentRequestedHandler implements IEventHandler<PaymentRequestedEv
     let customerNewBalance: string | undefined;
 
     try {
-      // Step 1: DEBIT the customer account
+      // Step 1: RESERVE funds from customer
+      const reserveCommand = new ReserveBalanceCommand({
+        accountId: event.customerAccountId,
+        amount: event.amount,
+        targetRegionId: process.env['REGION_ID'] || 'unknown',
+        reason: `Reservation for payment to ${event.merchantAccountId} (tx: ${event.aggregateId})`,
+        correlationId: event.correlationId,
+        metadata: event.metadata as Record<
+          string,
+          string | number | boolean | undefined
+        >,
+      });
+
+      await this.commandBus.execute(reserveCommand);
+
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'reserve_customer',
+        result: { amount: event.amount },
+      });
+
+      // Step 2: DEBIT the customer account
       const debitCommand = new UpdateBalanceCommand({
         accountId: event.customerAccountId,
         changeAmount: event.amount,

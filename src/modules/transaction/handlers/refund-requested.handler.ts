@@ -7,6 +7,7 @@ import { UpdateBalanceCommand } from '../../account/commands/update-balance.comm
 import { CompleteRefundCommand } from '../commands/complete-refund.command';
 import { FailTransactionCommand } from '../commands/fail-transaction.command';
 import { CompensateTransactionCommand } from '../commands/compensate-transaction.command';
+import { ReserveBalanceCommand } from '../../account/commands/reserve-balance.command';
 
 /**
  * Event handler for RefundRequestedEvent (Saga Coordinator).
@@ -37,7 +38,12 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
       sagaId: event.aggregateId,
       sagaType: 'refund',
       correlationId: event.correlationId,
-      steps: ['debit_merchant', 'credit_customer', 'complete_transaction'],
+      steps: [
+        'reserve_merchant',
+        'debit_merchant',
+        'credit_customer',
+        'complete_transaction',
+      ],
       metadata: event.metadata,
     });
 
@@ -48,7 +54,28 @@ export class RefundRequestedHandler implements IEventHandler<RefundRequestedEven
     let merchantNewBalance: string | undefined;
 
     try {
-      // Step 1: DEBIT the merchant account
+      // Step 1: RESERVE funds from merchant
+      const reserveCommand = new ReserveBalanceCommand({
+        accountId: event.merchantAccountId,
+        amount: event.refundAmount,
+        targetRegionId: process.env['REGION_ID'] || 'unknown',
+        reason: `Reservation for refund to ${event.customerAccountId} (tx: ${event.aggregateId})`,
+        correlationId: event.correlationId,
+        metadata: event.metadata as unknown as Record<
+          string,
+          string | number | boolean | undefined
+        >,
+      });
+
+      await this.commandBus.execute(reserveCommand);
+
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'reserve_merchant',
+        result: { amount: event.refundAmount },
+      });
+
+      // Step 2: DEBIT the merchant account
       const debitCommand = new UpdateBalanceCommand({
         accountId: event.merchantAccountId,
         changeAmount: event.refundAmount,

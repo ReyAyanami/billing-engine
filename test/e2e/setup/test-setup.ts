@@ -33,6 +33,9 @@ export class TestSetup {
     const timestamp = Date.now();
     this.schemaName = `test_w${workerId}_${timestamp}`;
 
+    // Set REGION_ID for tests
+    process.env['REGION_ID'] = 'test-region';
+
     console.log(
       `[Worker ${workerId}] Creating isolated schema: ${this.schemaName}`,
     );
@@ -220,8 +223,7 @@ export class TestSetup {
       await this.dataSource.query('DELETE FROM audit_logs;');
       await this.dataSource.query('DELETE FROM transaction_projections;');
       await this.dataSource.query('DELETE FROM account_projections;');
-      await this.dataSource.query('DELETE FROM transactions;');
-      await this.dataSource.query('DELETE FROM accounts;');
+
       // Don't delete currencies - they're reference data
     } catch (error) {
       console.warn('Database cleanup warning:', error);

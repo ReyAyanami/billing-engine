@@ -1,4 +1,5 @@
 import { DomainEvent } from '../../../cqrs/base/domain-event';
+import { JsonObject } from '../../../common/types/json.types';
 
 /**
  * Event emitted when a balance reservation is successfully allocated to a region.
@@ -27,7 +28,15 @@ export class BalanceReservedEvent extends DomainEvent {
     this.newTotalReserved = props.newTotalReserved;
   }
 
-  getEventType(): string {
+  override getEventType(): string {
     return 'BalanceReserved';
+  }
+
+  protected override getEventData(): JsonObject {
+    return {
+      amount: this.amount,
+      targetRegionId: this.targetRegionId,
+      newTotalReserved: this.newTotalReserved,
+    };
   }
 }

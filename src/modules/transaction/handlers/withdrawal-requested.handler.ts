@@ -6,6 +6,7 @@ import { WithdrawalRequestedEvent } from '../events/withdrawal-requested.event';
 import { UpdateBalanceCommand } from '../../account/commands/update-balance.command';
 import { CompleteWithdrawalCommand } from '../commands/complete-withdrawal.command';
 import { FailTransactionCommand } from '../commands/fail-transaction.command';
+import { ReserveBalanceCommand } from '../../account/commands/reserve-balance.command';
 
 /**
  * Saga Coordinator for Withdrawal transactions
@@ -34,7 +35,7 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
       sagaId: event.aggregateId,
       sagaType: 'withdrawal',
       correlationId: event.correlationId,
-      steps: ['update_balance', 'complete_transaction'],
+      steps: ['reserve_funds', 'update_balance', 'complete_transaction'],
       metadata: event.metadata,
     });
 
@@ -44,7 +45,28 @@ export class WithdrawalRequestedHandler implements IEventHandler<WithdrawalReque
     );
 
     try {
-      // Step 1: Update account balance (DEBIT)
+      // Step 1: Reserve funds
+      const reserveCommand = new ReserveBalanceCommand({
+        accountId: event.accountId,
+        amount: event.amount,
+        targetRegionId: process.env['REGION_ID'] || 'unknown',
+        reason: `Reservation for withdrawal ${event.aggregateId}`,
+        correlationId: event.correlationId,
+        metadata: event.metadata as unknown as Record<
+          string,
+          string | number | boolean | undefined
+        >,
+      });
+
+      await this.commandBus.execute(reserveCommand);
+
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'reserve_funds',
+        result: { amount: event.amount },
+      });
+
+      // Step 2: Update account balance (DEBIT)
       const updateBalanceCommand = new UpdateBalanceCommand({
         accountId: event.accountId,
         changeAmount: event.amount,

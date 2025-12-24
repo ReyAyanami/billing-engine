@@ -7,6 +7,7 @@ import { UpdateBalanceCommand } from '../../account/commands/update-balance.comm
 import { CompleteTransferCommand } from '../commands/complete-transfer.command';
 import { FailTransactionCommand } from '../commands/fail-transaction.command';
 import { CompensateTransactionCommand } from '../commands/compensate-transaction.command';
+import { ReserveBalanceCommand } from '../../account/commands/reserve-balance.command';
 
 /**
  * Saga Coordinator for Transfer transactions
@@ -31,7 +32,12 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
       sagaId: event.aggregateId,
       sagaType: 'transfer',
       correlationId: event.correlationId,
-      steps: ['debit_source', 'credit_destination', 'complete_transaction'],
+      steps: [
+        'reserve_source',
+        'debit_source',
+        'credit_destination',
+        'complete_transaction',
+      ],
       metadata: event.metadata,
     });
 
@@ -42,7 +48,28 @@ export class TransferRequestedHandler implements IEventHandler<TransferRequested
     let sourceNewBalance: string | undefined;
 
     try {
-      // Step 1: DEBIT the source account
+      // Step 1: RESERVE funds from source
+      const reserveCommand = new ReserveBalanceCommand({
+        accountId: event.sourceAccountId,
+        amount: event.amount,
+        targetRegionId: process.env['REGION_ID'] || 'unknown',
+        reason: `Reservation for transfer to ${event.destinationAccountId} (tx: ${event.aggregateId})`,
+        correlationId: event.correlationId,
+        metadata: event.metadata as unknown as Record<
+          string,
+          string | number | boolean | undefined
+        >,
+      });
+
+      await this.commandBus.execute(reserveCommand);
+
+      await this.sagaCoordinator.completeStep({
+        sagaId: event.aggregateId,
+        step: 'reserve_source',
+        result: { amount: event.amount },
+      });
+
+      // Step 2: DEBIT the source account
       const debitCommand = new UpdateBalanceCommand({
         accountId: event.sourceAccountId,
         changeAmount: event.amount,
